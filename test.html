@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"/><title>Firebase Test</title></head>
+<body>
+<h2>Firebase Test</h2>
+<input id="email" placeholder="email" type="email"/><br/><br/>
+<input id="pass" placeholder="password" type="password"/><br/><br/>
+<input id="code" placeholder="join code"/><br/><br/>
+<button onclick="testRegister()">Test Register</button>
+<button onclick="testLogin()">Test Login</button>
+<p id="status">Waiting...</p>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword }
+from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+const firebaseConfig = {
+apiKey: "AIzaSyCNSfHiZYPnOaPZT4eLtRTBPDNrCbHZ_bk",
+authDomain: "roughie-tipper.firebaseapp.com",
+projectId: "roughie-tipper",
+storageBucket: "roughie-tipper.firebasestorage.app",
+messagingSenderId: "423807893488",
+appId: "1:423807893488:web:03fd4f1f40413fa2e8a735"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+window.testRegister = async function() {
+const email = document.getElementById('email').value;
+const pass = document.getElementById('pass').value;
+const status = document.getElementById('status');
+status.textContent = 'Trying to register...';
+try {
+await createUserWithEmailAndPassword(auth, email, pass);
+status.textContent = '✅ SUCCESS! Firebase is working!';
+status.style.color = 'green';
+} catch(e) {
+status.textContent = '❌ Error: ' + e.code + ' — ' + e.message;
+status.style.color = 'red';
+}
+}
+
+window.testLogin = async function() {
+const email = document.getElementById('email').value;
+const pass = document.getElementById('pass').value;
+const status = document.getElementById('status');
+status.textContent = 'Trying to login...';
+try {
+await signInWithEmailAndPassword(auth, email, pass);
+status.textContent = '✅ Login worked!';
+status.style.color = 'green';
+} catch(e) {
+status.textContent = '❌ Error: ' + e.code + ' — ' + e.message;
+status.style.color = 'red';
+}
+}
+</script>
+</body>
+</html>
