@@ -1,38 +1,25 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Roughie Tipper — AFL 2026</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
-
-<!-- ============================================================
-FIREBASE SETUP — REPLACE THE PLACEHOLDER VALUES BELOW
-1. Go to https://console.firebase.google.com
-2. Click "Add project", name it "roughie-tipper"
-3. Go to Project Settings > General > Your apps > Add app (Web)
-4. Copy your firebaseConfig values and paste them below
-5. In Firebase console: go to Firestore Database > Create database (start in test mode)
-6. Go to Authentication > Sign-in method > Enable Email/Password
-============================================================ -->
-
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs, onSnapshot, updateDoc, deleteDoc, serverTimestamp, addDoc, query, orderBy, limit }
-from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged }
-from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 // ▼▼▼ PASTE YOUR FIREBASE CONFIG HERE ▼▼▼
 const firebaseConfig = {
-apiKey: "AIzaSyAiNwgoI2hpWz4oVQJdGfbYkWQMHW8BoQw",
-authDomain: "roughie-tippers.firebaseapp.com",
-projectId: "roughie-tippers",
-storageBucket: "roughie-tippers.firebasestorage.app",
-messagingSenderId: "378083493976",
-appId: "1:378083493976:web:96b474f35a5be15e54622d",
-measurementId: "G-LY7WXRQ24Q"
+  apiKey: "AIzaSyAiNwgoI2hpWz4oVQJdGfbYkWQMHW8BoQw",
+  authDomain: "roughie-tippers.firebaseapp.com",
+  projectId: "roughie-tippers",
+  storageBucket: "roughie-tippers.firebasestorage.app",
+  messagingSenderId: "378083493976",
+  appId: "1:378083493976:web:96b474f35a5be15e54622d"
 };
 // ▲▲▲ END OF CONFIG ▲▲▲
 
@@ -40,613 +27,755 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-// ─── HELPERS ────────────────────────────────────────────────
+// ─── FIX 1: EXTENDED SCORING ────────────────────────────────
 function pts(odds) {
-if (odds < 2.0) return 1;
-return Math.floor(odds);
+  if (odds < 2.0) return 1;
+  if (odds < 3.0) return 2;
+  if (odds < 4.0) return 3;
+  if (odds < 5.0) return 4;
+  if (odds < 6.0) return 5;
+  if (odds < 7.0) return 6;
+  if (odds < 8.0) return 7;
+  if (odds < 9.0) return 8;
+  return 9;
 }
+
+// ─── FIX 4: AFL CLUB COLOUR BADGES ──────────────────────────
+const CLUB_COLOURS = {
+  'Adelaide Crows':    ['#002B5C','#E21937'],
+  'Brisbane Lions':    ['#A30046','#0054A4'],
+  'Carlton':           ['#002B5C','#FFFFFF'],
+  'Collingwood':       ['#000000','#FFFFFF'],
+  'Essendon':          ['#CC2031','#000000'],
+  'Fremantle':         ['#2E1A6E','#E50A14'],
+  'Geelong':           ['#003087','#FFFFFF'],
+  'Gold Coast Suns':   ['#E8261A','#FFD200'],
+  'GWS Giants':        ['#F47920','#231F20'],
+  'Hawthorn':          ['#4D2004','#FBBF15'],
+  'Melbourne':         ['#CC2031','#003C71'],
+  'North Melbourne':   ['#003087','#FFFFFF'],
+  'Port Adelaide':     ['#008AAB','#000000'],
+  'Richmond':          ['#000000','#FFD200'],
+  'St Kilda':          ['#ED0F05','#000000'],
+  'Sydney Swans':      ['#CC2031','#FFFFFF'],
+  'West Coast Eagles': ['#002B5C','#F2A900'],
+  'Western Bulldogs':  ['#014896','#CC2031'],
+};
+function clubBadge(name, size=40) {
+  const cols = CLUB_COLOURS[name];
+  const c1 = cols ? cols[0] : '#1e3054';
+  const c2 = cols ? cols[1] : '#00c853';
+  const initials = name.split(' ').map(w=>w[0]).join('').slice(0,3).toUpperCase();
+  const fs = initials.length > 2 ? 10 : 13;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 40 40" style="border-radius:50%;flex-shrink:0;">
+    <circle cx="20" cy="20" r="20" fill="${c1}"/>
+    <text x="20" y="25" text-anchor="middle" font-family="'Bebas Neue',sans-serif" font-size="${fs}" fill="${c2}">${initials}</text>
+  </svg>`;
+}
+
+// ─── HELPERS ────────────────────────────────────────────────
 function isLocked(dateStr) {
-if (!dateStr) return false;
-return new Date() >= new Date(dateStr + 'T00:00:00');
+  if (!dateStr) return false;
+  return new Date() >= new Date(dateStr + 'T00:00:00');
 }
 function toast(msg, err=false) {
-const t = document.getElementById('toast');
-t.textContent = msg;
-t.style.background = err ? 'var(--red)' : 'var(--green)';
-t.style.color = err ? '#fff' : 'var(--navy)';
-t.classList.add('show');
-setTimeout(() => t.classList.remove('show'), 3000);
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = err ? 'var(--red)' : 'var(--green)';
+  t.style.color = err ? '#fff' : 'var(--navy)';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
 }
 function el(id) { return document.getElementById(id); }
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 function showPage(id) {
-document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-const page = el('page-' + id);
-if (page) page.classList.add('active');
-const btn = el('nav-' + id);
-if (btn) btn.classList.add('active');
-if (id === 'leaderboard') renderLeaderboard();
-if (id === 'tips') renderTipsPage();
-if (id === 'rounds') renderRoundsPage();
-if (id === 'admin') renderAdmin();
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  const page = el('page-' + id);
+  if (page) page.classList.add('active');
+  const btn = el('nav-' + id);
+  if (btn) btn.classList.add('active');
+  if (id === 'leaderboard') renderLeaderboard();
+  if (id === 'tips') renderTipsPage();
+  if (id === 'rounds') renderRoundsPage();
+  if (id === 'admin') renderAdmin();
+  if (id === 'profile') renderProfilePage();
 }
 
 // ─── STATE ──────────────────────────────────────────────────
-let currentUser = null; // Firebase auth user
-let userProfile = null; // Firestore user doc {name, nick, isAdmin}
+let currentUser = null;
+let userProfile = null;
 let rounds = [];
-let allTips = {}; // {userId: {matchId: teamName}}
-let allUsers = {}; // {userId: {name, nick, isAdmin}}
+let allTips = {};
+let allUsers = {};
 
-// ─── AUTH ────────────────────────────────────────────────────
+// ─── FIX 2: AUTH WITH RETRY (fixes login hang + admin bug) ──
 onAuthStateChanged(auth, async user => {
-if (user) {
-currentUser = user;
-const snap = await getDoc(doc(db, 'users', user.uid));
-if (snap.exists()) {
-userProfile = snap.data();
-el('auth-screen').style.display = 'none';
-el('app-shell').style.display = 'block';
-el('user-display').textContent = userProfile.nick || userProfile.name;
-el('nav-admin').style.display = userProfile.isAdmin ? 'inline-flex' : 'none';
-subscribeData();
-showPage('leaderboard');
-} else {
-// Profile missing — sign out
-await signOut(auth);
-showAuthScreen('login');
-}
-} else {
-currentUser = null;
-userProfile = null;
-el('auth-screen').style.display = 'flex';
-el('app-shell').style.display = 'none';
-}
+  if (user) {
+    currentUser = user;
+    try {
+      let snap = null;
+      for (let i = 0; i < 3; i++) {
+        snap = await getDoc(doc(db, 'users', user.uid));
+        if (snap.exists()) break;
+        await new Promise(r => setTimeout(r, 1500));
+      }
+      if (snap && snap.exists()) {
+        userProfile = snap.data();
+        el('auth-screen').style.display = 'none';
+        el('app-shell').style.display = 'block';
+        el('user-display').textContent = userProfile.nick || userProfile.name;
+        // FIX 3: Show avatar in header if set
+        if (userProfile.avatar) {
+          el('header-avatar').style.backgroundImage = 'url(' + userProfile.avatar + ')';
+          el('header-avatar').style.display = 'block';
+        }
+        el('nav-admin').style.display = userProfile.isAdmin ? 'inline-flex' : 'none';
+        subscribeData();
+        showPage('leaderboard');
+      } else {
+        await signOut(auth);
+        toast('Account setup incomplete — please register again', true);
+        el('login-btn').textContent = 'Log In';
+      }
+    } catch(e) {
+      console.error('Auth error:', e);
+      toast('Connection error — please refresh', true);
+      el('login-btn').textContent = 'Log In';
+    }
+  } else {
+    currentUser = null;
+    userProfile = null;
+    el('auth-screen').style.display = 'flex';
+    el('app-shell').style.display = 'none';
+  }
 });
 
 async function doLogin() {
-const email = el('login-email').value.trim();
-const pass = el('login-pass').value;
-if (!email || !pass) { toast('Fill in all fields', true); return; }
-try {
-el('login-btn').textContent = 'Logging in…';
-await signInWithEmailAndPassword(auth, email, pass);
-} catch(e) {
-toast('Invalid email or password', true);
-el('login-btn').textContent = 'Log In';
-}
+  const email = el('login-email').value.trim();
+  const pass = el('login-pass').value;
+  if (!email || !pass) { toast('Fill in all fields', true); return; }
+  el('login-btn').textContent = 'Logging in…';
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+  } catch(e) {
+    toast('Invalid email or password', true);
+    el('login-btn').textContent = 'Log In';
+  }
 }
 
 async function doRegister() {
-const name = el('reg-name').value.trim();
-const nick = el('reg-nick').value.trim();
-const email = el('reg-email').value.trim();
-const pass = el('reg-pass').value;
-const code = el('reg-code').value.trim();
-if (!name || !email || !pass || !code) { toast('Fill in all required fields', true); return; }
+  const name = el('reg-name').value.trim();
+  const nick = el('reg-nick').value.trim();
+  const email = el('reg-email').value.trim();
+  const pass = el('reg-pass').value;
+  const code = el('reg-code').value.trim();
+  if (!name || !email || !pass || !code) { toast('Fill in all required fields', true); return; }
+  if (pass.length < 6) { toast('Password must be at least 6 characters', true); return; }
 
-// Check join code
-const codeSnap = await getDoc(doc(db, 'config', 'joinCode'));
-const validCode = codeSnap.exists() ? codeSnap.data().code : 'HUNTERSTIPPING2026';
+  // Check join code
+  const codeSnap = await getDoc(doc(db, 'config', 'joinCode'));
+  const validCode = codeSnap.exists() ? codeSnap.data().code : 'HUNTERSTIPPING2026';
+  if (code.toUpperCase() !== validCode.toUpperCase()) { toast('Incorrect join code', true); return; }
 
-try {
-el('reg-btn').textContent = 'Registering…';
-const cred = await createUserWithEmailAndPassword(auth, email, pass);
-// Check if first user → make admin
-const usersSnap = await getDocs(collection(db, 'users'));
-const isAdmin = usersSnap.empty;
-await setDoc(doc(db, 'users', cred.user.uid), { name, nick, email, isAdmin, joinedAt: serverTimestamp() });
-toast('Welcome to Roughie Tipper! 🏉');
-} catch(e) {
-toast(e.message, true);
-el('reg-btn').textContent = 'Register';
-}
+  el('reg-btn').textContent = 'Registering…';
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+
+    // FIX 2: Only first user becomes admin — check properly
+    let isAdmin = false;
+    try {
+      const usersSnap = await getDocs(collection(db, 'users'));
+      isAdmin = usersSnap.empty;
+    } catch(e) { isAdmin = false; }
+
+    // Write profile with retries
+    let written = false;
+    for (let i = 0; i < 3; i++) {
+      try {
+        await setDoc(doc(db, 'users', cred.user.uid), {
+          name, nick: nick||'', email, isAdmin, avatar: '', joinedAt: serverTimestamp()
+        });
+        written = true;
+        break;
+      } catch(e) {
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    }
+    if (!written) toast('Account created — please log in', true);
+    else toast('Welcome to Roughie Tipper! 🏉');
+  } catch(e) {
+    if (e.code === 'auth/email-already-in-use') toast('Email already registered — try logging in', true);
+    else toast('Error: ' + (e.code || e.message), true);
+    el('reg-btn').textContent = 'Join Competition';
+  }
 }
 
 async function doLogout() {
-await signOut(auth);
+  await signOut(auth);
 }
 
 // ─── FIRESTORE SUBSCRIPTIONS ─────────────────────────────────
 function subscribeData() {
-// Rounds
-onSnapshot(collection(db, 'rounds'), snap => {
-rounds = snap.docs.map(d => ({id: d.id, ...d.data()}))
-.sort((a,b) => (a.order||0) - (b.order||0));
-if (el('page-leaderboard').classList.contains('active')) renderLeaderboard();
-if (el('page-tips').classList.contains('active')) renderTipsPage();
-if (el('page-rounds').classList.contains('active')) renderRoundsPage();
-if (el('page-admin').classList.contains('active')) renderAdmin();
-});
-
-// Tips
-onSnapshot(collection(db, 'tips'), snap => {
-allTips = {};
-snap.docs.forEach(d => { allTips[d.id] = d.data(); });
-if (el('page-leaderboard').classList.contains('active')) renderLeaderboard();
-if (el('page-rounds').classList.contains('active')) renderRoundsPage();
-});
-
-// Users
-onSnapshot(collection(db, 'users'), snap => {
-allUsers = {};
-snap.docs.forEach(d => { allUsers[d.id] = d.data(); });
-if (el('page-leaderboard').classList.contains('active')) renderLeaderboard();
-});
-
-// Chat — subscribe to last 100 messages, newest last
-const chatQ = query(collection(db, 'chat'), orderBy('ts', 'asc'), limit(100));
-onSnapshot(chatQ, snap => {
-renderChat(snap.docs.map(d => ({id: d.id, ...d.data()})));
-});
+  onSnapshot(collection(db, 'rounds'), snap => {
+    rounds = snap.docs.map(d => ({id: d.id, ...d.data()}))
+      .sort((a,b) => (a.order||0) - (b.order||0));
+    if (el('page-leaderboard').classList.contains('active')) renderLeaderboard();
+    if (el('page-tips').classList.contains('active')) renderTipsPage();
+    if (el('page-rounds').classList.contains('active')) renderRoundsPage();
+    if (el('page-admin').classList.contains('active')) renderAdmin();
+  });
+  onSnapshot(collection(db, 'tips'), snap => {
+    allTips = {};
+    snap.docs.forEach(d => { allTips[d.id] = d.data(); });
+    if (el('page-leaderboard').classList.contains('active')) renderLeaderboard();
+    if (el('page-rounds').classList.contains('active')) renderRoundsPage();
+  });
+  onSnapshot(collection(db, 'users'), snap => {
+    allUsers = {};
+    snap.docs.forEach(d => { allUsers[d.id] = d.data(); });
+    if (el('page-leaderboard').classList.contains('active')) renderLeaderboard();
+  });
+  const chatQ = query(collection(db, 'chat'), orderBy('ts', 'asc'), limit(100));
+  onSnapshot(chatQ, snap => {
+    renderChat(snap.docs.map(d => ({id: d.id, ...d.data()})));
+  });
 }
 
 // ─── SCORING ─────────────────────────────────────────────────
 function calcScores() {
-const allMatches = rounds.flatMap(r => (r.matches||[]).map(m => ({...m, roundId:r.id, roundName:r.name})));
-const finishedMatches = allMatches.filter(m => m.winner);
-
-return Object.entries(allUsers).map(([uid, u]) => {
-const myTips = allTips[uid] || {};
-let totalPts = 0, correct = 0, roughieBonus = 0, roundPts = {};
-rounds.forEach(r => { roundPts[r.id] = 0; });
-
-finishedMatches.forEach(m => {
-const pick = myTips[m.id];
-if (!pick || pick !== m.winner) return;
-const winOdds = m.winner === m.home ? m.homeOdds : m.awayOdds;
-const p = pts(winOdds);
-totalPts += p;
-correct++;
-if (winOdds >= 2.0) roughieBonus += (p - 1);
-if (roundPts[m.roundId] !== undefined) roundPts[m.roundId] += p;
-});
-
-const tipped = Object.keys(myTips).filter(mid => allMatches.find(m=>m.id===mid)).length;
-const finishedTipped = finishedMatches.filter(m => myTips[m.id]).length;
-const accuracy = finishedTipped > 0 ? Math.round(correct / finishedTipped * 100) : 0;
-
-return { uid, name: u.name, nick: u.nick, totalPts, correct, roughieBonus, accuracy, roundPts, tipped, isAdmin: u.isAdmin };
-}).sort((a,b) => b.totalPts - a.totalPts || b.correct - a.correct);
+  const allMatches = rounds.flatMap(r => (r.matches||[]).map(m => ({...m, roundId:r.id})));
+  const finishedMatches = allMatches.filter(m => m.winner);
+  return Object.entries(allUsers).map(([uid, u]) => {
+    const myTips = allTips[uid] || {};
+    let totalPts = 0, correct = 0, roughieBonus = 0, roundPts = {};
+    rounds.forEach(r => { roundPts[r.id] = 0; });
+    finishedMatches.forEach(m => {
+      const pick = myTips[m.id];
+      if (!pick || pick !== m.winner) return;
+      const winOdds = m.winner === m.home ? m.homeOdds : m.awayOdds;
+      const p = pts(winOdds);
+      totalPts += p; correct++;
+      if (winOdds >= 2.0) roughieBonus += (p - 1);
+      if (roundPts[m.roundId] !== undefined) roundPts[m.roundId] += p;
+    });
+    const tipped = Object.keys(myTips).filter(mid => allMatches.find(m=>m.id===mid)).length;
+    const finishedTipped = finishedMatches.filter(m => myTips[m.id]).length;
+    const accuracy = finishedTipped > 0 ? Math.round(correct / finishedTipped * 100) : 0;
+    return { uid, name: u.name, nick: u.nick, avatar: u.avatar||'', totalPts, correct, roughieBonus, accuracy, roundPts, tipped, isAdmin: u.isAdmin };
+  }).sort((a,b) => b.totalPts - a.totalPts || b.correct - a.correct);
 }
 
 // ─── LEADERBOARD ─────────────────────────────────────────────
 function renderLeaderboard() {
-const scores = calcScores();
-const completedRounds = rounds.filter(r=>(r.matches||[]).every(m=>m.winner)).length;
-const latestRound = rounds[rounds.length-1];
-const topRoughie = [...scores].sort((a,b)=>b.roughieBonus-a.roughieBonus)[0];
+  const scores = calcScores();
+  const completedRounds = rounds.filter(r=>(r.matches||[]).every(m=>m.winner)).length;
+  const latestRound = rounds[rounds.length-1];
+  const topRoughie = [...scores].sort((a,b)=>b.roughieBonus-a.roughieBonus)[0];
 
-el('comp-stats').innerHTML = `
-<div class="stat-card"><div class="stat-label">Tippers</div><div class="stat-val">${Object.keys(allUsers).length}</div></div>
-<div class="stat-card"><div class="stat-label">Rounds Done</div><div class="stat-val">${completedRounds}/${rounds.length}</div></div>
-<div class="stat-card"><div class="stat-label">Leader</div><div class="stat-val" style="font-size:22px;line-height:1.1;">${scores[0]?.nick||scores[0]?.name||'—'}</div><div class="stat-sub">${scores[0]?.totalPts||0} pts</div></div>
-<div class="stat-card"><div class="stat-label">Top Roughie Hunter 🔥</div><div class="stat-val" style="color:var(--gold);font-size:22px;line-height:1.1;">${topRoughie?.nick||topRoughie?.name||'—'}</div><div class="stat-sub">+${topRoughie?.roughieBonus||0} bonus pts</div></div>
-`;
+  el('comp-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-label">Tippers</div><div class="stat-val">${Object.keys(allUsers).length}</div></div>
+    <div class="stat-card"><div class="stat-label">Rounds Done</div><div class="stat-val">${completedRounds}/${rounds.length}</div></div>
+    <div class="stat-card"><div class="stat-label">Leader</div><div class="stat-val" style="font-size:22px;line-height:1.1;">${scores[0]?.nick||scores[0]?.name||'—'}</div><div class="stat-sub">${scores[0]?.totalPts||0} pts</div></div>
+    <div class="stat-card"><div class="stat-label">Top Roughie Hunter 🔥</div><div class="stat-val" style="color:var(--gold);font-size:22px;line-height:1.1;">${topRoughie?.nick||topRoughie?.name||'—'}</div><div class="stat-sub">+${topRoughie?.roughieBonus||0} bonus pts</div></div>
+  `;
 
-el('lb-body').innerHTML = scores.map((s,i) => {
-const rank = i+1;
-const rc = rank<=3 ? `rank-${rank}` : 'rank-other';
-const me = s.uid === currentUser?.uid;
-const thisRound = latestRound ? (s.roundPts[latestRound.id] ?? '—') : '—';
-return `<tr ${me?'style="background:rgba(0,200,83,0.05);"':''}>
-<td><span class="rank-badge ${rc}">${rank}</span></td>
-<td><div class="tipper-name">${s.name}${me?' <span style="color:var(--green);font-size:11px;">(you)</span>':''}</div><div style="font-size:12px;color:var(--muted);">${s.nick||''}</div></td>
-<td><span class="pts-big">${s.totalPts}</span></td>
-<td>${s.correct} <span style="color:var(--muted);font-size:12px;">of ${s.tipped}</span></td>
-<td><span class="roughie-pts">+${s.roughieBonus} 🔥</span></td>
-<td><span class="accuracy">${s.accuracy}%</span></td>
-<td>${thisRound} pts</td>
-</tr>`;
-}).join('') || `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:30px;">No tippers yet</td></tr>`;
+  el('lb-body').innerHTML = scores.map((s,i) => {
+    const rank = i+1;
+    const rc = rank<=3 ? `rank-${rank}` : 'rank-other';
+    const me = s.uid === currentUser?.uid;
+    const thisRound = latestRound ? (s.roundPts[latestRound.id] ?? '—') : '—';
+    // FIX 3: Show avatar in leaderboard
+    const avatarHtml = s.avatar
+      ? `<div style="width:32px;height:32px;border-radius:50%;background-image:url(${s.avatar});background-size:cover;background-position:center;flex-shrink:0;"></div>`
+      : `<div style="width:32px;height:32px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--green);flex-shrink:0;">${(s.nick||s.name||'?')[0].toUpperCase()}</div>`;
+    return `<tr ${me?'style="background:rgba(0,200,83,0.05);"':''}>
+      <td><span class="rank-badge ${rc}">${rank}</span></td>
+      <td><div style="display:flex;align-items:center;gap:10px;">
+        ${avatarHtml}
+        <div><div class="tipper-name">${escHtml(s.name)}${me?' <span style="color:var(--green);font-size:11px;">(you)</span>':''}</div>
+        <div style="font-size:12px;color:var(--muted);">${escHtml(s.nick||'')}</div></div>
+      </div></td>
+      <td><span class="pts-big">${s.totalPts}</span></td>
+      <td>${s.correct} <span style="color:var(--muted);font-size:12px;">of ${s.tipped}</span></td>
+      <td><span class="roughie-pts">+${s.roughieBonus} 🔥</span></td>
+      <td><span class="accuracy">${s.accuracy}%</span></td>
+      <td>${thisRound} pts</td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:30px;">No tippers yet</td></tr>`;
 
-el('scoring-legend').innerHTML = [[1,'$1–$1.99'],[2,'$2–$2.99'],[3,'$3–$3.99'],[4,'$4–$4.99'],[5,'$5+']].map(([p,r],i)=>
-`<div class="legend-item">
-<div class="odds-range">${r}</div>
-<div class="pts-val ${i===0?'normal':''}">${p} PT${p>1?'S':''}</div>
-${i>0?'<div style="font-size:10px;color:var(--gold);">ROUGHIE BONUS</div>':''}
-</div>`).join('');
+  // FIX 1: Updated scoring legend with all tiers
+  el('scoring-legend').innerHTML = [
+    [1,'$1.00–$1.99','normal'],
+    [2,'$2.00–$2.99',''],
+    [3,'$3.00–$3.99',''],
+    [4,'$4.00–$4.99',''],
+    [5,'$5.00–$5.99',''],
+    [6,'$6.00–$6.99',''],
+    [7,'$7.00–$7.99',''],
+    [8,'$8.00–$8.99',''],
+    [9,'$9.00+',''],
+  ].map(([p,r,cls])=>
+    `<div class="legend-item">
+      <div class="odds-range">${r}</div>
+      <div class="pts-val ${cls}">${p} PT${p>1?'S':''}</div>
+      ${cls!=='normal'?'<div style="font-size:10px;color:var(--gold);">ROUGHIE</div>':''}
+    </div>`).join('');
 }
 
 // ─── MY TIPS ─────────────────────────────────────────────────
-let pendingTips = {}; // unsaved picks for current session
+let pendingTips = {};
 
 function renderTipsPage() {
-if (!currentUser) return;
-
-const rsel = el('tip-round-select');
-rsel.innerHTML = rounds.map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
-if (!rsel.onchange) rsel.onchange = renderTipMatches;
-
-// default to latest round with open matches
-const openRound = [...rounds].reverse().find(r=>(r.matches||[]).some(m=>!isLocked(m.date)));
-if (openRound) rsel.value = openRound.id;
-else if (rounds.length) rsel.value = rounds[rounds.length-1].id;
-
-renderTipMatches();
+  if (!currentUser) return;
+  const rsel = el('tip-round-select');
+  rsel.innerHTML = rounds.map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
+  if (!rsel.onchange) rsel.onchange = renderTipMatches;
+  const openRound = [...rounds].reverse().find(r=>(r.matches||[]).some(m=>!isLocked(m.date)));
+  if (openRound) rsel.value = openRound.id;
+  else if (rounds.length) rsel.value = rounds[rounds.length-1].id;
+  renderTipMatches();
 }
 
 function renderTipMatches() {
-const roundId = el('tip-round-select')?.value;
-const round = rounds.find(r=>r.id===roundId);
-const container = el('tip-matches');
-if (!round) { container.innerHTML=''; return; }
+  const roundId = el('tip-round-select')?.value;
+  const round = rounds.find(r=>r.id===roundId);
+  const container = el('tip-matches');
+  if (!round) { container.innerHTML=''; return; }
+  const myTips = allTips[currentUser.uid] || {};
+  const matches = round.matches || [];
+  const hasOpen = matches.some(m => !isLocked(m.date));
 
-const myTips = allTips[currentUser.uid] || {};
-const matches = round.matches || [];
-const hasOpen = matches.some(m => !isLocked(m.date));
+  container.innerHTML = matches.map(m => {
+    const locked = isLocked(m.date);
+    const saved = myTips[m.id] || null;
+    const pending = pendingTips[m.id] || null;
+    const sel = pending || saved;
+    const hPts = pts(m.homeOdds), aPts = pts(m.awayOdds);
+    const finished = !!m.winner;
+    const hClass = finished
+      ? (m.winner===m.home?'winner-correct':(sel===m.home?'winner-wrong':''))
+      : locked ? (sel===m.home?'selected locked':'locked')
+      : (sel===m.home?'selected':'');
+    const aClass = finished
+      ? (m.winner===m.away?'winner-correct':(sel===m.away?'winner-wrong':''))
+      : locked ? (sel===m.away?'selected locked':'locked')
+      : (sel===m.away?'selected':'');
+    const isPending = pendingTips[m.id] && pendingTips[m.id] !== saved;
 
-container.innerHTML = matches.map(m => {
-const locked = isLocked(m.date);
-const saved = myTips[m.id] || null;
-const pending = pendingTips[m.id] || null;
-const sel = pending || saved;
-const hPts = pts(m.homeOdds), aPts = pts(m.awayOdds);
-const finished = !!m.winner;
-const hCorrect = finished && m.winner===m.home;
-const aCorrect = finished && m.winner===m.away;
+    let earnedDiv = '';
+    if (finished && sel) {
+      const winOdds = m.winner===m.home?m.homeOdds:m.awayOdds;
+      earnedDiv = sel===m.winner
+        ? `<div style="text-align:center;margin-top:10px;"><span class="result-badge badge-win">✓ +${pts(winOdds)} pts earned</span></div>`
+        : `<div style="text-align:center;margin-top:10px;"><span class="result-badge badge-loss">✗ Incorrect</span></div>`;
+    }
 
-const hClass = finished
-? (hCorrect?'winner-correct':(sel===m.home?'winner-wrong':''))
-: locked ? (sel===m.home?'selected locked':'locked')
-: (sel===m.home?'selected':'');
-const aClass = finished
-? (aCorrect?'winner-correct':(sel===m.away?'winner-wrong':''))
-: locked ? (sel===m.away?'selected locked':'locked')
-: (sel===m.away?'selected':'');
+    // FIX 4: Club badges in team buttons
+    return `<div class="match-card ${sel?'tipped':''}">
+      <div class="match-meta">
+        📅 ${m.date||'TBC'} &nbsp;·&nbsp; ${round.name}
+        ${locked&&!finished?'<span class="result-badge badge-pending" style="margin-left:6px;">🔒 Tips Locked</span>':''}
+        ${finished?'<span class="result-badge badge-win" style="margin-left:6px;">✓ Result In</span>':''}
+        ${isPending?'<span class="result-badge" style="background:rgba(255,214,0,0.2);color:var(--gold);margin-left:6px;">⚡ Unsaved</span>':''}
+      </div>
+      <div class="match-teams">
+        <div class="team-btn ${hClass}" onclick="${locked||finished ? '' : 'pickTip(\'' + m.id + '\',\'' + m.home.replace(/'/g,"\\'") + '\')'}">
+          <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:6px;">${clubBadge(m.home)}<div class="team-name">${escHtml(m.home)}</div></div>
+          <div class="team-odds" style="color:${m.homeOdds<2?'var(--green)':'var(--gold)'}">$${Number(m.homeOdds).toFixed(2)}</div>
+          <div class="odds-pts">${hPts} pt${hPts>1?'s':''}</div>
+          ${m.homeOdds>=2?'<div class="roughie-tag">ROUGHIE</div>':''}
+        </div>
+        <div class="vs-divider">VS</div>
+        <div class="team-btn ${aClass}" onclick="${locked||finished ? '' : 'pickTip(\'' + m.id + '\',\'' + m.away.replace(/'/g,"\\'") + '\')'}">
+          <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:6px;">${clubBadge(m.away)}<div class="team-name">${escHtml(m.away)}</div></div>
+          <div class="team-odds" style="color:${m.awayOdds<2?'var(--green)':'var(--gold)'}">$${Number(m.awayOdds).toFixed(2)}</div>
+          <div class="odds-pts">${aPts} pt${aPts>1?'s':''}</div>
+          ${m.awayOdds>=2?'<div class="roughie-tag">ROUGHIE</div>':''}
+        </div>
+      </div>
+      ${earnedDiv}
+    </div>`;
+  }).join('') || '<div class="card" style="text-align:center;color:var(--muted);">No matches in this round.</div>';
 
-const isPending = pendingTips[m.id] && pendingTips[m.id] !== saved;
-
-let earnedDiv = '';
-if (finished && sel) {
-const winOdds = m.winner===m.home?m.homeOdds:m.awayOdds;
-earnedDiv = sel===m.winner
-? `<div style="text-align:center;margin-top:10px;"><span class="result-badge badge-win">✓ +${pts(winOdds)} pts earned</span></div>`
-: `<div style="text-align:center;margin-top:10px;"><span class="result-badge badge-loss">✗ Incorrect</span></div>`;
-}
-
-return `<div class="match-card ${sel?'tipped':''}">
-<div class="match-meta">
-📅 ${m.date||'TBC'} &nbsp;·&nbsp; ${round.name}
-${locked&&!finished?'<span class="result-badge badge-pending" style="margin-left:6px;">🔒 Tips Locked</span>':''}
-${finished?'<span class="result-badge badge-win" style="margin-left:6px;">✓ Result In</span>':''}
-${isPending?'<span class="result-badge" style="background:rgba(255,214,0,0.2);color:var(--gold);margin-left:6px;">⚡ Unsaved</span>':''}
-</div>
-<div class="match-teams">
-<div class="team-btn ${hClass}" onclick="${locked||finished ? '' : 'pickTip(\'' + m.id + '\',\'' + m.home.replace(/'/g,"\\'") + '\')'}">
-<div class="team-name">${m.home}</div>
-<div class="team-odds" style="color:${m.homeOdds<2?'var(--green)':'var(--gold)'}">${'$'+Number(m.homeOdds).toFixed(2)}</div>
-<div class="odds-pts">${hPts} pt${hPts>1?'s':''}</div>
-${m.homeOdds>=2?'<div class="roughie-tag">ROUGHIE</div>':''}
-</div>
-<div class="vs-divider">VS</div>
-<div class="team-btn ${aClass}" onclick="${locked||finished ? '' : 'pickTip(\'' + m.id + '\',\'' + m.away.replace(/'/g,"\\'") + '\')'}">
-<div class="team-name">${m.away}</div>
-<div class="team-odds" style="color:${m.awayOdds<2?'var(--green)':'var(--gold)'}">${'$'+Number(m.awayOdds).toFixed(2)}</div>
-<div class="odds-pts">${aPts} pt${aPts>1?'s':''}</div>
-${m.awayOdds>=2?'<div class="roughie-tag">ROUGHIE</div>':''}
-</div>
-</div>
-${earnedDiv}
-</div>`;
-}).join('') || '<div class="card" style="text-align:center;color:var(--muted);">No matches in this round.</div>';
-
-el('save-tips-btn').style.display = hasOpen && Object.keys(pendingTips).length > 0 ? 'inline-flex' : 'none';
+  el('save-tips-btn').style.display = hasOpen && Object.keys(pendingTips).length > 0 ? 'inline-flex' : 'none';
 }
 
 function pickTip(matchId, team) {
-if (pendingTips[matchId] === team) delete pendingTips[matchId];
-else pendingTips[matchId] = team;
-el('save-tips-btn').style.display = 'inline-flex';
-renderTipMatches();
+  if (pendingTips[matchId] === team) delete pendingTips[matchId];
+  else pendingTips[matchId] = team;
+  el('save-tips-btn').style.display = 'inline-flex';
+  renderTipMatches();
 }
 
 async function saveTips() {
-if (!currentUser || !Object.keys(pendingTips).length) return;
-el('save-tips-btn').textContent = 'Saving…';
-const existing = allTips[currentUser.uid] || {};
-const merged = {...existing, ...pendingTips};
-await setDoc(doc(db, 'tips', currentUser.uid), merged);
-pendingTips = {};
-el('save-tips-btn').style.display = 'none';
-el('save-tips-btn').textContent = '💾 Save My Tips';
-toast('Tips saved! 🏉');
+  if (!currentUser || !Object.keys(pendingTips).length) return;
+  el('save-tips-btn').textContent = 'Saving…';
+  const existing = allTips[currentUser.uid] || {};
+  const merged = {...existing, ...pendingTips};
+  await setDoc(doc(db, 'tips', currentUser.uid), merged);
+  pendingTips = {};
+  el('save-tips-btn').style.display = 'none';
+  el('save-tips-btn').textContent = '💾 Save My Tips';
+  toast('Tips saved! 🏉');
 }
 
 // ─── ROUNDS PAGE ─────────────────────────────────────────────
 function renderRoundsPage() {
-const nav = el('round-tabs-nav');
-nav.innerHTML = rounds.map((r,i)=>
-`<button class="round-tab ${i===rounds.length-1?'active':''}" onclick="showRound('${r.id}',this)">${r.name}</button>`
-).join('');
-if (rounds.length) showRound(rounds[rounds.length-1].id, nav.querySelector('.round-tab.active'));
+  const nav = el('round-tabs-nav');
+  nav.innerHTML = rounds.map((r,i)=>
+    `<button class="round-tab ${i===rounds.length-1?'active':''}" onclick="showRound('${r.id}',this)">${r.name}</button>`
+  ).join('');
+  if (rounds.length) showRound(rounds[rounds.length-1].id, nav.querySelector('.round-tab.active'));
 }
 
 function showRound(roundId, btn) {
-document.querySelectorAll('#round-tabs-nav .round-tab').forEach(b=>b.classList.remove('active'));
-if(btn) btn.classList.add('active');
-const round = rounds.find(r=>r.id===roundId);
-const container = el('round-results-content');
-if (!round) return;
+  document.querySelectorAll('#round-tabs-nav .round-tab').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  const round = rounds.find(r=>r.id===roundId);
+  const container = el('round-results-content');
+  if (!round) return;
 
-container.innerHTML = (round.matches||[]).map(m => {
-const winOdds = m.winner ? (m.winner===m.home?m.homeOdds:m.awayOdds) : null;
-const winPts = winOdds ? pts(winOdds) : null;
-const locked = isLocked(m.date);
-return `<div class="match-card ${m.winner?'tipped':''}">
-<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-<div>
-<span style="font-weight:700;">${m.home}</span> <span style="color:var(--gold);">$${Number(m.homeOdds).toFixed(2)}</span>
-${m.homeOdds>=2?'<span class="roughie-tag">R</span>':''}
-<span style="color:var(--muted);margin:0 8px;">vs</span>
-<span style="font-weight:700;">${m.away}</span> <span style="color:var(--gold);">$${Number(m.awayOdds).toFixed(2)}</span>
-${m.awayOdds>=2?'<span class="roughie-tag">R</span>':''}
-<span style="color:var(--muted);font-size:12px;margin-left:8px;">${m.date||''}</span>
-</div>
-<div style="display:flex;align-items:center;gap:8px;">
-${m.winner?`<span class="result-badge badge-win">✓ ${m.winner}</span><span style="color:var(--gold);font-weight:700;">${winPts}pt${winPts>1?'s':''}</span>`:locked?'<span class="result-badge badge-pending">🔒 Locked</span>':'<span class="result-badge badge-pending">Open</span>'}
-</div>
-</div>
-<div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;">
-${Object.entries(allUsers).map(([uid, u]) => {
-const pick = (allTips[uid]||{})[m.id];
-if (!pick && !locked) return '';
-if (!pick) return `<span class="pick-chip" style="opacity:0.4;">${u.nick||u.name}: —</span>`;
-const correct = m.winner && pick===m.winner;
-const wrong = m.winner && pick!==m.winner;
-const earnedPts = correct ? pts(winOdds) : 0;
-return `<span class="pick-chip ${correct?'chip-correct':wrong?'chip-wrong':''}">${u.nick||u.name}: ${pick}${correct?` +${earnedPts}`:wrong?' ✗':''}</span>`;
-}).join('')}
-</div>
-</div>`;
-}).join('') || '<div class="card" style="text-align:center;color:var(--muted);padding:20px;">No matches yet.</div>';
+  container.innerHTML = (round.matches||[]).map(m => {
+    const winOdds = m.winner ? (m.winner===m.home?m.homeOdds:m.awayOdds) : null;
+    const winPts = winOdds ? pts(winOdds) : null;
+    const locked = isLocked(m.date);
+    return `<div class="match-card ${m.winner?'tipped':''}">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          ${clubBadge(m.home,28)}
+          <span style="font-weight:700;">${escHtml(m.home)}</span>
+          <span style="color:var(--gold);">$${Number(m.homeOdds).toFixed(2)}</span>
+          ${m.homeOdds>=2?'<span class="roughie-tag">R</span>':''}
+          <span style="color:var(--muted);margin:0 6px;">vs</span>
+          ${clubBadge(m.away,28)}
+          <span style="font-weight:700;">${escHtml(m.away)}</span>
+          <span style="color:var(--gold);">$${Number(m.awayOdds).toFixed(2)}</span>
+          ${m.awayOdds>=2?'<span class="roughie-tag">R</span>':''}
+          <span style="color:var(--muted);font-size:12px;margin-left:8px;">${m.date||''}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          ${m.winner
+            ? `<span class="result-badge badge-win">✓ ${escHtml(m.winner)}</span><span style="color:var(--gold);font-weight:700;">${winPts}pt${winPts>1?'s':''}</span>`
+            : locked?'<span class="result-badge badge-pending">🔒 Locked</span>':'<span class="result-badge badge-pending">Open</span>'}
+        </div>
+      </div>
+      <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;">
+        ${Object.entries(allUsers).map(([uid, u]) => {
+          const pick = (allTips[uid]||{})[m.id];
+          if (!pick && !locked) return '';
+          if (!pick) return `<span class="pick-chip" style="opacity:0.4;">${escHtml(u.nick||u.name)}: —</span>`;
+          const correct = m.winner && pick===m.winner;
+          const wrong = m.winner && pick!==m.winner;
+          const earnedPts = correct ? pts(winOdds) : 0;
+          return `<span class="pick-chip ${correct?'chip-correct':wrong?'chip-wrong':''}">${escHtml(u.nick||u.name)}: ${escHtml(pick)}${correct?` +${earnedPts}`:wrong?' ✗':''}</span>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('') || '<div class="card" style="text-align:center;color:var(--muted);padding:20px;">No matches yet.</div>';
+}
+
+// ─── FIX 3: PROFILE PAGE ─────────────────────────────────────
+function renderProfilePage() {
+  if (!userProfile) return;
+  el('profile-name-display').textContent = userProfile.name;
+  el('profile-nick-display').textContent = userProfile.nick ? '(' + userProfile.nick + ')' : '';
+  el('profile-name-input').value = userProfile.name || '';
+  el('profile-nick-input').value = userProfile.nick || '';
+  if (userProfile.avatar) {
+    el('profile-avatar-preview').src = userProfile.avatar;
+    el('profile-avatar-preview').style.display = 'block';
+    el('profile-avatar-url').value = userProfile.avatar;
+  }
+}
+
+async function saveProfile() {
+  if (!currentUser) return;
+  const name = el('profile-name-input').value.trim();
+  const nick = el('profile-nick-input').value.trim();
+  const avatar = el('profile-avatar-url').value.trim();
+  if (!name) { toast('Name cannot be empty', true); return; }
+  await updateDoc(doc(db, 'users', currentUser.uid), { name, nick, avatar });
+  userProfile.name = name; userProfile.nick = nick; userProfile.avatar = avatar;
+  el('user-display').textContent = nick || name;
+  if (avatar) {
+    el('header-avatar').style.backgroundImage = 'url(' + avatar + ')';
+    el('header-avatar').style.display = 'block';
+  } else {
+    el('header-avatar').style.display = 'none';
+  }
+  toast('Profile saved! ✓');
+}
+
+function previewAvatar(url) {
+  const p = el('profile-avatar-preview');
+  if (url) { p.src = url; p.style.display = 'block'; }
+  else p.style.display = 'none';
 }
 
 // ─── ADMIN ───────────────────────────────────────────────────
 function renderAdmin() {
-if (!userProfile?.isAdmin) return;
-renderAdminUsers();
-populateAdminRoundSelects();
-renderAdminMatchesList();
-renderAdminResults();
+  if (!userProfile?.isAdmin) return;
+  renderAdminUsers();
+  populateAdminRoundSelects();
+  renderAdminMatchesList();
+  renderAdminResults();
 }
 
 function showAdminTab(tab, btn) {
-document.querySelectorAll('.admin-section').forEach(s=>s.style.display='none');
-document.querySelectorAll('.admin-tab').forEach(b=>b.classList.remove('active'));
-el('admin-'+tab).style.display='block';
-if(btn) btn.classList.add('active');
-if(tab==='matches') { populateAdminRoundSelects(); renderAdminMatchesList(); }
-if(tab==='results') { populateAdminRoundSelects(); renderAdminResults(); }
-if(tab==='settings') renderAdminSettings();
+  document.querySelectorAll('.admin-section').forEach(s=>s.style.display='none');
+  document.querySelectorAll('.admin-tab').forEach(b=>b.classList.remove('active'));
+  el('admin-'+tab).style.display='block';
+  if(btn) btn.classList.add('active');
+  if(tab==='matches') { populateAdminRoundSelects(); renderAdminMatchesList(); }
+  if(tab==='results') { populateAdminRoundSelects(); renderAdminResults(); }
+  if(tab==='settings') renderAdminSettings();
 }
 
 function renderAdminUsers() {
-el('admin-users-list').innerHTML = Object.entries(allUsers).map(([uid,u])=>`
-<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
-<div>
-<span style="font-weight:600;">${u.name}</span>
-${u.nick?`<span style="color:var(--muted);font-size:13px;"> · ${u.nick}</span>`:''}
-${u.isAdmin?'<span class="result-badge badge-win" style="margin-left:8px;">Admin</span>':''}
-<div style="font-size:12px;color:var(--muted);">${u.email||''}</div>
-</div>
-${uid!==currentUser.uid?`<button class="btn btn-red" style="font-size:12px;padding:5px 12px;" onclick="removeUser('${uid}')">Remove</button>`:'<span style="color:var(--muted);font-size:12px;">You</span>'}
-</div>`).join('') || '<div style="color:var(--muted);">No users yet.</div>';
+  el('admin-users-list').innerHTML = Object.entries(allUsers).map(([uid,u])=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
+      <div style="display:flex;align-items:center;gap:10px;">
+        ${u.avatar
+          ? `<div style="width:36px;height:36px;border-radius:50%;background-image:url(${u.avatar});background-size:cover;background-position:center;"></div>`
+          : `<div style="width:36px;height:36px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--green);">${(u.nick||u.name||'?')[0].toUpperCase()}</div>`}
+        <div>
+          <span style="font-weight:600;">${escHtml(u.name)}</span>
+          ${u.nick?`<span style="color:var(--muted);font-size:13px;"> · ${escHtml(u.nick)}</span>`:''}
+          ${u.isAdmin?'<span class="result-badge badge-win" style="margin-left:8px;">Admin</span>':''}
+          <div style="font-size:12px;color:var(--muted);">${escHtml(u.email||'')}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        ${uid!==currentUser.uid
+          ? `<button class="btn btn-outline" style="font-size:12px;padding:5px 12px;" onclick="toggleAdmin('${uid}',${u.isAdmin})">${u.isAdmin?'Remove Admin':'Make Admin'}</button>
+             <button class="btn btn-red" style="font-size:12px;padding:5px 12px;" onclick="removeUser('${uid}')">Remove</button>`
+          : '<span style="color:var(--muted);font-size:12px;">You</span>'}
+      </div>
+    </div>`).join('') || '<div style="color:var(--muted);">No users yet.</div>';
+}
+
+// FIX 2: Toggle admin status
+async function toggleAdmin(uid, currentlyAdmin) {
+  if (!confirm(currentlyAdmin ? 'Remove admin from this user?' : 'Make this user an admin?')) return;
+  await updateDoc(doc(db, 'users', uid), { isAdmin: !currentlyAdmin });
+  toast(currentlyAdmin ? 'Admin removed' : 'Admin granted');
 }
 
 async function removeUser(uid) {
-if (!confirm('Remove this user from the competition?')) return;
-await deleteDoc(doc(db, 'users', uid));
-await deleteDoc(doc(db, 'tips', uid));
-toast('User removed');
+  if (!confirm('Remove this user from the competition?')) return;
+  await deleteDoc(doc(db, 'users', uid));
+  await deleteDoc(doc(db, 'tips', uid));
+  toast('User removed');
 }
 
 async function addRound() {
-const num = rounds.length + 1;
-const id = 'round_' + Date.now();
-await setDoc(doc(db, 'rounds', id), { name: `Round ${num}`, order: num, matches: [] });
-toast(`Round ${num} added!`);
+  const num = rounds.length + 1;
+  const id = 'round_' + Date.now();
+  await setDoc(doc(db, 'rounds', id), { name: `Round ${num}`, order: num, matches: [] });
+  toast(`Round ${num} added!`);
 }
 
 function populateAdminRoundSelects() {
-['admin-match-round','admin-view-round','admin-results-round'].forEach(id => {
-const el2 = el(id);
-if (!el2) return;
-el2.innerHTML = rounds.map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
-});
+  ['admin-match-round','admin-view-round','admin-results-round'].forEach(id => {
+    const e = el(id);
+    if (!e) return;
+    e.innerHTML = rounds.map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
+  });
 }
 
 async function addMatch() {
-const roundId = el('admin-match-round').value;
-const home = el('nm-home').value.trim();
-const homeOdds = parseFloat(el('nm-home-odds').value);
-const away = el('nm-away').value.trim();
-const awayOdds = parseFloat(el('nm-away-odds').value);
-const date = el('nm-date').value;
-if (!home||!away||!homeOdds||!awayOdds||!date) { toast('Fill in all match fields including date', true); return; }
-if (homeOdds < 1 || awayOdds < 1) { toast('Odds must be $1.00 or higher', true); return; }
-
-const round = rounds.find(r=>r.id===roundId);
-if (!round) { toast('Select a round first', true); return; }
-const newMatch = { id:'m'+Date.now(), home, homeOdds, away, awayOdds, date, winner:null };
-const updated = [...(round.matches||[]), newMatch];
-await updateDoc(doc(db, 'rounds', roundId), { matches: updated });
-['nm-home','nm-home-odds','nm-away','nm-away-odds','nm-date'].forEach(i=>el(i).value='');
-toast('Match added!');
+  const home = el('nm-home').value.trim() || el('nm-home').innerText.trim();
+  const homeOdds = parseFloat(el('nm-home-odds').value);
+  const away = el('nm-away').value.trim() || el('nm-away').innerText.trim();
+  const awayOdds = parseFloat(el('nm-away-odds').value);
+  const date = el('nm-date').value;
+  const roundId = el('admin-match-round').value;
+  if (!home) { toast('Please enter home team name', true); return; }
+  if (!homeOdds || isNaN(homeOdds)) { toast('Please enter home team odds', true); return; }
+  if (!away) { toast('Please enter away team name', true); return; }
+  if (!awayOdds || isNaN(awayOdds)) { toast('Please enter away team odds', true); return; }
+  if (!date) { toast('Please enter match date', true); return; }
+  if (!roundId) { toast('Select a round first', true); return; }
+  if (homeOdds < 1 || awayOdds < 1) { toast('Odds must be $1.00 or higher', true); return; }
+  const round = rounds.find(r=>r.id===roundId);
+  if (!round) return;
+  const newMatch = { id:'m'+Date.now(), home, homeOdds, away, awayOdds, date, winner:null };
+  const updated = [...(round.matches||[]), newMatch];
+  await updateDoc(doc(db, 'rounds', roundId), { matches: updated });
+  ['nm-home','nm-home-odds','nm-away','nm-away-odds','nm-date'].forEach(i=>el(i).value='');
+  toast('Match added!');
 }
 
 function renderAdminMatchesList() {
-const roundId = el('admin-view-round')?.value;
-const round = rounds.find(r=>r.id===roundId);
-const container = el('admin-matches-list');
-if (!container) return;
-if (!round||!(round.matches||[]).length) { container.innerHTML='<div style="color:var(--muted);font-size:14px;padding:10px 0;">No matches yet.</div>'; return; }
-container.innerHTML = round.matches.map(m=>`
-<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);gap:12px;flex-wrap:wrap;">
-<div>
-<span style="font-weight:600;">${m.home}</span> <span style="color:var(--gold);">$${Number(m.homeOdds).toFixed(2)}</span>
-<span style="color:var(--muted);margin:0 8px;">vs</span>
-<span style="font-weight:600;">${m.away}</span> <span style="color:var(--gold);">$${Number(m.awayOdds).toFixed(2)}</span>
-<span style="color:var(--muted);font-size:12px;margin-left:8px;">📅 ${m.date}</span>
-${isLocked(m.date)?'<span class="result-badge badge-pending" style="margin-left:6px;">🔒 Locked</span>':''}
-</div>
-<button class="btn btn-red" style="font-size:12px;padding:5px 12px;" onclick="removeMatch('${roundId}','${m.id}')">Remove</button>
-</div>`).join('');
+  const roundId = el('admin-view-round')?.value;
+  const round = rounds.find(r=>r.id===roundId);
+  const container = el('admin-matches-list');
+  if (!container) return;
+  if (!round||!(round.matches||[]).length) { container.innerHTML='<div style="color:var(--muted);font-size:14px;padding:10px 0;">No matches yet.</div>'; return; }
+  container.innerHTML = round.matches.map(m=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);gap:12px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        ${clubBadge(m.home,24)} <span style="font-weight:600;">${escHtml(m.home)}</span>
+        <span style="color:var(--gold);">$${Number(m.homeOdds).toFixed(2)}</span>
+        <span style="color:var(--muted);margin:0 4px;">vs</span>
+        ${clubBadge(m.away,24)} <span style="font-weight:600;">${escHtml(m.away)}</span>
+        <span style="color:var(--gold);">$${Number(m.awayOdds).toFixed(2)}</span>
+        <span style="color:var(--muted);font-size:12px;">📅 ${m.date}</span>
+        ${isLocked(m.date)?'<span class="result-badge badge-pending">🔒 Locked</span>':''}
+      </div>
+      <button class="btn btn-red" style="font-size:12px;padding:5px 12px;" onclick="removeMatch('${roundId}','${m.id}')">Remove</button>
+    </div>`).join('');
 }
 
 async function removeMatch(roundId, matchId) {
-if (!confirm('Remove this match?')) return;
-const round = rounds.find(r=>r.id===roundId);
-const updated = (round.matches||[]).filter(m=>m.id!==matchId);
-await updateDoc(doc(db, 'rounds', roundId), { matches: updated });
-toast('Match removed');
+  if (!confirm('Remove this match?')) return;
+  const round = rounds.find(r=>r.id===roundId);
+  const updated = (round.matches||[]).filter(m=>m.id!==matchId);
+  await updateDoc(doc(db, 'rounds', roundId), { matches: updated });
+  toast('Match removed');
 }
 
 function renderAdminResults() {
-const roundId = el('admin-results-round')?.value;
-const round = rounds.find(r=>r.id===roundId);
-const container = el('admin-results-form');
-if (!container) return;
-if (!round||!(round.matches||[]).length) { container.innerHTML='<div style="color:var(--muted);padding:10px 0;">No matches in this round.</div>'; return; }
-
-container.innerHTML = round.matches.map(m=>`
-<div style="display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;">
-<div style="flex:1;min-width:180px;">
-<div style="font-weight:600;">${m.home} vs ${m.away}</div>
-<div style="font-size:12px;color:var(--muted);">📅 ${m.date||'TBC'}</div>
-</div>
-<select id="result-${m.id}" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;min-width:220px;">
-<option value="">-- Pick Winner --</option>
-<option value="${m.home}" ${m.winner===m.home?'selected':''}>${m.home} ($${Number(m.homeOdds).toFixed(2)} → ${pts(m.homeOdds)}pt${pts(m.homeOdds)>1?'s':''})</option>
-<option value="${m.away}" ${m.winner===m.away?'selected':''}>${m.away} ($${Number(m.awayOdds).toFixed(2)} → ${pts(m.awayOdds)}pt${pts(m.awayOdds)>1?'s':''})</option>
-</select>
-<button class="btn" style="font-size:13px;padding:8px 16px;" onclick="saveResult('${round.id}','${m.id}')">Save</button>
-${m.winner?`<span class="result-badge badge-win">✓ ${m.winner}</span>`:'<span class="result-badge badge-pending">Pending</span>'}
-</div>`).join('');
+  const roundId = el('admin-results-round')?.value;
+  const round = rounds.find(r=>r.id===roundId);
+  const container = el('admin-results-form');
+  if (!container) return;
+  if (!round||!(round.matches||[]).length) { container.innerHTML='<div style="color:var(--muted);padding:10px 0;">No matches in this round.</div>'; return; }
+  container.innerHTML = round.matches.map(m=>`
+    <div style="display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;">
+      <div style="flex:1;min-width:180px;">
+        <div style="font-weight:600;display:flex;align-items:center;gap:6px;">${clubBadge(m.home,20)} ${escHtml(m.home)} vs ${clubBadge(m.away,20)} ${escHtml(m.away)}</div>
+        <div style="font-size:12px;color:var(--muted);">📅 ${m.date||'TBC'}</div>
+      </div>
+      <select id="result-${m.id}" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;min-width:220px;">
+        <option value="">-- Pick Winner --</option>
+        <option value="${m.home}" ${m.winner===m.home?'selected':''}>${escHtml(m.home)} ($${Number(m.homeOdds).toFixed(2)} → ${pts(m.homeOdds)}pt${pts(m.homeOdds)>1?'s':''})</option>
+        <option value="${m.away}" ${m.winner===m.away?'selected':''}>${escHtml(m.away)} ($${Number(m.awayOdds).toFixed(2)} → ${pts(m.awayOdds)}pt${pts(m.awayOdds)>1?'s':''})</option>
+      </select>
+      <button class="btn" style="font-size:13px;padding:8px 16px;" onclick="saveResult('${round.id}','${m.id}')">Save</button>
+      ${m.winner?`<span class="result-badge badge-win">✓ ${escHtml(m.winner)}</span>`:'<span class="result-badge badge-pending">Pending</span>'}
+    </div>`).join('');
 }
 
 async function saveResult(roundId, matchId) {
-const winner = el('result-'+matchId)?.value || null;
-const round = rounds.find(r=>r.id===roundId);
-if (!round) return;
-const updated = (round.matches||[]).map(m => m.id===matchId ? {...m, winner} : m);
-await updateDoc(doc(db, 'rounds', roundId), { matches: updated });
-toast(winner ? `Result saved: ${winner} wins! 🎉` : 'Result cleared');
+  const winner = el('result-'+matchId)?.value || null;
+  const round = rounds.find(r=>r.id===roundId);
+  if (!round) return;
+  const updated = (round.matches||[]).map(m => m.id===matchId ? {...m, winner} : m);
+  await updateDoc(doc(db, 'rounds', roundId), { matches: updated });
+  toast(winner ? `Result saved: ${winner} wins! 🎉` : 'Result cleared');
 }
 
 async function removeRound(roundId) {
-if (!confirm('Delete this entire round and all its matches?')) return;
-await deleteDoc(doc(db, 'rounds', roundId));
-toast('Round deleted');
+  if (!confirm('Delete this entire round and all its matches?')) return;
+  await deleteDoc(doc(db, 'rounds', roundId));
+  toast('Round deleted');
 }
 
 function renderAdminSettings() {
-// Join code management
-getDoc(doc(db, 'config', 'joinCode')).then(snap => {
-el('current-join-code').textContent = snap.exists() ? snap.data().code : 'FOOTY2026';
-});
+  getDoc(doc(db, 'config', 'joinCode')).then(snap => {
+    el('current-join-code').textContent = snap.exists() ? snap.data().code : 'HUNTERSTIPPING2026';
+  });
 }
 
 async function saveJoinCode() {
-const code = el('new-join-code').value.trim().toUpperCase();
-if (!code) { toast('Enter a code', true); return; }
-await setDoc(doc(db, 'config', 'joinCode'), { code });
-el('current-join-code').textContent = code;
-el('new-join-code').value = '';
-toast('Join code updated!');
+  const code = el('new-join-code').value.trim().toUpperCase();
+  if (!code) { toast('Enter a code', true); return; }
+  await setDoc(doc(db, 'config', 'joinCode'), { code });
+  el('current-join-code').textContent = code;
+  el('new-join-code').value = '';
+  toast('Join code updated!');
 }
 
 // ─── CHAT ────────────────────────────────────────────────────
-const EMOJI_REACTIONS = ['🔥','😂','👏','💀','🤡','😤','🏉'];
-
 function renderChat(messages) {
-const feed = el('chat-feed');
-if (!feed) return;
-const wasAtBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 60;
-
-feed.innerHTML = messages.length === 0
-? `<div style="text-align:center;color:var(--muted);padding:32px;font-size:14px;">No messages yet — get the heckling started! 🏉</div>`
-: messages.map(m => {
-const isMe = m.uid === currentUser?.uid;
-const u = allUsers[m.uid];
-const displayName = u ? (u.nick || u.name) : (m.displayName || 'Unknown');
-const timeStr = m.ts?.toDate ? formatTime(m.ts.toDate()) : '';
-return `<div class="chat-msg ${isMe?'chat-msg-me':''}">
-<div class="chat-bubble ${isMe?'bubble-me':'bubble-them'}">
-${!isMe?`<div class="chat-sender">${escHtml(displayName)}</div>`:''}
-<div class="chat-text">${escHtml(m.text)}</div>
-<div class="chat-time">${timeStr}</div>
-</div>
-</div>`;
-}).join('');
-
-if (wasAtBottom || messages.length <= 5) feed.scrollTop = feed.scrollHeight;
-}
-
-function escHtml(s) {
-return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const feed = el('chat-feed');
+  if (!feed) return;
+  const wasAtBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 60;
+  feed.innerHTML = messages.length === 0
+    ? `<div style="text-align:center;color:var(--muted);padding:32px;font-size:14px;">No messages yet — get the heckling started! 🏉</div>`
+    : messages.map(m => {
+        const isMe = m.uid === currentUser?.uid;
+        const u = allUsers[m.uid];
+        const displayName = u ? (u.nick || u.name) : (m.displayName || 'Unknown');
+        const avatarUrl = u?.avatar || '';
+        const timeStr = m.ts?.toDate ? formatTime(m.ts.toDate()) : '';
+        const avatarHtml = avatarUrl
+          ? `<div style="width:28px;height:28px;border-radius:50%;background-image:url(${avatarUrl});background-size:cover;flex-shrink:0;"></div>`
+          : `<div style="width:28px;height:28px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--green);flex-shrink:0;">${(displayName||'?')[0].toUpperCase()}</div>`;
+        return `<div class="chat-msg ${isMe?'chat-msg-me':''}">
+          ${!isMe ? avatarHtml : ''}
+          <div class="chat-bubble ${isMe?'bubble-me':'bubble-them'}">
+            ${!isMe?`<div class="chat-sender">${escHtml(displayName)}</div>`:''}
+            <div class="chat-text">${escHtml(m.text)}</div>
+            <div class="chat-time">${timeStr}</div>
+          </div>
+          ${isMe ? avatarHtml : ''}
+        </div>`;
+      }).join('');
+  if (wasAtBottom || messages.length <= 5) feed.scrollTop = feed.scrollHeight;
 }
 
 function formatTime(d) {
-const now = new Date();
-const isToday = d.toDateString() === now.toDateString();
-if (isToday) return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-return d.toLocaleDateString([], {day:'numeric',month:'short'}) + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  const now = new Date();
+  if (d.toDateString()===now.toDateString()) return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  return d.toLocaleDateString([],{day:'numeric',month:'short'})+' '+d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
 }
 
 async function sendChat() {
-const input = el('chat-input');
-const text = input.value.trim();
-if (!text || !currentUser) return;
-if (text.length > 280) { toast('Max 280 characters', true); return; }
-input.value = '';
-input.style.height = 'auto';
-await addDoc(collection(db, 'chat'), {
-uid: currentUser.uid,
-displayName: userProfile?.nick || userProfile?.name || '',
-text,
-ts: serverTimestamp()
-});
+  const input = el('chat-input');
+  const text = input.value.trim();
+  if (!text || !currentUser) return;
+  if (text.length > 280) { toast('Max 280 characters', true); return; }
+  input.value = '';
+  input.style.height = 'auto';
+  await addDoc(collection(db, 'chat'), {
+    uid: currentUser.uid,
+    displayName: userProfile?.nick || userProfile?.name || '',
+    text,
+    ts: serverTimestamp()
+  });
 }
 
 async function deleteMessage(msgId) {
-if (!userProfile?.isAdmin) return;
-if (!confirm('Delete this message?')) return;
-await deleteDoc(doc(db, 'chat', msgId));
+  if (!userProfile?.isAdmin) return;
+  if (!confirm('Delete this message?')) return;
+  await deleteDoc(doc(db, 'chat', msgId));
 }
 
 function chatKeydown(e) {
-if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
 }
 
 function insertEmoji(emoji) {
-const input = el('chat-input');
-input.value += emoji;
-input.focus();
+  const input = el('chat-input');
+  input.value += emoji;
+  input.focus();
 }
 
-// Expose to global scope for onclick handlers
 Object.assign(window, {
-doLogin, doRegister, doLogout, showPage, showRound, showAdminTab,
-pickTip, saveTips, addRound, addMatch, removeMatch, removeUser,
-saveResult, removeRound, renderAdminMatchesList, renderAdminResults, saveJoinCode,
-sendChat, chatKeydown, insertEmoji, deleteMessage
+  doLogin, doRegister, doLogout, showPage, showRound, showAdminTab,
+  pickTip, saveTips, addRound, addMatch, removeMatch, removeUser,
+  saveResult, removeRound, renderAdminMatchesList, renderAdminResults,
+  saveJoinCode, sendChat, chatKeydown, insertEmoji, deleteMessage,
+  toggleAdmin, saveProfile, previewAvatar
 });
 </script>
 
 <style>
 :root {
---navy:#0a1628;--navy2:#112040;--green:#00c853;--green2:#00e676;
---gold:#ffd600;--red:#ff3d3d;--text:#e8edf5;--muted:#6b7fa3;
---card:#111e36;--card2:#162540;--border:#1e3054;
+  --navy:#0a1628;--navy2:#112040;--green:#00c853;--green2:#00e676;
+  --gold:#ffd600;--red:#ff3d3d;--text:#e8edf5;--muted:#6b7fa3;
+  --card:#111e36;--card2:#162540;--border:#1e3054;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:var(--navy);color:var(--text);min-height:100vh;
-background-image:radial-gradient(ellipse 80% 40% at 50% -10%,rgba(0,200,83,.12) 0%,transparent 60%),
-repeating-linear-gradient(0deg,transparent,transparent 59px,rgba(255,255,255,.02) 60px),
-repeating-linear-gradient(90deg,transparent,transparent 59px,rgba(255,255,255,.02) 60px);}
-
-/* AUTH SCREEN */
+  background-image:radial-gradient(ellipse 80% 40% at 50% -10%,rgba(0,200,83,.12) 0%,transparent 60%),
+  repeating-linear-gradient(0deg,transparent,transparent 59px,rgba(255,255,255,.02) 60px),
+  repeating-linear-gradient(90deg,transparent,transparent 59px,rgba(255,255,255,.02) 60px);}
 #auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
 .auth-box{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:40px;width:100%;max-width:420px;}
 .auth-logo{text-align:center;margin-bottom:32px;}
@@ -670,8 +799,6 @@ repeating-linear-gradient(90deg,transparent,transparent 59px,rgba(255,255,255,.0
 .btn-red{background:var(--red);color:#fff;}
 .btn-red:hover{background:#ff6b6b;}
 .btn-row{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;}
-
-/* APP SHELL */
 #app-shell{display:none;}
 header{display:flex;align-items:center;justify-content:space-between;padding:16px 32px;border-bottom:1px solid var(--border);background:rgba(10,22,40,.95);position:sticky;top:0;z-index:100;backdrop-filter:blur(12px);}
 .logo{display:flex;align-items:center;gap:10px;}
@@ -681,6 +808,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:16p
 .season-badge{background:var(--gold);color:var(--navy);font-weight:700;padding:2px 9px;border-radius:4px;font-size:12px;margin-left:6px;}
 .header-right{display:flex;align-items:center;gap:12px;}
 #user-display{font-size:13px;color:var(--muted);}
+#header-avatar{width:32px;height:32px;border-radius:50%;background-size:cover;background-position:center;display:none;border:2px solid var(--green);}
 nav{display:flex;gap:4px;}
 nav button{background:none;border:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;padding:8px 14px;border-radius:8px;cursor:pointer;transition:.2s;display:inline-flex;}
 nav button.active,nav button:hover{background:var(--card2);color:var(--text);}
@@ -711,10 +839,10 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px;}
 .pts-big{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--green);}
 .roughie-pts{color:var(--gold);font-size:13px;font-weight:600;}
 .accuracy{color:var(--muted);font-size:13px;}
-.legend-grid{display:flex;gap:10px;flex-wrap:wrap;}
-.legend-item{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 16px;text-align:center;}
-.legend-item .odds-range{font-size:11px;color:var(--muted);}
-.legend-item .pts-val{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--gold);}
+.legend-grid{display:flex;gap:8px;flex-wrap:wrap;}
+.legend-item{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;}
+.legend-item .odds-range{font-size:10px;color:var(--muted);}
+.legend-item .pts-val{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gold);}
 .legend-item .pts-val.normal{color:var(--green);}
 .round-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;}
 .round-tab{background:var(--card);border:1px solid var(--border);color:var(--muted);padding:7px 16px;border-radius:8px;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;transition:.15s;}
@@ -755,12 +883,11 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 .chat-feed{height:340px;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth;}
 .chat-feed::-webkit-scrollbar{width:4px;}
-.chat-feed::-webkit-scrollbar-track{background:transparent;}
 .chat-feed::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
-.chat-msg{display:flex;}.chat-msg-me{justify-content:flex-end;}
-.chat-bubble{max-width:72%;padding:10px 14px;border-radius:14px;position:relative;}
-.bubble-them{background:var(--card2);border:1px solid var(--border);border-top-left-radius:4px;}
-.bubble-me{background:rgba(0,200,83,.18);border:1px solid rgba(0,200,83,.3);border-top-right-radius:4px;}
+.chat-msg{display:flex;align-items:flex-end;gap:8px;}.chat-msg-me{justify-content:flex-end;}
+.chat-bubble{max-width:72%;padding:10px 14px;border-radius:14px;}
+.bubble-them{background:var(--card2);border:1px solid var(--border);border-bottom-left-radius:4px;}
+.bubble-me{background:rgba(0,200,83,.18);border:1px solid rgba(0,200,83,.3);border-bottom-right-radius:4px;}
 .chat-sender{font-size:11px;font-weight:700;color:var(--green);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;}
 .chat-text{font-size:14px;line-height:1.45;word-break:break-word;white-space:pre-wrap;}
 .chat-time{font-size:10px;color:var(--muted);margin-top:5px;text-align:right;}
@@ -773,255 +900,266 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px;}
 .chat-input:focus{outline:none;border-color:var(--green);}
 .chat-send-btn{background:var(--green);color:var(--navy);border:none;width:42px;height:42px;border-radius:10px;font-size:18px;cursor:pointer;transition:.2s;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
 .chat-send-btn:hover{background:var(--green2);transform:scale(1.05);}
+/* PROFILE */
+.profile-avatar-wrap{width:100px;height:100px;border-radius:50%;border:3px solid var(--green);overflow:hidden;margin:0 auto 16px;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:36px;}
 @media(max-width:768px){
-header{padding:12px 16px;flex-wrap:wrap;gap:10px;}
-nav button{padding:6px 10px;font-size:12px;}
-main{padding:20px 12px;}
-.stats-row{grid-template-columns:1fr 1fr;}
-.match-teams{flex-direction:column;}
-.team-btn{width:100%;}
-.vs-divider{transform:rotate(90deg);}
-#user-display{display:none;}
+  header{padding:12px 16px;flex-wrap:wrap;gap:10px;}
+  nav button{padding:6px 10px;font-size:12px;}
+  main{padding:20px 12px;}
+  .stats-row{grid-template-columns:1fr 1fr;}
+  .match-teams{flex-direction:column;}
+  .team-btn{width:100%;}
+  .vs-divider{transform:rotate(90deg);}
+  #user-display{display:none;}
+  .chat-feed{height:260px;}
+  .chat-bubble{max-width:88%;}
 }
-
 </style>
-
 </head>
 <body>
 
 <!-- AUTH SCREEN -->
-
 <div id="auth-screen">
-<div class="auth-box">
-<div class="auth-logo">
-<div class="logo-icon">🏉</div>
-<h1>ROUGHIE <span>TIPPER</span></h1>
-<p>AFL 2026 Tipping Competition</p>
-</div>
-<div class="auth-tabs">
-<button class="auth-tab active" onclick="switchAuthTab('login',this)">Log In</button>
-<button class="auth-tab" onclick="switchAuthTab('register',this)">Register</button>
-</div>
-
-```
-<!-- LOGIN -->
-<div class="auth-panel active" id="auth-login">
-<div class="form-group"><label>Email</label><input type="email" id="login-email" placeholder="you@email.com" onkeydown="if(event.key==='Enter')doLogin()"/></div>
-<div class="form-group"><label>Password</label><input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/></div>
-<button class="btn btn-full" id="login-btn" onclick="doLogin()">Log In →</button>
-</div>
-
-<!-- REGISTER -->
-<div class="auth-panel" id="auth-register">
-<div class="form-group"><label>Full Name *</label><input type="text" id="reg-name" placeholder="e.g. Jake Smith"/></div>
-<div class="form-group"><label>Nickname (optional)</label><input type="text" id="reg-nick" placeholder="e.g. Jakeo"/></div>
-<div class="form-group"><label>Email *</label><input type="email" id="reg-email" placeholder="you@email.com"/></div>
-<div class="form-group"><label>Password *</label><input type="password" id="reg-pass" placeholder="Min 6 characters"/></div>
-<div class="form-group"><label>Competition Join Code *</label><input type="text" id="reg-code" placeholder="Get this from your admin"/></div>
-<button class="btn btn-full" id="reg-btn" onclick="doRegister()">Join Competition →</button>
-</div>
-```
-
-</div>
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="logo-icon">🏉</div>
+      <h1>ROUGHIE <span>TIPPER</span></h1>
+      <p>AFL 2026 Tipping Competition</p>
+    </div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('login',this)">Log In</button>
+      <button class="auth-tab" onclick="switchAuthTab('register',this)">Register</button>
+    </div>
+    <div class="auth-panel active" id="auth-login">
+      <div class="form-group"><label>Email</label><input type="email" id="login-email" placeholder="you@email.com" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+      <div class="form-group"><label>Password</label><input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+      <button class="btn btn-full" id="login-btn" onclick="doLogin()">Log In →</button>
+    </div>
+    <div class="auth-panel" id="auth-register">
+      <div class="form-group"><label>Full Name *</label><input type="text" id="reg-name" placeholder="e.g. Jake Smith"/></div>
+      <div class="form-group"><label>Nickname (optional)</label><input type="text" id="reg-nick" placeholder="e.g. Jakeo"/></div>
+      <div class="form-group"><label>Email *</label><input type="email" id="reg-email" placeholder="you@email.com"/></div>
+      <div class="form-group"><label>Password *</label><input type="password" id="reg-pass" placeholder="Min 6 characters"/></div>
+      <div class="form-group"><label>Competition Join Code *</label><input type="text" id="reg-code" placeholder="Get this from your admin"/></div>
+      <button class="btn btn-full" id="reg-btn" onclick="doRegister()">Join Competition →</button>
+    </div>
+  </div>
 </div>
 
 <!-- APP SHELL -->
-
 <div id="app-shell">
-<header>
-<div class="logo">
-<div class="logo-icon">🏉</div>
-<div class="logo-text">ROUGHIE <span>TIPPER</span></div>
-<span class="season-badge">AFL 2026</span>
-</div>
-<nav>
-<button id="nav-leaderboard" onclick="showPage('leaderboard',this)">🏆 Ladder</button>
-<button id="nav-tips" onclick="showPage('tips',this)">✏️ My Tips</button>
-<button id="nav-rounds" onclick="showPage('rounds',this)">📋 Rounds</button>
-<button id="nav-admin" onclick="showPage('admin',this)" style="display:none;">⚙️ Admin</button>
-</nav>
-<div class="header-right">
-<span id="user-display"></span>
-<button class="btn btn-outline" style="font-size:13px;padding:7px 14px;" onclick="doLogout()">Log Out</button>
-</div>
-</header>
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🏉</div>
+      <div class="logo-text">ROUGHIE <span>TIPPER</span></div>
+      <span class="season-badge">AFL 2026</span>
+    </div>
+    <nav>
+      <button id="nav-leaderboard" onclick="showPage('leaderboard')">🏆 Ladder</button>
+      <button id="nav-tips" onclick="showPage('tips')">✏️ My Tips</button>
+      <button id="nav-rounds" onclick="showPage('rounds')">📋 Rounds</button>
+      <button id="nav-profile" onclick="showPage('profile')">👤 Profile</button>
+      <button id="nav-admin" onclick="showPage('admin')" style="display:none;">⚙️ Admin</button>
+    </nav>
+    <div class="header-right">
+      <div id="header-avatar"></div>
+      <span id="user-display"></span>
+      <button class="btn btn-outline" style="font-size:13px;padding:7px 14px;" onclick="doLogout()">Log Out</button>
+    </div>
+  </header>
 
-<main>
+  <main>
 
-```
-<!-- LEADERBOARD -->
-<div class="page" id="page-leaderboard">
-<div class="section-title">COMPETITION <span>LADDER</span></div>
-<div class="section-sub">Live standings · Roughie bonus points included</div>
-<div class="stats-row" id="comp-stats"></div>
-<div class="card">
-<div style="font-weight:600;margin-bottom:16px;">Full Standings</div>
-<table class="lb-table">
-<thead><tr><th>#</th><th>Tipper</th><th>Total Pts</th><th>Correct Tips</th><th>Roughie Bonus</th><th>Accuracy</th><th>Last Round</th></tr></thead>
-<tbody id="lb-body"></tbody>
-</table>
-</div>
-<div style="margin-top:20px;">
-<div style="font-weight:600;margin-bottom:12px;">📊 Scoring System</div>
-<div class="legend-grid" id="scoring-legend"></div>
-</div>
+    <!-- LEADERBOARD -->
+    <div class="page" id="page-leaderboard">
+      <div class="section-title">COMPETITION <span>LADDER</span></div>
+      <div class="section-sub">Live standings · Roughie bonus points included</div>
+      <div class="stats-row" id="comp-stats"></div>
+      <div class="card">
+        <div style="font-weight:600;margin-bottom:16px;">Full Standings</div>
+        <table class="lb-table">
+          <thead><tr><th>#</th><th>Tipper</th><th>Total Pts</th><th>Correct Tips</th><th>Roughie Bonus</th><th>Accuracy</th><th>Last Round</th></tr></thead>
+          <tbody id="lb-body"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:20px;">
+        <div style="font-weight:600;margin-bottom:12px;">📊 Scoring System</div>
+        <div class="legend-grid" id="scoring-legend"></div>
+      </div>
+      <div class="chat-wrap">
+        <div class="chat-header">
+          <div class="chat-header-title"><span class="chat-live-dot"></span>💬 Comp Chat</div>
+          <span style="font-size:12px;color:var(--muted);">Keep it friendly… or don't 😂</span>
+        </div>
+        <div class="chat-feed" id="chat-feed">
+          <div style="text-align:center;color:var(--muted);padding:32px;font-size:14px;">Loading messages…</div>
+        </div>
+        <div class="chat-footer">
+          <div class="chat-emoji-bar">
+            <button class="emoji-btn" onclick="insertEmoji('🔥')">🔥</button>
+            <button class="emoji-btn" onclick="insertEmoji('😂')">😂</button>
+            <button class="emoji-btn" onclick="insertEmoji('👏')">👏</button>
+            <button class="emoji-btn" onclick="insertEmoji('💀')">💀</button>
+            <button class="emoji-btn" onclick="insertEmoji('🤡')">🤡</button>
+            <button class="emoji-btn" onclick="insertEmoji('😤')">😤</button>
+            <button class="emoji-btn" onclick="insertEmoji('🏉')">🏉</button>
+            <button class="emoji-btn" onclick="insertEmoji('🎯')">🎯</button>
+            <button class="emoji-btn" onclick="insertEmoji('🤑')">🤑</button>
+          </div>
+          <div class="chat-input-row">
+            <textarea class="chat-input" id="chat-input" rows="1" placeholder="Talk your footy… 🏉" onkeydown="chatKeydown(event)" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" maxlength="280"></textarea>
+            <button class="chat-send-btn" onclick="sendChat()" title="Send">➤</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
-<!-- COMP CHAT -->
-<div class="chat-wrap">
-<div class="chat-header">
-<div class="chat-header-title">
-<span class="chat-live-dot"></span>
-💬 Comp Chat
-</div>
-<span style="font-size:12px;color:var(--muted);">Keep it friendly… or don't 😂</span>
-</div>
-<div class="chat-feed" id="chat-feed">
-<div style="text-align:center;color:var(--muted);padding:32px;font-size:14px;">Loading messages…</div>
-</div>
-<div class="chat-footer">
-<div class="chat-emoji-bar">
-<button class="emoji-btn" onclick="insertEmoji('🔥')">🔥</button>
-<button class="emoji-btn" onclick="insertEmoji('😂')">😂</button>
-<button class="emoji-btn" onclick="insertEmoji('👏')">👏</button>
-<button class="emoji-btn" onclick="insertEmoji('💀')">💀</button>
-<button class="emoji-btn" onclick="insertEmoji('🤡')">🤡</button>
-<button class="emoji-btn" onclick="insertEmoji('😤')">😤</button>
-<button class="emoji-btn" onclick="insertEmoji('🏉')">🏉</button>
-<button class="emoji-btn" onclick="insertEmoji('🎯')">🎯</button>
-<button class="emoji-btn" onclick="insertEmoji('🤑')">🤑</button>
-</div>
-<div class="chat-input-row">
-<textarea class="chat-input" id="chat-input" rows="1" placeholder="Talk your footy… 🏉" onkeydown="chatKeydown(event)" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" maxlength="280"></textarea>
-<button class="chat-send-btn" onclick="sendChat()" title="Send">➤</button>
-</div>
-</div>
-</div>
-</div>
+    <!-- MY TIPS -->
+    <div class="page" id="page-tips">
+      <div class="section-title">MY <span>TIPS</span></div>
+      <div class="section-sub">Pick your winners · Tips lock at midnight on match day</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+        <label style="color:var(--muted);font-size:14px;">Round:</label>
+        <select id="tip-round-select" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;"></select>
+      </div>
+      <div id="tip-matches"></div>
+      <div class="btn-row">
+        <button class="btn" id="save-tips-btn" onclick="saveTips()" style="display:none;">💾 Save My Tips</button>
+      </div>
+    </div>
 
-<!-- MY TIPS -->
-<div class="page" id="page-tips">
-<div class="section-title">MY <span>TIPS</span></div>
-<div class="section-sub">Pick your winners · Tips lock at match start time</div>
-<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
-<label style="color:var(--muted);font-size:14px;">Round:</label>
-<select id="tip-round-select" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;"></select>
-</div>
-<div id="tip-matches"></div>
-<div class="btn-row">
-<button class="btn" id="save-tips-btn" onclick="saveTips()" style="display:none;">💾 Save My Tips</button>
-</div>
-</div>
+    <!-- ROUNDS -->
+    <div class="page" id="page-rounds">
+      <div class="section-title">ROUND <span>RESULTS</span></div>
+      <div class="section-sub">Browse tips and results per round</div>
+      <div class="round-tabs" id="round-tabs-nav"></div>
+      <div id="round-results-content"></div>
+    </div>
 
-<!-- ROUNDS -->
-<div class="page" id="page-rounds">
-<div class="section-title">ROUND <span>RESULTS</span></div>
-<div class="section-sub">Browse tips and results per round</div>
-<div class="round-tabs" id="round-tabs-nav"></div>
-<div id="round-results-content"></div>
-</div>
+    <!-- PROFILE -->
+    <div class="page" id="page-profile">
+      <div class="section-title">MY <span>PROFILE</span></div>
+      <div class="section-sub">Update your name, nickname and avatar photo</div>
+      <div class="card" style="max-width:500px;">
+        <div style="text-align:center;margin-bottom:24px;">
+          <div class="profile-avatar-wrap">
+            <img id="profile-avatar-preview" src="" style="width:100%;height:100%;object-fit:cover;display:none;"/>
+            <span id="profile-avatar-placeholder">👤</span>
+          </div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;" id="profile-name-display"></div>
+          <div style="color:var(--muted);font-size:14px;" id="profile-nick-display"></div>
+        </div>
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="profile-name-input" placeholder="Your name"/>
+        </div>
+        <div class="form-group">
+          <label>Nickname</label>
+          <input type="text" id="profile-nick-input" placeholder="Your nickname"/>
+        </div>
+        <div class="form-group">
+          <label>Avatar Photo URL</label>
+          <input type="url" id="profile-avatar-url" placeholder="https://i.imgur.com/yourphoto.jpg" oninput="previewAvatar(this.value)"/>
+          <div style="font-size:12px;color:var(--muted);margin-top:6px;">
+            💡 Upload your photo free at <a href="https://imgur.com/upload" target="_blank" style="color:var(--green);">imgur.com/upload</a> → right-click the image → "Copy image address" → paste here
+          </div>
+        </div>
+        <button class="btn" onclick="saveProfile()" style="margin-top:8px;">Save Profile ✓</button>
+      </div>
+    </div>
 
-<!-- ADMIN -->
-<div class="page" id="page-admin">
-<div class="section-title">ADMIN <span>PANEL</span></div>
-<div class="section-sub">Manage the competition — only admins can see this</div>
-<div class="admin-tabs">
-<button class="admin-tab active" onclick="showAdminTab('users',this)">👥 Users</button>
-<button class="admin-tab" onclick="showAdminTab('matches',this)">🏉 Matches</button>
-<button class="admin-tab" onclick="showAdminTab('results',this)">✅ Results</button>
-<button class="admin-tab" onclick="showAdminTab('settings',this)">🔑 Settings</button>
-</div>
+    <!-- ADMIN -->
+    <div class="page" id="page-admin">
+      <div class="section-title">ADMIN <span>PANEL</span></div>
+      <div class="section-sub">Manage the competition — only admins can see this</div>
+      <div class="admin-tabs">
+        <button class="admin-tab active" onclick="showAdminTab('users',this)">👥 Users</button>
+        <button class="admin-tab" onclick="showAdminTab('matches',this)">🏉 Matches</button>
+        <button class="admin-tab" onclick="showAdminTab('results',this)">✅ Results</button>
+        <button class="admin-tab" onclick="showAdminTab('settings',this)">🔑 Settings</button>
+      </div>
 
-<!-- USERS -->
-<div id="admin-users" class="admin-section">
-<div class="card">
-<div style="font-weight:600;margin-bottom:14px;">Registered Users</div>
-<div id="admin-users-list"></div>
-</div>
-</div>
+      <div id="admin-users" class="admin-section">
+        <div class="card">
+          <div style="font-weight:600;margin-bottom:14px;">Registered Users</div>
+          <div id="admin-users-list"></div>
+        </div>
+      </div>
 
-<!-- MATCHES -->
-<div id="admin-matches" class="admin-section" style="display:none;">
-<div class="card">
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
-<div style="font-weight:600;">Add Match</div>
-<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-<label style="color:var(--muted);font-size:13px;">Round:</label>
-<select id="admin-match-round" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;"></select>
-<button class="btn btn-outline" onclick="addRound()" style="font-size:13px;padding:7px 14px;">+ New Round</button>
-</div>
-</div>
-<div style="display:grid;grid-template-columns:1fr 90px 1fr 90px 120px auto;gap:10px;align-items:center;margin-bottom:8px;">
-<div style="font-size:12px;color:var(--muted);">Home Team</div>
-<div style="font-size:12px;color:var(--muted);">Home Odds</div>
-<div style="font-size:12px;color:var(--muted);">Away Team</div>
-<div style="font-size:12px;color:var(--muted);">Away Odds</div>
-<div style="font-size:12px;color:var(--muted);">Match Date</div>
-<div></div>
-</div>
-<div style="display:grid;grid-template-columns:1fr 90px 1fr 90px 120px auto;gap:10px;align-items:center;">
-<input type="text" id="nm-home" placeholder="Collingwood" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
-<input type="number" id="nm-home-odds" placeholder="1.60" step="0.01" min="1" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
-<input type="text" id="nm-away" placeholder="Carlton" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
-<input type="number" id="nm-away-odds" placeholder="2.40" step="0.01" min="1" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
-<input type="date" id="nm-date" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
-<button class="btn" onclick="addMatch()">+ Add</button>
-</div>
-</div>
-<div class="card" style="margin-top:16px;">
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-<div style="font-weight:600;">Matches</div>
-<select id="admin-view-round" onchange="renderAdminMatchesList()" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;"></select>
-</div>
-<div id="admin-matches-list"></div>
-</div>
-</div>
+      <div id="admin-matches" class="admin-section" style="display:none;">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+            <div style="font-weight:600;">Add Match</div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <label style="color:var(--muted);font-size:13px;">Round:</label>
+              <select id="admin-match-round" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;"></select>
+              <button class="btn btn-outline" onclick="addRound()" style="font-size:13px;padding:7px 14px;">+ New Round</button>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 90px 1fr 90px 120px auto;gap:10px;align-items:center;margin-bottom:8px;">
+            <div style="font-size:12px;color:var(--muted);">Home Team</div>
+            <div style="font-size:12px;color:var(--muted);">Home Odds</div>
+            <div style="font-size:12px;color:var(--muted);">Away Team</div>
+            <div style="font-size:12px;color:var(--muted);">Away Odds</div>
+            <div style="font-size:12px;color:var(--muted);">Match Date</div>
+            <div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 90px 1fr 90px 120px auto;gap:10px;align-items:center;">
+            <input type="text" id="nm-home" placeholder="Collingwood" oninput="this.value=this.value" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
+            <input type="number" id="nm-home-odds" placeholder="1.60" step="0.01" min="1" oninput="this.value=this.value" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
+            <input type="text" id="nm-away" placeholder="Carlton" oninput="this.value=this.value" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
+            <input type="number" id="nm-away-odds" placeholder="2.40" step="0.01" min="1" oninput="this.value=this.value" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
+            <input type="date" id="nm-date" oninput="this.value=this.value" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
+            <button class="btn" onclick="addMatch()">+ Add</button>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+            <div style="font-weight:600;">Matches</div>
+            <select id="admin-view-round" onchange="renderAdminMatchesList()" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;"></select>
+          </div>
+          <div id="admin-matches-list"></div>
+        </div>
+      </div>
 
-<!-- RESULTS -->
-<div id="admin-results" class="admin-section" style="display:none;">
-<div class="card">
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-<div style="font-weight:600;">Enter Results</div>
-<select id="admin-results-round" onchange="renderAdminResults()" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;"></select>
-</div>
-<div id="admin-results-form"></div>
-</div>
-</div>
+      <div id="admin-results" class="admin-section" style="display:none;">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div style="font-weight:600;">Enter Results</div>
+            <select id="admin-results-round" onchange="renderAdminResults()" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;"></select>
+          </div>
+          <div id="admin-results-form"></div>
+        </div>
+      </div>
 
-<!-- SETTINGS -->
-<div id="admin-settings" class="admin-section" style="display:none;">
-<div class="card">
-<div style="font-weight:600;margin-bottom:16px;">🔑 Competition Join Code</div>
-<p style="color:var(--muted);font-size:14px;margin-bottom:16px;">New members need this code to register. Share it with people you want in the comp.</p>
-<div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;">
-<div>
-<div style="font-size:12px;color:var(--muted);margin-bottom:4px;">Current Code</div>
-<div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--gold);letter-spacing:3px;" id="current-join-code">Loading…</div>
-</div>
-</div>
-<div style="display:flex;gap:10px;align-items:center;">
-<input type="text" id="new-join-code" placeholder="New join code" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;text-transform:uppercase;"/>
-<button class="btn" onclick="saveJoinCode()">Update Code</button>
-</div>
-</div>
-</div>
-</div>
-```
+      <div id="admin-settings" class="admin-section" style="display:none;">
+        <div class="card">
+          <div style="font-weight:600;margin-bottom:16px;">🔑 Competition Join Code</div>
+          <p style="color:var(--muted);font-size:14px;margin-bottom:16px;">New members need this code to register.</p>
+          <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:16px;">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">Current Code</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--gold);letter-spacing:3px;" id="current-join-code">Loading…</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <input type="text" id="new-join-code" placeholder="New join code" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;text-transform:uppercase;"/>
+            <button class="btn" onclick="saveJoinCode()">Update Code</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
-</main>
+  </main>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
 function switchAuthTab(tab, btn) {
-document.querySelectorAll('.auth-tab').forEach(b=>b.classList.remove('active'));
-document.querySelectorAll('.auth-panel').forEach(p=>p.classList.remove('active'));
-btn.classList.add('active');
-document.getElementById('auth-'+tab).classList.add('active');
+  document.querySelectorAll('.auth-tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.auth-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('auth-'+tab).classList.add('active');
 }
-// nav onclick wrappers (before module loads)
-function showPage(id){ window._showPage && window._showPage(id); }
 </script>
-
 </body>
 </html>
