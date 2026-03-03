@@ -125,8 +125,7 @@ const code = el('reg-code').value.trim();
 if (!name || !email || !pass || !code) { toast('Fill in all required fields', true); return; }
 
 // Check join code
-const codeSnap = await getDoc(doc(db, 'config', 'joinCode'));
-const validCode = codeSnap.exists() ? codeSnap.data().code : 'FOOTY2026';
+const validCode = 'hunterstipping2026';
 if (code !== validCode) { toast('Incorrect join code', true); return; }
 
 try {
