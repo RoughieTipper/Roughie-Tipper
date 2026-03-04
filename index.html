@@ -71,9 +71,10 @@ function clubBadge(name, size=40) {
 }
 
 // ─── HELPERS ────────────────────────────────────────────────
-function isLocked(dateStr) {
+function isLocked(dateStr, timeStr) {
   if (!dateStr) return false;
-  return new Date() >= new Date(dateStr + 'T00:00:00');
+  const time = timeStr || '19:30';
+  return new Date() >= new Date(dateStr + 'T' + time + ':00');
 }
 function toast(msg, err=false) {
   const t = el('toast');
@@ -339,16 +340,24 @@ async function createComp() {
 }
 
 // ─── SCORE CALC ──────────────────────────────────────────────
+// If a match is locked and a user hasn't tipped, they get the away team by default
+function getEffectivePick(myTips, m) {
+  if (myTips[m.id]) return { pick: myTips[m.id], isDefault: false };
+  if (isLocked(m.date, m.time)) return { pick: m.away, isDefault: true };
+  return { pick: null, isDefault: false };
+}
+
 function calcScoresForUsers(userIds) {
   const allMatches = rounds.flatMap(r=>(r.matches||[]).map(m=>({...m,roundId:r.id})));
   const finishedMatches = allMatches.filter(m=>m.winner);
+  const lockedMatches = allMatches.filter(m=>isLocked(m.date, m.time));
   return userIds.map(uid=>{
     const u = allUsers[uid]; if(!u) return null;
     const myTips = allTips[uid]||{};
     let totalPts=0, correct=0, roughieBonus=0, roundPts={};
     rounds.forEach(r=>{roundPts[r.id]=0;});
     finishedMatches.forEach(m=>{
-      const pick = myTips[m.id];
+      const { pick } = getEffectivePick(myTips, m);
       if(!pick||pick!==m.winner) return;
       const winOdds = m.winner===m.home?m.homeOdds:m.awayOdds;
       const p = pts(winOdds);
@@ -356,8 +365,9 @@ function calcScoresForUsers(userIds) {
       if(winOdds>=2.0) roughieBonus+=(p-1);
       if(roundPts[m.roundId]!==undefined) roundPts[m.roundId]+=p;
     });
-    const tipped = Object.keys(myTips).filter(mid=>allMatches.find(m=>m.id===mid)).length;
-    const finishedTipped = finishedMatches.filter(m=>myTips[m.id]).length;
+    // Count tipped = all locked matches (default away counts as tipped)
+    const tipped = lockedMatches.length;
+    const finishedTipped = finishedMatches.length;
     const accuracy = finishedTipped>0?Math.round(correct/finishedTipped*100):0;
     return {uid,name:u.name,nick:u.nick,avatar:u.avatar||'',totalPts,correct,roughieBonus,accuracy,roundPts,tipped};
   }).filter(Boolean).sort((a,b)=>b.totalPts-a.totalPts||b.correct-a.correct);
@@ -457,7 +467,7 @@ function renderTipsPage() {
   const rsel = el('tip-round-select');
   rsel.innerHTML = rounds.filter(r=>(r.matches||[]).length>0).map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
   if (!rsel.onchange) rsel.onchange = renderTipMatches;
-  const openRound = [...rounds].reverse().find(r=>(r.matches||[]).some(m=>!isLocked(m.date)));
+  const openRound = [...rounds].reverse().find(r=>(r.matches||[]).some(m=>!isLocked(m.date, m.time)));
   if (openRound) rsel.value = openRound.id;
   else if (rounds.filter(r=>(r.matches||[]).length>0).length) rsel.value = rounds.filter(r=>(r.matches||[]).length>0).slice(-1)[0].id;
   renderTipMatches();
@@ -470,10 +480,13 @@ function renderTipMatches() {
   if (!round) { container.innerHTML=''; return; }
   const myTips = allTips[currentUser.uid]||{};
   const matches = round.matches||[];
-  const hasOpen = matches.some(m=>!isLocked(m.date));
+  const hasOpen = matches.some(m=>!isLocked(m.date, m.time));
 
   container.innerHTML = matches.map(m=>{
-    const locked=isLocked(m.date), saved=myTips[m.id]||null, pending=pendingTips[m.id]||null, sel=pending||saved;
+    const locked=isLocked(m.date, m.time), saved=myTips[m.id]||null, pending=pendingTips[m.id]||null;
+    // If locked and no tip saved, default to away team
+    const isDefaultAway = locked && !saved && !pending;
+    const sel=pending||saved||(isDefaultAway?m.away:null);
     const hPts=pts(m.homeOdds), aPts=pts(m.awayOdds), finished=!!m.winner;
     const hClass = finished?(m.winner===m.home?'winner-correct':(sel===m.home?'winner-wrong':''))
       :locked?(sel===m.home?'selected locked':'locked'):(sel===m.home?'selected':'');
@@ -490,6 +503,7 @@ function renderTipMatches() {
     return `<div class="match-card ${sel?'tipped':''}">
       <div class="match-meta">📅 ${m.date||'TBC'} &nbsp;·&nbsp; ${round.name}
         ${locked&&!finished?'<span class="result-badge badge-pending" style="margin-left:6px;">🔒 Tips Locked</span>':''}
+        ${isDefaultAway&&!finished?'<span class="result-badge badge-loss" style="margin-left:6px;">⚠️ Auto: Away</span>':''}
         ${finished?'<span class="result-badge badge-win" style="margin-left:6px;">✓ Result In</span>':''}
         ${isPending?'<span class="result-badge" style="background:rgba(255,214,0,0.2);color:var(--gold);margin-left:6px;">⚡ Unsaved</span>':''}
       </div>
@@ -552,7 +566,7 @@ function showRound(roundId,btn){
     : Object.keys(allUsers);
   container.innerHTML=(round.matches||[]).map(m=>{
     const winOdds=m.winner?(m.winner===m.home?m.homeOdds:m.awayOdds):null;
-    const winPts=winOdds?pts(winOdds):null, locked=isLocked(m.date);
+    const winPts=winOdds?pts(winOdds):null, locked=isLocked(m.date, m.time);
     return `<div class="match-card ${m.winner?'tipped':''}">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -563,7 +577,7 @@ function showRound(roundId,btn){
           ${clubBadge(m.away,28)} <span style="font-weight:700;">${escHtml(m.away)}</span>
           <span style="color:var(--gold);">$${Number(m.awayOdds).toFixed(2)}</span>
           ${m.awayOdds>=2?'<span class="roughie-tag">R</span>':''}
-          <span style="color:var(--muted);font-size:12px;margin-left:6px;">${m.date||''}</span>
+          <span style="color:var(--muted);font-size:12px;margin-left:6px;">${m.date||''} ${m.time?'@ '+m.time:''}</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           ${m.winner?`<span class="result-badge badge-win">✓ ${escHtml(m.winner)}</span><span style="color:var(--gold);font-weight:700;">${winPts}pt${winPts>1?'s':''}</span>`
@@ -573,11 +587,13 @@ function showRound(roundId,btn){
       <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;">
         ${compUserIds.map(uid=>{
           const u=allUsers[uid]; if(!u) return '';
-          const pick=(allTips[uid]||{})[m.id];
+          const savedPick=(allTips[uid]||{})[m.id];
+          const isAuto = !savedPick && locked;
+          const pick = savedPick || (isAuto ? m.away : null);
           if(!pick&&!locked) return '';
           if(!pick) return `<span class="pick-chip" style="opacity:0.4;">${escHtml(u.nick||u.name)}: —</span>`;
           const correct=m.winner&&pick===m.winner, wrong=m.winner&&pick!==m.winner;
-          return `<span class="pick-chip ${correct?'chip-correct':wrong?'chip-wrong':''}">${escHtml(u.nick||u.name)}: ${escHtml(pick)}${correct?` +${pts(winOdds)}`:wrong?' ✗':''}</span>`;
+          return `<span class="pick-chip ${correct?'chip-correct':wrong?'chip-wrong':''}">${escHtml(u.nick||u.name)}: ${escHtml(pick)}${isAuto?' <span style="color:var(--gold);font-size:10px;">AUTO</span>':''}${correct?` +${pts(winOdds)}`:wrong?' ✗':''}</span>`;
         }).join('')}
       </div>
     </div>`;
@@ -682,7 +698,7 @@ async function addMatch(){
   const homeOdds=parseFloat(el('nm-home-odds').value);
   const away=el('nm-away').value.trim()||el('nm-away').innerText.trim();
   const awayOdds=parseFloat(el('nm-away-odds').value);
-  const date=el('nm-date').value, roundId=el('admin-match-round').value;
+  const date=el('nm-date').value, time=el('nm-time').value||'19:30', roundId=el('admin-match-round').value;
   if(!home){toast('Please enter home team name',true);return;}
   if(!homeOdds||isNaN(homeOdds)){toast('Please enter home team odds',true);return;}
   if(!away){toast('Please enter away team name',true);return;}
@@ -690,9 +706,9 @@ async function addMatch(){
   if(!date){toast('Please enter match date',true);return;}
   if(!roundId){toast('Select a round first',true);return;}
   const round=rounds.find(r=>r.id===roundId); if(!round) return;
-  const newMatch={id:'m'+Date.now(),home,homeOdds,away,awayOdds,date,winner:null};
+  const newMatch={id:'m'+Date.now(),home,homeOdds,away,awayOdds,date,time,winner:null};
   await updateDoc(doc(db,'rounds',roundId),{matches:[...(round.matches||[]),newMatch]});
-  ['nm-home','nm-home-odds','nm-away','nm-away-odds','nm-date'].forEach(i=>el(i).value='');
+  ['nm-home','nm-home-odds','nm-away','nm-away-odds','nm-date','nm-time'].forEach(i=>el(i).value='');
   toast('Match added!');
 }
 function renderAdminMatchesList(){
@@ -705,7 +721,7 @@ function renderAdminMatchesList(){
         ${clubBadge(m.home,22)} <span style="font-weight:600;">${escHtml(m.home)}</span> <span style="color:var(--gold);">$${Number(m.homeOdds).toFixed(2)}</span>
         <span style="color:var(--muted);margin:0 4px;">vs</span>
         ${clubBadge(m.away,22)} <span style="font-weight:600;">${escHtml(m.away)}</span> <span style="color:var(--gold);">$${Number(m.awayOdds).toFixed(2)}</span>
-        <span style="color:var(--muted);font-size:12px;">📅 ${m.date}</span>
+        <span style="color:var(--muted);font-size:12px;">📅 ${m.date} ${m.time?'@ '+m.time:''}</span>
       </div>
       <button class="btn btn-red" style="font-size:12px;padding:5px 12px;" onclick="removeMatch('${roundId}','${m.id}')">Remove</button>
     </div>`).join('');
@@ -1207,10 +1223,10 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
               <button class="btn btn-outline" onclick="addRound()" style="font-size:13px;padding:7px 14px;">+ New Round</button>
             </div>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 90px 1fr 90px 120px auto;gap:10px;align-items:center;margin-bottom:8px;">
+          <div style="display:grid;grid-template-columns:1fr 90px 1fr 90px 120px 100px auto;gap:10px;align-items:center;margin-bottom:8px;">
             <div style="font-size:12px;color:var(--muted);">Home Team</div><div style="font-size:12px;color:var(--muted);">Odds</div>
             <div style="font-size:12px;color:var(--muted);">Away Team</div><div style="font-size:12px;color:var(--muted);">Odds</div>
-            <div style="font-size:12px;color:var(--muted);">Date</div><div></div>
+            <div style="font-size:12px;color:var(--muted);">Date</div><div style="font-size:12px;color:var(--muted);">Kick-off</div><div></div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 90px 1fr 90px 120px auto;gap:10px;align-items:center;">
             <input type="text" id="nm-home" placeholder="Collingwood" oninput="this.value=this.value" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
@@ -1218,6 +1234,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
             <input type="text" id="nm-away" placeholder="Carlton" oninput="this.value=this.value" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
             <input type="number" id="nm-away-odds" placeholder="2.40" step="0.01" min="1" oninput="this.value=this.value" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
             <input type="date" id="nm-date" oninput="this.value=this.value" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
+            <input type="time" id="nm-time" oninput="this.value=this.value" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
             <button class="btn" onclick="addMatch()">+ Add</button>
           </div>
         </div>
