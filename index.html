@@ -171,12 +171,8 @@ async function doLogin() {
 async function doRegister() {
   const name=el('reg-name').value.trim(), nick=el('reg-nick').value.trim();
   const email=el('reg-email').value.trim(), pass=el('reg-pass').value;
-  const code=el('reg-code').value.trim();
-  if(!name||!email||!pass||!code){toast('Fill in all required fields',true);return;}
+  if(!name||!email||!pass){toast('Fill in all required fields',true);return;}
   if(pass.length<6){toast('Password must be at least 6 characters',true);return;}
-  const codeSnap = await getDoc(doc(db,'config','joinCode'));
-  const validCode = codeSnap.exists() ? codeSnap.data().code : 'HUNTERSTIPPING2026';
-  if(code.toUpperCase()!==validCode.toUpperCase()){toast('Incorrect join code',true);return;}
   el('reg-btn').textContent = 'Registering…';
   try {
     const cred = await createUserWithEmailAndPassword(auth,email,pass);
@@ -408,8 +404,8 @@ function renderLeaderboard() {
     return `<tr ${me?'style="background:rgba(0,200,83,0.05);"':''}>
       <td><span class="rank-badge ${rc}">${rank}</span></td>
       <td><div style="display:flex;align-items:center;gap:10px;">${avatarHtml}
-        <div><div class="tipper-name">${escHtml(s.name)}${me?' <span style="color:var(--green);font-size:11px;">(you)</span>':''}</div>
-        <div style="font-size:12px;color:var(--muted);">${escHtml(s.nick||'')}</div></div>
+        <div><div class="tipper-name">${s.nick?escHtml(s.nick):escHtml(s.name)}${me?' <span style="color:var(--green);font-size:11px;">(you)</span>':''}</div>
+        <div style="font-size:12px;color:var(--muted);">${s.nick?escHtml(s.name):''}</div></div>
       </div></td>
       <td><span class="pts-big">${s.totalPts}</span></td>
       <td>${s.correct} <span style="color:var(--muted);font-size:12px;">of ${s.tipped}</span></td>
@@ -447,8 +443,8 @@ function renderGlobalLeaderboard() {
     return `<tr ${me?'style="background:rgba(0,200,83,0.05);"':''}>
       <td><span class="rank-badge ${rc}">${rank}</span></td>
       <td><div style="display:flex;align-items:center;gap:10px;">${avatarHtml}
-        <div><div class="tipper-name">${escHtml(s.name)}${me?' <span style="color:var(--green);font-size:11px;">(you)</span>':''}</div>
-        <div style="font-size:11px;color:var(--muted);">${escHtml(userCompNames||'No comp')}</div></div>
+        <div><div class="tipper-name">${s.nick?escHtml(s.nick):escHtml(s.name)}${me?' <span style="color:var(--green);font-size:11px;">(you)</span>':''}</div>
+        <div style="font-size:11px;color:var(--muted);">${s.nick?escHtml(s.name)+' · ':''} ${escHtml(userCompNames||'No comp')}</div></div>
       </div></td>
       <td><span class="pts-big">${s.totalPts}</span></td>
       <td>${s.correct} <span style="color:var(--muted);font-size:12px;">of ${s.tipped}</span></td>
@@ -1021,7 +1017,6 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
       <div class="form-group"><label>Nickname (optional)</label><input type="text" id="reg-nick" placeholder="e.g. Jakeo"/></div>
       <div class="form-group"><label>Email *</label><input type="email" id="reg-email" placeholder="you@email.com"/></div>
       <div class="form-group"><label>Password *</label><input type="password" id="reg-pass" placeholder="Min 6 characters"/></div>
-      <div class="form-group"><label>Site Join Code *</label><input type="text" id="reg-code" placeholder="Get this from your admin"/></div>
       <button class="btn btn-full" id="reg-btn" onclick="doRegister()">Create Account →</button>
     </div>
   </div>
