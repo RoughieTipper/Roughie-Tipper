@@ -47,26 +47,87 @@ function pts(odds) {
   return 9;
 }
 
-// ─── CLUB BADGES ────────────────────────────────────────────
+// ─── CLUB BADGES (circles with colour patterns) ─────────────
 const CLUB_COLOURS = {
-  'Adelaide Crows':['#002B5C','#E21937'],'Brisbane Lions':['#A30046','#0054A4'],
-  'Carlton':['#002B5C','#FFFFFF'],'Collingwood':['#000000','#FFFFFF'],
-  'Essendon':['#CC2031','#000000'],'Fremantle':['#2E1A6E','#E50A14'],
-  'Geelong':['#003087','#FFFFFF'],'Gold Coast Suns':['#E8261A','#FFD200'],
-  'GWS Giants':['#F47920','#231F20'],'Hawthorn':['#4D2004','#FBBF15'],
-  'Melbourne':['#CC2031','#003C71'],'North Melbourne':['#003087','#FFFFFF'],
-  'Port Adelaide':['#008AAB','#000000'],'Richmond':['#000000','#FFD200'],
-  'St Kilda':['#ED0F05','#000000'],'Sydney Swans':['#CC2031','#FFFFFF'],
-  'West Coast Eagles':['#002B5C','#F2A900'],'Western Bulldogs':['#014896','#CC2031'],
+  'Adelaide Crows':    { type:'hoops',   c1:'#002B5C', c2:'#E21937',  c3:'#FFB700' },
+  'Brisbane Lions':    { type:'split-h', c1:'#0054A4', c2:'#78003B',  c3:'#FFD200' },
+  'Carlton':           { type:'solid',   c1:'#002B5C', c2:'#002B5C'  },
+  'Collingwood':       { type:'stripes', c1:'#000000', c2:'#FFFFFF'  },
+  'Essendon':          { type:'sash',    c1:'#CC2031', c2:'#000000'  },
+  'Fremantle':         { type:'chevron', c1:'#2E1A6E', c2:'#FFFFFF'  },
+  'Geelong':           { type:'hoops',   c1:'#003087', c2:'#FFFFFF',  c3:'#003087' },
+  'Gold Coast Suns':   { type:'split-h', c1:'#FFD200', c2:'#E8261A'  },
+  'GWS Giants':        { type:'split-h', c1:'#333333', c2:'#F47920'  },
+  'Hawthorn':          { type:'stripes', c1:'#4D2004', c2:'#FBBF15'  },
+  'Melbourne':         { type:'split-v', c1:'#CC2031', c2:'#003C71'  },
+  'North Melbourne':   { type:'stripes', c1:'#003087', c2:'#FFFFFF',  thin:true },
+  'Port Adelaide':     { type:'split-h', c1:'#008AAB', c2:'#000000'  },
+  'Richmond':          { type:'sash',    c1:'#000000', c2:'#FFD200'  },
+  'St Kilda':          { type:'thirds',  c1:'#ED0F05', c2:'#FFFFFF',  c3:'#000000' },
+  'Sydney Swans':      { type:'hoops',   c1:'#CC2031', c2:'#FFFFFF',  c3:'#CC2031' },
+  'West Coast Eagles': { type:'split-h', c1:'#F2A900', c2:'#002B5C'  },
+  'Western Bulldogs':  { type:'thirds-h',c1:'#014896', c2:'#CC2031',  c3:'#FFFFFF' },
 };
+
 function clubBadge(name, size=40) {
-  const cols = CLUB_COLOURS[name];
-  const c1 = cols?cols[0]:'#1e3054', c2 = cols?cols[1]:'#00c853';
-  const initials = name.split(' ').map(w=>w[0]).join('').slice(0,3).toUpperCase();
-  const fs = initials.length > 2 ? 10 : 13;
-  return `<svg width="${size}" height="${size}" viewBox="0 0 40 40" style="border-radius:50%;flex-shrink:0;">
-    <circle cx="20" cy="20" r="20" fill="${c1}"/>
-    <text x="20" y="25" text-anchor="middle" font-family="'Bebas Neue',sans-serif" font-size="${fs}" fill="${c2}">${initials}</text>
+  const c = CLUB_COLOURS[name] || { type:'solid', c1:'#1e3054', c2:'#00c853' };
+  const r = size/2, cx = r, cy = r;
+  const id = 'cb-'+name.replace(/[^a-z]/gi,'').toLowerCase()+size;
+  let pattern = '';
+  switch(c.type) {
+    case 'hoops':
+      // 3 horizontal bands: top c1, middle c2, bottom c3||c1
+      pattern = `<rect x="0" y="0" width="${size}" height="${size}" fill="${c.c1}"/>
+        <rect x="0" y="${size*0.3}" width="${size}" height="${size*0.22}" fill="${c.c2}"/>
+        <rect x="0" y="${size*0.57}" width="${size}" height="${size*0.22}" fill="${c.c3||c.c1}"/>`;
+      break;
+    case 'stripes':
+      // vertical stripes alternating c1/c2
+      const sw = c.thin ? size/8 : size/5;
+      pattern = `<rect x="0" y="0" width="${size}" height="${size}" fill="${c.c1}"/>
+        <rect x="${sw}" y="0" width="${sw}" height="${size}" fill="${c.c2}"/>
+        <rect x="${sw*3}" y="0" width="${sw}" height="${size}" fill="${c.c2}"/>
+        <rect x="${sw*5}" y="0" width="${sw}" height="${size}" fill="${c.c2}"/>`;
+      break;
+    case 'sash':
+      // diagonal sash top-right to bottom-left
+      pattern = `<rect x="0" y="0" width="${size}" height="${size}" fill="${c.c1}"/>
+        <polygon points="${size*0.45},0 ${size},0 ${size},${size*0.05} ${size*0.55},${size} 0,${size} 0,${size*0.95}" fill="${c.c2}"/>`;
+      break;
+    case 'chevron':
+      pattern = `<rect x="0" y="0" width="${size}" height="${size}" fill="${c.c1}"/>
+        <polyline points="${size*0.1},${size*0.35} ${size*0.5},${size*0.72} ${size*0.9},${size*0.35}" fill="none" stroke="${c.c2}" stroke-width="${size*0.14}" stroke-linejoin="round" stroke-linecap="round"/>`;
+      break;
+    case 'split-h':
+      // top half c1, bottom half c2, optional gold band
+      pattern = `<rect x="0" y="0" width="${size}" height="${size}" fill="${c.c2}"/>
+        <rect x="0" y="0" width="${size}" height="${size*0.48}" fill="${c.c1}"/>
+        ${c.c3?`<rect x="0" y="${size*0.46}" width="${size}" height="${size*0.08}" fill="${c.c3}"/>`:''}`;
+      break;
+    case 'split-v':
+      // left c1, right c2
+      pattern = `<rect x="0" y="0" width="${size}" height="${size}" fill="${c.c1}"/>
+        <rect x="${size*0.5}" y="0" width="${size*0.5}" height="${size}" fill="${c.c2}"/>`;
+      break;
+    case 'thirds':
+      // left/centre/right vertical thirds
+      pattern = `<rect x="0" y="0" width="${size}" height="${size}" fill="${c.c2}"/>
+        <rect x="0" y="0" width="${size*0.33}" height="${size}" fill="${c.c1}"/>
+        <rect x="${size*0.67}" y="0" width="${size*0.33}" height="${size}" fill="${c.c3}"/>`;
+      break;
+    case 'thirds-h':
+      // top/middle/bottom horizontal thirds
+      pattern = `<rect x="0" y="0" width="${size}" height="${size}" fill="${c.c1}"/>
+        <rect x="0" y="${size*0.55}" width="${size}" height="${size*0.22}" fill="${c.c2}"/>
+        <rect x="0" y="${size*0.77}" width="${size}" height="${size*0.23}" fill="${c.c3}"/>`;
+      break;
+    default:
+      pattern = `<rect x="0" y="0" width="${size}" height="${size}" fill="${c.c1}"/>`;
+  }
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="flex-shrink:0;border-radius:50%;overflow:hidden;" xmlns="http://www.w3.org/2000/svg">
+    <defs><clipPath id="${id}"><circle cx="${cx}" cy="${cy}" r="${r}"/></clipPath></defs>
+    <g clip-path="url(#${id})">${pattern}</g>
+    <circle cx="${cx}" cy="${cy}" r="${r-0.75}" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5"/>
   </svg>`;
 }
 
@@ -76,6 +137,17 @@ function isLocked(dateStr, timeStr) {
   const time = timeStr || '19:30';
   return new Date() >= new Date(dateStr + 'T' + time + ':00');
 }
+// Format date as "Thursday 2nd April"
+function formatMatchDate(dateStr) {
+  if (!dateStr) return 'TBC';
+  const d = new Date(dateStr + 'T12:00:00');
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const day = d.getDate();
+  const suffix = day===1||day===21||day===31?'st':day===2||day===22?'nd':day===3||day===23?'rd':'th';
+  return `${days[d.getDay()]} ${day}${suffix} ${months[d.getMonth()]}`;
+}
+
 function toast(msg, err=false) {
   const t = el('toast');
   t.textContent = msg;
@@ -104,7 +176,7 @@ function showPage(id) {
 
 // ─── STATE ──────────────────────────────────────────────────
 let currentUser = null, userProfile = null;
-let rounds = [], allTips = {}, allUsers = {};
+let rounds = [], allTips = {}, allUsers = {}, allMargins = {};
 let currentCompId = null, currentComp = null;
 let allComps = {};
 let unsubFns = [];
@@ -214,6 +286,12 @@ function subscribeGlobal() {
     if(el('page-admin')?.classList.contains('active')) renderAdmin();
   });
   unsubFns.push(u1);
+
+  const u2m = onSnapshot(collection(db,'margins'), snap=>{
+    allMargins={};
+    snap.docs.forEach(d=>{allMargins[d.id]=d.data();});
+  });
+  unsubFns.push(u2m);
 
   const u2 = onSnapshot(collection(db,'tips'), snap=>{
     allTips={};
@@ -362,8 +440,20 @@ function calcScoresForUsers(userIds) {
     const tipped = lockedMatches.length;
     const finishedTipped = finishedMatches.length;
     const accuracy = finishedTipped>0?Math.round(correct/finishedTipped*100):0;
-    return {uid,name:u.name,nick:u.nick,avatar:u.avatar||'',totalPts,correct,roughieBonus,accuracy,roundPts,tipped};
-  }).filter(Boolean).sort((a,b)=>b.totalPts-a.totalPts||b.correct-a.correct);
+    // Cumulative margin score (lower = better, for tiebreaking)
+    const myMargins = allMargins[uid]||{};
+    let totalMarginDiff = 0;
+    rounds.forEach(r=>{
+      const firstMatch = (r.matches||[])[0];
+      if(!firstMatch||!firstMatch.winner||!firstMatch.actualMargin) return;
+      const { pick: marginPick } = getEffectivePick(myTips, firstMatch);
+      const guessedMargin = myMargins[firstMatch.id]
+        ? parseInt(myMargins[firstMatch.id])
+        : 1; // default 1pt margin toward tipped team
+      totalMarginDiff += Math.abs(firstMatch.actualMargin - guessedMargin);
+    });
+    return {uid,name:u.name,nick:u.nick,avatar:u.avatar||'',totalPts,correct,roughieBonus,accuracy,roundPts,tipped,totalMarginDiff};
+  }).filter(Boolean).sort((a,b)=>b.totalPts-a.totalPts||b.correct-a.correct||a.totalMarginDiff-b.totalMarginDiff);
 }
 
 // ─── LEADERBOARD (comp) ──────────────────────────────────────
@@ -384,6 +474,25 @@ function renderLeaderboard() {
   const latestRound = [...rounds].reverse().find(r=>(r.matches||[]).length>0);
   const topRoughie = [...scores].sort((a,b)=>b.roughieBonus-a.roughieBonus)[0];
 
+  // Prize money display
+  const compInfo = allComps[currentCompId]||{};
+  const prizes = compInfo.prizes||{};
+  const isOwner = compInfo.ownerId === currentUser?.uid;
+  if (prizes.first||prizes.second||prizes.third||isOwner) {
+    el('comp-prizes').style.display = 'block';
+    el('prize-first').textContent = prizes.first ? '$'+prizes.first : '—';
+    el('prize-second').textContent = prizes.second ? '$'+prizes.second : '—';
+    el('prize-third').textContent = prizes.third ? '$'+prizes.third : '—';
+    el('prize-edit-section').style.display = isOwner ? 'block' : 'none';
+    if (isOwner) {
+      el('prize-input-first').value = prizes.first||'';
+      el('prize-input-second').value = prizes.second||'';
+      el('prize-input-third').value = prizes.third||'';
+    }
+  } else {
+    el('comp-prizes').style.display = 'none';
+  }
+
   el('comp-stats').innerHTML = `
     <div class="stat-card"><div class="stat-label">Tippers</div><div class="stat-val">${memberIds.length}</div></div>
     <div class="stat-card"><div class="stat-label">Rounds Done</div><div class="stat-val">${completedRounds}/${activeRounds}</div></div>
@@ -398,10 +507,17 @@ function renderLeaderboard() {
     const avatarHtml = s.avatar
       ? `<div style="width:32px;height:32px;border-radius:50%;background-image:url(${s.avatar});background-size:cover;background-position:center;flex-shrink:0;"></div>`
       : `<div style="width:32px;height:32px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--green);flex-shrink:0;">${(s.nick||s.name||'?')[0].toUpperCase()}</div>`;
+    const compData = allComps[currentCompId]||{};
+    const paidUids = compData.paidUids||{};
+    const hasPaid = paidUids[s.uid]===true;
+    const isCompOwner = compData.ownerId === currentUser?.uid;
+    const paidIcon = hasPaid
+      ? `<span title="Paid ✓" style="font-size:16px;cursor:${isCompOwner?'pointer':'default'};" onclick="${isCompOwner?`togglePaid('${s.uid}',true)`:''}">💰</span>`
+      : `<span title="${isCompOwner?'Click to mark as paid':'Not yet paid'}" style="font-size:16px;opacity:0.2;cursor:${isCompOwner?'pointer':'default'};" onclick="${isCompOwner?`togglePaid('${s.uid}',false)`:''}">💰</span>`;
     return `<tr ${me?'style="background:rgba(0,200,83,0.05);"':''}>
       <td><span class="rank-badge ${rc}">${rank}</span></td>
       <td><div style="display:flex;align-items:center;gap:10px;">${avatarHtml}
-        <div><div class="tipper-name">${s.nick?escHtml(s.nick):escHtml(s.name)}${me?' <span style="color:var(--green);font-size:11px;">(you)</span>':''}</div>
+        <div><div class="tipper-name">${s.nick?escHtml(s.nick):escHtml(s.name)}${me?' <span style="color:var(--green);font-size:11px;">(you)</span>':''} ${paidIcon}</div>
         <div style="font-size:12px;color:var(--muted);">${s.nick?escHtml(s.name):''}</div></div>
       </div></td>
       <td><span class="pts-big">${s.totalPts}</span></td>
@@ -409,9 +525,10 @@ function renderLeaderboard() {
       <td><span class="roughie-pts">+${s.roughieBonus} 🔥</span></td>
       <td><span class="accuracy">${s.accuracy}%</span></td>
       <td>${thisRound} pts</td>
+      <td><span style="font-size:13px;color:var(--muted);">${s.totalMarginDiff??'—'}</span></td>
       <td><span class="rank-badge rank-other" style="font-size:11px;">#${globalRank}</span></td>
     </tr>`;
-  }).join('')||`<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:30px;">No tippers in this comp yet</td></tr>`;
+  }).join('')||`<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:30px;">No tippers in this comp yet</td></tr>`;
 
   el('scoring-legend').innerHTML = [
     [1,'$1–$1.99','normal'],[2,'$2–$2.99',''],[3,'$3–$3.99',''],
@@ -475,7 +592,10 @@ function renderTipMatches() {
   const matches = round.matches||[];
   const hasOpen = matches.some(m=>!isLocked(m.date, m.time));
 
-  container.innerHTML = matches.map(m=>{
+  const firstMatch = matches[0];
+  const myMargins = allMargins[currentUser.uid]||{};
+
+  container.innerHTML = matches.map((m, mIdx)=>{
     const locked=isLocked(m.date, m.time), saved=myTips[m.id]||null, pending=pendingTips[m.id]||null;
     // If locked and no tip saved, default to away team
     const isDefaultAway = locked && !saved && !pending;
@@ -514,9 +634,15 @@ function renderTipMatches() {
           <div class="odds-pts">${aPts} pt${aPts>1?'s':''}</div>
           ${m.awayOdds>=2?'<div class="roughie-tag">ROUGHIE</div>':''}
         </div>
-      </div>${earnedDiv}</div>`;
+      </div>${earnedDiv}${marginInput}</div>`;
   }).join('')||'<div class="card" style="text-align:center;color:var(--muted);">No matches in this round.</div>';
   el('save-tips-btn').style.display=hasOpen&&Object.keys(pendingTips).length>0?'inline-flex':'none';
+}
+
+function pickMargin(matchId, val) {
+  if (val) pendingTips['margin_'+matchId] = val;
+  else delete pendingTips['margin_'+matchId];
+  el('save-tips-btn').style.display = 'inline-flex';
 }
 
 function pickTip(matchId,team){
@@ -529,8 +655,20 @@ function pickTip(matchId,team){
 async function saveTips(){
   if(!currentUser||!Object.keys(pendingTips).length) return;
   el('save-tips-btn').textContent='Saving…';
-  const existing=allTips[currentUser.uid]||{};
-  await setDoc(doc(db,'tips',currentUser.uid),{...existing,...pendingTips});
+  // Separate tip picks from margin guesses
+  const tipPicks={}, marginGuesses={};
+  Object.entries(pendingTips).forEach(([k,v])=>{
+    if(k.startsWith('margin_')) marginGuesses[k.replace('margin_','')] = v;
+    else tipPicks[k] = v;
+  });
+  if(Object.keys(tipPicks).length){
+    const existing=allTips[currentUser.uid]||{};
+    await setDoc(doc(db,'tips',currentUser.uid),{...existing,...tipPicks});
+  }
+  if(Object.keys(marginGuesses).length){
+    const existingM=allMargins[currentUser.uid]||{};
+    await setDoc(doc(db,'margins',currentUser.uid),{...existingM,...marginGuesses});
+  }
   pendingTips={};
   el('save-tips-btn').style.display='none';
   el('save-tips-btn').textContent='💾 Save My Tips';
@@ -570,25 +708,24 @@ function showRound(roundId,btn){
           ${clubBadge(m.away,28)} <span style="font-weight:700;">${escHtml(m.away)}</span>
           <span style="color:var(--gold);">$${Number(m.awayOdds).toFixed(2)}</span>
           ${m.awayOdds>=2?'<span class="roughie-tag">R</span>':''}
-          <span style="color:var(--muted);font-size:12px;margin-left:6px;">${m.date||''} ${m.time?'@ '+m.time:''}</span>
+          <span style="color:var(--muted);font-size:12px;margin-left:6px;">${formatMatchDate(m.date)} ${m.time?'@ '+m.time:''} ${m.venue?'· '+escHtml(m.venue):''}</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           ${m.winner?`<span class="result-badge badge-win">✓ ${escHtml(m.winner)}</span><span style="color:var(--gold);font-weight:700;">${winPts}pt${winPts>1?'s':''}</span>`
             :locked?'<span class="result-badge badge-pending">🔒 Locked</span>':'<span class="result-badge badge-pending">Open</span>'}
         </div>
       </div>
-      <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;">
+      ${locked ? `<div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;">
         ${compUserIds.map(uid=>{
           const u=allUsers[uid]; if(!u) return '';
           const savedPick=(allTips[uid]||{})[m.id];
           const isAuto = !savedPick && locked;
           const pick = savedPick || (isAuto ? m.away : null);
-          if(!pick&&!locked) return '';
           if(!pick) return `<span class="pick-chip" style="opacity:0.4;">${escHtml(u.nick||u.name)}: —</span>`;
           const correct=m.winner&&pick===m.winner, wrong=m.winner&&pick!==m.winner;
-          return `<span class="pick-chip ${correct?'chip-correct':wrong?'chip-wrong':''}">${escHtml(u.nick||u.name)}: ${escHtml(pick)}${isAuto?' <span style="color:var(--gold);font-size:10px;">AUTO</span>':''}${correct?` +${pts(winOdds)}`:wrong?' ✗':''}</span>`;
+          return `<span class="pick-chip ${correct?'chip-correct':wrong?'chip-wrong':''}">${escHtml(u.nick||u.name)}: ${escHtml(pick)}${isAuto?' <span style="color:var(--gold);font-size:10px;">AUTO</span>':''}${correct?' +'+pts(winOdds):wrong?' ✗':''}</span>`;
         }).join('')}
-      </div>
+      </div>` : `<div style="margin-top:10px;font-size:12px;color:var(--muted);font-style:italic;">🔒 Tips hidden until kick-off</div>`}
     </div>`;
   }).join('')||'<div class="card" style="text-align:center;color:var(--muted);padding:20px;">No matches yet.</div>';
 }
@@ -691,7 +828,7 @@ async function addMatch(){
   const homeOdds=parseFloat(el('nm-home-odds').value);
   const away=el('nm-away').value.trim()||el('nm-away').innerText.trim();
   const awayOdds=parseFloat(el('nm-away-odds').value);
-  const date=el('nm-date').value, time=el('nm-time').value||'19:30', roundId=el('admin-match-round').value;
+  const date=el('nm-date').value, time=el('nm-time').value||'19:30', venue=el('nm-venue').value.trim(), roundId=el('admin-match-round').value;
   if(!home){toast('Please enter home team name',true);return;}
   if(!homeOdds||isNaN(homeOdds)){toast('Please enter home team odds',true);return;}
   if(!away){toast('Please enter away team name',true);return;}
@@ -699,9 +836,9 @@ async function addMatch(){
   if(!date){toast('Please enter match date',true);return;}
   if(!roundId){toast('Select a round first',true);return;}
   const round=rounds.find(r=>r.id===roundId); if(!round) return;
-  const newMatch={id:'m'+Date.now(),home,homeOdds,away,awayOdds,date,time,winner:null};
+  const newMatch={id:'m'+Date.now(),home,homeOdds,away,awayOdds,date,time,venue,winner:null};
   await updateDoc(doc(db,'rounds',roundId),{matches:[...(round.matches||[]),newMatch]});
-  ['nm-home','nm-home-odds','nm-away','nm-away-odds','nm-date','nm-time'].forEach(i=>el(i).value='');
+  ['nm-home','nm-home-odds','nm-away','nm-away-odds','nm-date','nm-time','nm-venue'].forEach(i=>el(i).value='');
   toast('Match added!');
 }
 function renderAdminMatchesList(){
@@ -714,7 +851,7 @@ function renderAdminMatchesList(){
         ${clubBadge(m.home,22)} <span style="font-weight:600;">${escHtml(m.home)}</span> <span style="color:var(--gold);">$${Number(m.homeOdds).toFixed(2)}</span>
         <span style="color:var(--muted);margin:0 4px;">vs</span>
         ${clubBadge(m.away,22)} <span style="font-weight:600;">${escHtml(m.away)}</span> <span style="color:var(--gold);">$${Number(m.awayOdds).toFixed(2)}</span>
-        <span style="color:var(--muted);font-size:12px;">📅 ${m.date} ${m.time?'@ '+m.time:''}</span>
+        <span style="color:var(--muted);font-size:12px;">📅 ${formatMatchDate(m.date)} ${m.time?'@ '+m.time:''} ${m.venue?'· '+escHtml(m.venue):''}</span>
       </div>
       <button class="btn btn-red" style="font-size:12px;padding:5px 12px;" onclick="removeMatch('${roundId}','${m.id}')">Remove</button>
     </div>`).join('');
@@ -729,25 +866,44 @@ function renderAdminResults(){
   const roundId=el('admin-results-round')?.value, round=rounds.find(r=>r.id===roundId);
   const container=el('admin-results-form'); if(!container) return;
   if(!round||!(round.matches||[]).length){container.innerHTML='<div style="color:var(--muted);padding:10px 0;">No matches in this round.</div>';return;}
-  container.innerHTML=round.matches.map(m=>`
-    <div style="display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;">
-      <div style="flex:1;min-width:180px;">
-        <div style="font-weight:600;display:flex;align-items:center;gap:6px;">${clubBadge(m.home,20)} ${escHtml(m.home)} vs ${clubBadge(m.away,20)} ${escHtml(m.away)}</div>
-        <div style="font-size:12px;color:var(--muted);">📅 ${m.date||'TBC'}</div>
+  container.innerHTML=round.matches.map((m,idx)=>`
+    <div style="padding:14px 0;border-bottom:1px solid var(--border);">
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:180px;">
+          ${idx===0?'<span class="result-badge badge-pending" style="margin-bottom:6px;display:inline-block;">🎯 Margin Game</span><br/>':''}
+          <div style="font-weight:600;display:flex;align-items:center;gap:6px;">${clubBadge(m.home,20)} ${escHtml(m.home)} vs ${clubBadge(m.away,20)} ${escHtml(m.away)}</div>
+          <div style="font-size:12px;color:var(--muted);">📅 ${formatMatchDate(m.date)} ${m.venue?'· '+escHtml(m.venue):''}</div>
+        </div>
+        <select id="result-${m.id}" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;min-width:220px;">
+          <option value="">-- Pick Winner --</option>
+          <option value="${m.home}" ${m.winner===m.home?'selected':''}>${escHtml(m.home)} ($${Number(m.homeOdds).toFixed(2)} → ${pts(m.homeOdds)}pt${pts(m.homeOdds)>1?'s':''})</option>
+          <option value="${m.away}" ${m.winner===m.away?'selected':''}>${escHtml(m.away)} ($${Number(m.awayOdds).toFixed(2)} → ${pts(m.awayOdds)}pt${pts(m.awayOdds)>1?'s':''})</option>
+        </select>
+        ${idx===0?`<div style="display:flex;align-items:center;gap:8px;">
+          <label style="font-size:12px;color:var(--muted);">Winning margin:</label>
+          <input type="number" id="margin-${m.id}" value="${m.actualMargin||''}" min="1" max="200" placeholder="pts"
+            style="width:72px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;"/>
+        </div>`:''}
+        <button class="btn" style="font-size:13px;padding:8px 16px;" onclick="saveResult('${round.id}','${m.id}',${idx===0})">Save</button>
+        ${m.winner?`<span class="result-badge badge-win">✓ ${escHtml(m.winner)} ${m.actualMargin?'by '+m.actualMargin+'pts':''}</span>`:'<span class="result-badge badge-pending">Pending</span>'}
       </div>
-      <select id="result-${m.id}" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;min-width:220px;">
-        <option value="">-- Pick Winner --</option>
-        <option value="${m.home}" ${m.winner===m.home?'selected':''}>${escHtml(m.home)} ($${Number(m.homeOdds).toFixed(2)} → ${pts(m.homeOdds)}pt${pts(m.homeOdds)>1?'s':''})</option>
-        <option value="${m.away}" ${m.winner===m.away?'selected':''}>${escHtml(m.away)} ($${Number(m.awayOdds).toFixed(2)} → ${pts(m.awayOdds)}pt${pts(m.awayOdds)>1?'s':''})</option>
-      </select>
-      <button class="btn" style="font-size:13px;padding:8px 16px;" onclick="saveResult('${round.id}','${m.id}')">Save</button>
-      ${m.winner?`<span class="result-badge badge-win">✓ ${escHtml(m.winner)}</span>`:'<span class="result-badge badge-pending">Pending</span>'}
     </div>`).join('');
 }
-async function saveResult(roundId,matchId){
+async function saveResult(roundId,matchId,isMarginGame=false){
   const winner=el('result-'+matchId)?.value||null;
   const round=rounds.find(r=>r.id===roundId); if(!round) return;
-  await updateDoc(doc(db,'rounds',roundId),{matches:(round.matches||[]).map(m=>m.id===matchId?{...m,winner}:m)});
+  let updatedMatch = null;
+  const matches = (round.matches||[]).map(m=>{
+    if(m.id!==matchId) return m;
+    const updated = {...m,winner};
+    if(isMarginGame){
+      const marginVal = parseInt(el('margin-'+matchId)?.value||'0');
+      updated.actualMargin = marginVal||null;
+    }
+    updatedMatch = updated;
+    return updated;
+  });
+  await updateDoc(doc(db,'rounds',roundId),{matches});
   toast(winner?`Result saved: ${winner} wins! 🎉`:'Result cleared');
 }
 async function removeRound(roundId){
@@ -842,6 +998,30 @@ async function sendChat(){
     uid:currentUser.uid, displayName:userProfile?.nick||userProfile?.name||'', text, ts:serverTimestamp()
   });
 }
+async function savePrizes() {
+  if (!currentCompId) return;
+  const compData = allComps[currentCompId]||{};
+  if (compData.ownerId !== currentUser?.uid) return;
+  const prizes = {
+    first: el('prize-input-first').value.trim(),
+    second: el('prize-input-second').value.trim(),
+    third: el('prize-input-third').value.trim(),
+  };
+  await updateDoc(doc(db,'comps',currentCompId),{prizes});
+  toast('Prize money updated! 🏆');
+}
+
+async function togglePaid(uid, currentlyPaid) {
+  if (!currentCompId) return;
+  const compData = allComps[currentCompId]||{};
+  if (compData.ownerId !== currentUser?.uid) return;
+  const paidUids = {...(compData.paidUids||{})};
+  if (currentlyPaid) delete paidUids[uid];
+  else paidUids[uid] = true;
+  await updateDoc(doc(db,'comps',currentCompId),{paidUids});
+  toast(currentlyPaid ? 'Marked as unpaid' : 'Marked as paid 💰');
+}
+
 async function deleteMessage(msgId){
   if(!userProfile?.isAdmin) return;
   if(!confirm('Delete this message?')) return;
@@ -857,7 +1037,8 @@ Object.assign(window,{
   saveResult,removeRound,renderAdminMatchesList,renderAdminResults,
   saveJoinCode,sendChat,chatKeydown,insertEmoji,deleteMessage,
   toggleAdmin,saveProfile,previewAvatar,
-  joinComp,createComp,switchComp,deleteComp,renderAdminComps
+  joinComp,createComp,switchComp,deleteComp,renderAdminComps,
+  togglePaid,savePrizes,pickMargin
 });
 </script>
 
@@ -1070,6 +1251,25 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
     <div class="page" id="page-leaderboard">
       <div class="section-title">COMP <span>LADDER</span></div>
       <div class="section-sub">Live standings for your current competition · Global rank shown on right</div>
+      <!-- PRIZE MONEY -->
+      <div id="comp-prizes" style="display:none;background:var(--card);border:1px solid rgba(255,214,0,0.3);border-radius:14px;padding:18px 24px;margin-bottom:20px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gold);letter-spacing:1px;margin-bottom:14px;">🏆 PRIZE POOL</div>
+        <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:14px;">
+          <div style="text-align:center;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">🥇 First</div><div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--gold);" id="prize-first">—</div></div>
+          <div style="text-align:center;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">🥈 Second</div><div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#b0b8c8;" id="prize-second">—</div></div>
+          <div style="text-align:center;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">🥉 Third</div><div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#cd7f32;" id="prize-third">—</div></div>
+        </div>
+        <div id="prize-edit-section" style="display:none;border-top:1px solid var(--border);padding-top:12px;">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Edit prize amounts (you only — as comp admin)</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <div><label style="font-size:11px;color:var(--muted);">1st $</label><input type="number" id="prize-input-first" placeholder="0" style="width:80px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;margin-left:4px;"/></div>
+            <div><label style="font-size:11px;color:var(--muted);">2nd $</label><input type="number" id="prize-input-second" placeholder="0" style="width:80px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;margin-left:4px;"/></div>
+            <div><label style="font-size:11px;color:var(--muted);">3rd $</label><input type="number" id="prize-input-third" placeholder="0" style="width:80px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;margin-left:4px;"/></div>
+            <button class="btn" style="font-size:13px;padding:8px 16px;" onclick="savePrizes()">Save Prizes</button>
+          </div>
+        </div>
+      </div>
+
       <div class="stats-row" id="comp-stats"></div>
       <div class="card">
         <div style="font-weight:600;margin-bottom:16px;">Full Standings</div>
@@ -1230,7 +1430,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
               <button class="btn btn-outline" onclick="addRound()" style="font-size:13px;padding:7px 14px;">+ New Round</button>
             </div>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 90px 1fr 90px 120px 100px auto;gap:10px;align-items:center;margin-bottom:8px;">
+          <div style="display:grid;grid-template-columns:1fr 90px 1fr 90px 120px 100px 1fr auto;gap:10px;align-items:center;margin-bottom:8px;">
             <div style="font-size:12px;color:var(--muted);">Home Team</div><div style="font-size:12px;color:var(--muted);">Odds</div>
             <div style="font-size:12px;color:var(--muted);">Away Team</div><div style="font-size:12px;color:var(--muted);">Odds</div>
             <div style="font-size:12px;color:var(--muted);">Date</div><div style="font-size:12px;color:var(--muted);">Kick-off</div><div></div>
@@ -1242,6 +1442,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
             <input type="number" id="nm-away-odds" placeholder="2.40" step="0.01" min="1" oninput="this.value=this.value" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
             <input type="date" id="nm-date" oninput="this.value=this.value" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
             <input type="time" id="nm-time" oninput="this.value=this.value" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
+            <input type="text" id="nm-venue" placeholder="e.g. MCG" oninput="this.value=this.value" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
             <button class="btn" onclick="addMatch()">+ Add</button>
           </div>
         </div>
