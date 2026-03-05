@@ -240,11 +240,7 @@ function subscribeGlobal() {
   });
   unsubFns.push(u4);
 
-  const chatQ = query(collection(db,'chat'),orderBy('ts','asc'),limit(100));
-  const u5 = onSnapshot(chatQ, snap=>{
-    renderChat(snap.docs.map(d=>({id:d.id,...d.data()})));
-  });
-  unsubFns.push(u5);
+  subscribeChat();
 }
 
 // ─── COMP MANAGEMENT ─────────────────────────────────────────
@@ -257,6 +253,7 @@ async function loadComp(compId) {
   el('comp-name-display').textContent = currentComp.name;
   await updateDoc(doc(db,'users',currentUser.uid),{lastCompId:compId});
   userProfile.lastCompId = compId;
+  subscribeChat();
   showPage('leaderboard');
 }
 
@@ -792,6 +789,19 @@ async function deleteComp(compId){
 }
 
 // ─── CHAT ────────────────────────────────────────────────────
+let unsubChat = null;
+function subscribeChat() {
+  if (unsubChat) { unsubChat(); unsubChat = null; }
+  if (!currentCompId) return;
+  const chatQ = query(
+    collection(db, 'chats', currentCompId, 'messages'),
+    orderBy('ts','asc'), limit(100)
+  );
+  unsubChat = onSnapshot(chatQ, snap=>{
+    renderChat(snap.docs.map(d=>({id:d.id,...d.data()})));
+  });
+}
+
 function renderChat(messages){
   const feed=el('chat-feed'); if(!feed) return;
   const wasAtBottom=feed.scrollHeight-feed.scrollTop-feed.clientHeight<60;
@@ -827,14 +837,16 @@ async function sendChat(){
   if(!text||!currentUser) return;
   if(text.length>280){toast('Max 280 characters',true);return;}
   input.value=''; input.style.height='auto';
-  await addDoc(collection(db,'chat'),{
+  const chatCol = currentCompId ? 'chats/'+currentCompId+'/messages' : 'chat';
+  await addDoc(collection(db, ...chatCol.split('/')),{
     uid:currentUser.uid, displayName:userProfile?.nick||userProfile?.name||'', text, ts:serverTimestamp()
   });
 }
 async function deleteMessage(msgId){
   if(!userProfile?.isAdmin) return;
   if(!confirm('Delete this message?')) return;
-  await deleteDoc(doc(db,'chat',msgId));
+  if(currentCompId) await deleteDoc(doc(db,'chats',currentCompId,'messages',msgId));
+  else await deleteDoc(doc(db,'chat',msgId));
 }
 function chatKeydown(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat();}}
 function insertEmoji(emoji){const i=el('chat-input');i.value+=emoji;i.focus();}
