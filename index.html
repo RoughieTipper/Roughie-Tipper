@@ -226,6 +226,8 @@ onAuthStateChanged(auth, async user => {
   } else {
     currentUser = null; userProfile = null; currentCompId = null; currentComp = null;
     unsubFns.forEach(fn=>fn()); unsubFns = [];
+    if(unsubChat){unsubChat();unsubChat=null;}
+    if(unsubSideBets){unsubSideBets();unsubSideBets=null;}
     el('auth-screen').style.display = 'flex';
     el('app-shell').style.display = 'none';
     el('comp-banner').style.display = 'none';
@@ -270,6 +272,8 @@ async function doRegister() {
 
 async function doLogout() {
   unsubFns.forEach(fn=>fn()); unsubFns=[];
+  if(unsubChat){unsubChat();unsubChat=null;}
+  if(unsubSideBets){unsubSideBets();unsubSideBets=null;}
   await signOut(auth);
 }
 
@@ -1114,7 +1118,7 @@ function populateBetTargets() {
   const memberIds = Object.entries(allUsers)
     .filter(([uid,u])=>(u.compIds||[]).includes(currentCompId) && uid !== currentUser.uid)
     .map(([uid,u])=>({uid,name:u.nick||u.name}));
-  sel.innerHTML = '<option value="">Select who you're challenging…</option>'
+  sel.innerHTML = '<option value="">Select who you are challenging...</option>'
     + memberIds.map(m=>`<option value="${m.uid}">${escHtml(m.name)}</option>`).join('');
 }
 
@@ -1122,7 +1126,7 @@ async function proposeBet() {
   const targetUid = el('bet-target').value;
   const text = el('bet-text').value.trim();
   const stake = el('bet-stake').value.trim();
-  if(!targetUid){toast('Select who you're challenging',true);return;}
+  if(!targetUid){toast('Select who you are challenging',true);return;}
   if(!text){toast('Enter your bet details',true);return;}
   if(!stake){toast('Enter the stake',true);return;}
   const targetUser = allUsers[targetUid];
@@ -1153,9 +1157,11 @@ let unsubSideBets = null;
 function subscribeSideBets() {
   if(unsubSideBets){unsubSideBets();unsubSideBets=null;}
   if(!currentCompId) return;
-  const q = query(collection(db,'comps',currentCompId,'sidebets'),orderBy('createdAt','desc'),limit(50));
+  const q = collection(db,'comps',currentCompId,'sidebets');
   unsubSideBets = onSnapshot(q, snap=>{
-    renderSideBets(snap.docs.map(d=>({id:d.id,...d.data()})));
+    const bets = snap.docs.map(d=>({id:d.id,...d.data()}))
+      .sort((a,b)=>((b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)));
+    renderSideBets(bets);
   });
 }
 
