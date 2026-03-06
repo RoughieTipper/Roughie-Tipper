@@ -332,6 +332,7 @@ async function loadComp(compId) {
   await updateDoc(doc(db,'users',currentUser.uid),{lastCompId:compId});
   userProfile.lastCompId = compId;
   subscribeChat();
+  subscribeSideBets();
   showPage('leaderboard');
 }
 
@@ -1107,6 +1108,97 @@ async function togglePaid(uid, currentlyPaid) {
   toast(currentlyPaid ? 'Marked as unpaid' : 'Marked as paid 💰');
 }
 
+// ─── SIDE BETS ───────────────────────────────────────────────
+function populateBetTargets() {
+  const sel = el('bet-target'); if(!sel||!currentCompId) return;
+  const memberIds = Object.entries(allUsers)
+    .filter(([uid,u])=>(u.compIds||[]).includes(currentCompId) && uid !== currentUser.uid)
+    .map(([uid,u])=>({uid,name:u.nick||u.name}));
+  sel.innerHTML = '<option value="">Select who you're challenging…</option>'
+    + memberIds.map(m=>`<option value="${m.uid}">${escHtml(m.name)}</option>`).join('');
+}
+
+async function proposeBet() {
+  const targetUid = el('bet-target').value;
+  const text = el('bet-text').value.trim();
+  const stake = el('bet-stake').value.trim();
+  if(!targetUid){toast('Select who you're challenging',true);return;}
+  if(!text){toast('Enter your bet details',true);return;}
+  if(!stake){toast('Enter the stake',true);return;}
+  const targetUser = allUsers[targetUid];
+  await addDoc(collection(db,'comps',currentCompId,'sidebets'),{
+    fromUid: currentUser.uid,
+    fromName: userProfile.nick||userProfile.name,
+    toUid: targetUid,
+    toName: targetUser.nick||targetUser.name,
+    text, stake,
+    status: 'open',
+    createdAt: serverTimestamp()
+  });
+  el('bet-text').value=''; el('bet-stake').value=''; el('bet-target').value='';
+  toast('Challenge sent! 🤑');
+}
+
+async function acceptBet(betId) {
+  await updateDoc(doc(db,'comps',currentCompId,'sidebets',betId),{status:'accepted'});
+  toast('Bet accepted! Honour system from here 🤝');
+}
+
+async function deleteBet(betId) {
+  if(!confirm('Remove this bet?')) return;
+  await deleteDoc(doc(db,'comps',currentCompId,'sidebets',betId));
+}
+
+let unsubSideBets = null;
+function subscribeSideBets() {
+  if(unsubSideBets){unsubSideBets();unsubSideBets=null;}
+  if(!currentCompId) return;
+  const q = query(collection(db,'comps',currentCompId,'sidebets'),orderBy('createdAt','desc'),limit(50));
+  unsubSideBets = onSnapshot(q, snap=>{
+    renderSideBets(snap.docs.map(d=>({id:d.id,...d.data()})));
+  });
+}
+
+function renderSideBets(bets) {
+  populateBetTargets();
+  const container = el('sidebets-list'); if(!container) return;
+  if(!bets.length){
+    container.innerHTML='<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px;">No side bets yet — someone start one! 👀</div>';
+    return;
+  }
+  container.innerHTML = bets.map(b=>{
+    const isFrom = b.fromUid === currentUser.uid;
+    const isTo = b.toUid === currentUser.uid;
+    const isAdmin = allComps[currentCompId]?.ownerId === currentUser.uid;
+    const statusBadge = b.status==='accepted'
+      ? `<span class="result-badge badge-win">🤝 Accepted</span>`
+      : `<span class="result-badge badge-pending">⏳ Awaiting Response</span>`;
+    const acceptBtn = b.status==='open' && isTo
+      ? `<button class="btn" style="font-size:12px;padding:6px 14px;" onclick="acceptBet('${b.id}')">🤝 Accept</button>`
+      : '';
+    const deleteBtn = (isFrom || isAdmin)
+      ? `<button class="btn btn-red" style="font-size:12px;padding:6px 10px;" onclick="deleteBet('${b.id}')">✕</button>`
+      : '';
+    return `<div style="padding:14px;margin-bottom:10px;background:var(--card2);border-radius:12px;border-left:3px solid ${b.status==='accepted'?'var(--green)':'var(--gold)'};">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">
+        <div style="flex:1;">
+          <div style="font-size:13px;margin-bottom:6px;">
+            <strong style="color:var(--green);">${escHtml(b.fromName)}</strong>
+            <span style="color:var(--muted);"> challenges </span>
+            <strong style="color:var(--gold);">${escHtml(b.toName)}</strong>
+          </div>
+          <div style="font-size:14px;margin-bottom:6px;">${escHtml(b.text)}</div>
+          <div style="font-size:12px;color:var(--gold);font-weight:600;">💰 Stake: ${escHtml(b.stake)}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+          ${statusBadge}
+          <div style="display:flex;gap:6px;">${acceptBtn}${deleteBtn}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 async function deleteMessage(msgId){
   if(!userProfile?.isAdmin) return;
   if(!confirm('Delete this message?')) return;
@@ -1123,7 +1215,8 @@ Object.assign(window,{
   saveJoinCode,sendChat,chatKeydown,insertEmoji,deleteMessage,
   toggleAdmin,saveProfile,previewAvatar,
   joinComp,createComp,switchComp,deleteComp,renderAdminComps,
-  togglePaid,savePrizes,pickMargin,toggleEditMatch,saveMatchEdit
+  togglePaid,savePrizes,pickMargin,toggleEditMatch,saveMatchEdit,
+  proposeBet,acceptBet,deleteBet
 });
 </script>
 
@@ -1369,6 +1462,34 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
         <div style="font-weight:600;margin-bottom:12px;">📊 Scoring System</div>
         <div class="legend-grid" id="scoring-legend"></div>
       </div>
+      <!-- SIDE BETS -->
+      <div class="chat-wrap" id="sidebets-wrap" style="margin-bottom:0;">
+        <div class="chat-header">
+          <div class="chat-header-title">🤑 Side Bets</div>
+          <span style="font-size:12px;color:var(--muted);">Honour system — keep it fun</span>
+        </div>
+        <div style="padding:16px;">
+          <!-- New bet form -->
+          <div style="margin-bottom:16px;padding:14px;background:var(--card2);border-radius:12px;">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600;">CALL OUT A TIPPER</div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <select id="bet-target" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;">
+                <option value="">Select who you're challenging…</option>
+              </select>
+              <textarea id="bet-text" rows="2" maxlength="200" placeholder="e.g. I bet you a slab of beers Carlton finish higher than Collingwood…"
+                style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;resize:none;"></textarea>
+              <input type="text" id="bet-stake" maxlength="60" placeholder="Stake e.g. A slab of beers, $20, Bragging rights…"
+                style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
+              <button class="btn" style="align-self:flex-start;font-size:13px;padding:9px 20px;" onclick="proposeBet()">🤑 Send Challenge</button>
+            </div>
+          </div>
+          <!-- Bets ledger -->
+          <div id="sidebets-list">
+            <div style="text-align:center;color:var(--muted);padding:20px;font-size:13px;">No side bets yet — someone start one! 👀</div>
+          </div>
+        </div>
+      </div>
+
       <div class="chat-wrap">
         <div class="chat-header">
           <div class="chat-header-title"><span class="chat-live-dot"></span>💬 Comp Chat</div>
