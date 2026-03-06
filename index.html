@@ -494,6 +494,8 @@ function renderLeaderboard() {
   const prizes = compInfo.prizes||{};
   // Any comp creator sees the prize panel for their own comp
   const isOwner = currentUser && compInfo.ownerId === currentUser.uid;
+  // Debug — remove after testing
+  console.log('Prize check — compId:', currentCompId, 'ownerId:', compInfo.ownerId, 'myUid:', currentUser?.uid, 'isOwner:', isOwner, 'prizes:', prizes);
   if (prizes.first||prizes.second||prizes.third||isOwner) {
     el('comp-prizes').style.display = 'block';
     el('prize-first').textContent = prizes.first ? '$'+prizes.first : '—';
