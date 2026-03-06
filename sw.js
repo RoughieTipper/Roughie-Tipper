@@ -1,5 +1,5 @@
 const CACHE = 'roughie-v1';
-const ASSETS = ['./'];
+const ASSETS = ['/Roughie-Tipper/'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -16,7 +16,6 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Network first for Firebase, cache fallback for app shell
   if (e.request.url.includes('firebasejs') || e.request.url.includes('googleapis') || e.request.url.includes('firebaseio')) {
     e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
     return;
