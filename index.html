@@ -327,6 +327,8 @@ function subscribeGlobal() {
     allComps={};
     snap.docs.forEach(d=>{allComps[d.id]=d.data();});
     if(el('page-mycomps')?.classList.contains('active')) renderMyComps();
+    if(el('page-leaderboard')?.classList.contains('active')) renderLeaderboard();
+    if(el('page-global')?.classList.contains('active')) renderGlobalLeaderboard();
   });
   unsubFns.push(u4);
 
@@ -490,7 +492,8 @@ function renderLeaderboard() {
   // Prize money display
   const compInfo = allComps[currentCompId]||{};
   const prizes = compInfo.prizes||{};
-  const isOwner = compInfo.ownerId === currentUser?.uid;
+  // Any comp creator sees the prize panel for their own comp
+  const isOwner = currentUser && compInfo.ownerId === currentUser.uid;
   if (prizes.first||prizes.second||prizes.third||isOwner) {
     el('comp-prizes').style.display = 'block';
     el('prize-first').textContent = prizes.first ? '$'+prizes.first : '—';
@@ -523,7 +526,8 @@ function renderLeaderboard() {
     const compData = allComps[currentCompId]||{};
     const paidUids = compData.paidUids||{};
     const hasPaid = paidUids[s.uid]===true;
-    const isCompOwner = compData.ownerId === currentUser?.uid;
+    // Any comp's creator can mark paid — not just site admin
+    const isCompOwner = currentUser && compData.ownerId === currentUser.uid;
     const paidIcon = hasPaid
       ? `<span title="Paid ✓" style="font-size:16px;cursor:${isCompOwner?'pointer':'default'};" onclick="${isCompOwner?`togglePaid('${s.uid}',true)`:''}">💰</span>`
       : `<span title="${isCompOwner?'Click to mark as paid':'Not yet paid'}" style="font-size:16px;opacity:0.2;cursor:${isCompOwner?'pointer':'default'};" onclick="${isCompOwner?`togglePaid('${s.uid}',false)`:''}">💰</span>`;
@@ -1099,7 +1103,7 @@ async function sendChat(){
 async function savePrizes() {
   if (!currentCompId) return;
   const compData = allComps[currentCompId]||{};
-  if (compData.ownerId !== currentUser?.uid) return;
+  if (!currentUser || compData.ownerId !== currentUser.uid) return;
   const prizes = {
     first: el('prize-input-first').value.trim(),
     second: el('prize-input-second').value.trim(),
@@ -1112,7 +1116,7 @@ async function savePrizes() {
 async function togglePaid(uid, currentlyPaid) {
   if (!currentCompId) return;
   const compData = allComps[currentCompId]||{};
-  if (compData.ownerId !== currentUser?.uid) return;
+  if (!currentUser || compData.ownerId !== currentUser.uid) return;
   const paidUids = {...(compData.paidUids||{})};
   if (currentlyPaid) delete paidUids[uid];
   else paidUids[uid] = true;
