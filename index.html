@@ -491,12 +491,9 @@ function renderLeaderboard() {
   const latestRound = [...rounds].reverse().find(r=>(r.matches||[]).length>0);
   const topRoughie = [...scores].sort((a,b)=>b.roughieBonus-a.roughieBonus)[0];
 
-  // Prize money display
-  // Use currentComp as fallback since it's always fresh from loadComp
-  const compInfo = allComps[currentCompId]||currentComp||{};
-  const prizes = compInfo.prizes||{};
-  // Any comp creator sees the prize panel for their own comp
-  const isOwner = currentUser && compInfo.ownerId === currentUser.uid;
+  // Prize money display — always use currentComp (freshest data from loadComp)
+  const prizes = currentComp?.prizes||{};
+  const isOwner = currentUser && currentComp?.ownerId === currentUser.uid;
   if (prizes.first||prizes.second||prizes.third||isOwner) {
     el('comp-prizes').style.display = 'block';
     el('prize-first').textContent = prizes.first ? '$'+prizes.first : '—';
@@ -526,11 +523,9 @@ function renderLeaderboard() {
     const avatarHtml = s.avatar
       ? `<div style="width:32px;height:32px;border-radius:50%;background-image:url(${s.avatar});background-size:cover;background-position:center;flex-shrink:0;"></div>`
       : `<div style="width:32px;height:32px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--green);flex-shrink:0;">${(s.nick||s.name||'?')[0].toUpperCase()}</div>`;
-    const compData = allComps[currentCompId]||currentComp||{};
-    const paidUids = compData.paidUids||{};
+    const paidUids = currentComp?.paidUids||{};
     const hasPaid = paidUids[s.uid]===true;
-    // Any comp's creator can mark paid — not just site admin
-    const isCompOwner = currentUser && compData.ownerId === currentUser.uid;
+    const isCompOwner = currentUser && currentComp?.ownerId === currentUser.uid;
     const paidIcon = hasPaid
       ? `<span title="Paid ✓" style="font-size:16px;cursor:${isCompOwner?'pointer':'default'};" onclick="${isCompOwner?`togglePaid('${s.uid}',true)`:''}">💰</span>`
       : `<span title="${isCompOwner?'Click to mark as paid':'Not yet paid'}" style="font-size:16px;opacity:0.2;cursor:${isCompOwner?'pointer':'default'};" onclick="${isCompOwner?`togglePaid('${s.uid}',false)`:''}">💰</span>`;
@@ -1104,26 +1099,28 @@ async function sendChat(){
   });
 }
 async function savePrizes() {
-  if (!currentCompId) return;
-  const compData = allComps[currentCompId]||{};
-  if (!currentUser || compData.ownerId !== currentUser.uid) return;
+  if (!currentCompId||!currentComp) return;
+  if (!currentUser || currentComp.ownerId !== currentUser.uid) return;
   const prizes = {
     first: el('prize-input-first').value.trim(),
     second: el('prize-input-second').value.trim(),
     third: el('prize-input-third').value.trim(),
   };
   await updateDoc(doc(db,'comps',currentCompId),{prizes});
+  currentComp.prizes = prizes;
+  renderLeaderboard();
   toast('Prize money updated! 🏆');
 }
 
 async function togglePaid(uid, currentlyPaid) {
-  if (!currentCompId) return;
-  const compData = allComps[currentCompId]||{};
-  if (!currentUser || compData.ownerId !== currentUser.uid) return;
-  const paidUids = {...(compData.paidUids||{})};
+  if (!currentCompId||!currentComp) return;
+  if (!currentUser || currentComp.ownerId !== currentUser.uid) return;
+  const paidUids = {...(currentComp.paidUids||{})};
   if (currentlyPaid) delete paidUids[uid];
   else paidUids[uid] = true;
   await updateDoc(doc(db,'comps',currentCompId),{paidUids});
+  currentComp.paidUids = paidUids;
+  renderLeaderboard();
   toast(currentlyPaid ? 'Marked as unpaid' : 'Marked as paid 💰');
 }
 
