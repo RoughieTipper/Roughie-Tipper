@@ -613,8 +613,32 @@ function renderTipMatches() {
         ?`<div style="text-align:center;margin-top:10px;"><span class="result-badge badge-win">✓ +${pts(winOdds)} pts earned</span></div>`
         :`<div style="text-align:center;margin-top:10px;"><span class="result-badge badge-loss">✗ Incorrect</span></div>`;
     }
+    // Margin input: only for first match, only before lock
+    const isFirstMatch = mIdx === 0;
+    const savedMargin = myMargins[m.id]||'';
+    const pendingMargin = pendingTips['margin_'+m.id]||'';
+    const marginVal = pendingMargin||savedMargin;
+    let marginInput = '';
+    if (isFirstMatch && !locked && !finished) {
+      marginInput = `<div style="margin-top:12px;padding:12px;background:rgba(255,214,0,0.06);border:1px solid rgba(255,214,0,0.2);border-radius:10px;">
+        <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:6px;">&#x1F3AF; MARGIN GUESS &mdash; First game of round</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">How many points will your tipped team win by? Closest guess breaks ties on the leaderboard.</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <input type="number" min="1" max="200" value="${marginVal}" placeholder="e.g. 24"
+            oninput="pickMargin('${m.id}',this.value)"
+            style="width:90px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;"/>
+          <span style="color:var(--muted);font-size:13px;">points</span>
+          ${savedMargin?`<span class="result-badge badge-win">&#x2713; Saved: ${savedMargin}pts</span>`:''}
+        </div>
+      </div>`;
+    } else if (isFirstMatch && locked && savedMargin) {
+      const diff = m.actualMargin ? Math.abs(m.actualMargin - parseInt(savedMargin)) : null;
+      marginInput = `<div style="margin-top:10px;font-size:12px;color:var(--muted);">&#x1F3AF; Your margin guess: <strong style="color:var(--gold);">${savedMargin} pts</strong>${m.actualMargin?' &middot; Actual: <strong>'+m.actualMargin+'</strong> &middot; Diff: <strong>'+diff+'</strong>':''}</div>`;
+    } else if (isFirstMatch && locked && !savedMargin) {
+      marginInput = `<div style="margin-top:10px;font-size:12px;color:var(--muted);">&#x1F3AF; No margin entered &mdash; auto: 1pt</div>`;
+    }
     return `<div class="match-card ${sel?'tipped':''}">
-      <div class="match-meta">📅 ${m.date||'TBC'} &nbsp;·&nbsp; ${round.name}
+      <div class="match-meta">📅 ${formatMatchDate(m.date)} ${m.time?'@ '+m.time:''} ${m.venue?'· 📍'+escHtml(m.venue):''} &nbsp;·&nbsp; ${round.name}
         ${locked&&!finished?'<span class="result-badge badge-pending" style="margin-left:6px;">🔒 Tips Locked</span>':''}
         ${isDefaultAway&&!finished?'<span class="result-badge badge-loss" style="margin-left:6px;">⚠️ Auto: Away</span>':''}
         ${finished?'<span class="result-badge badge-win" style="margin-left:6px;">✓ Result In</span>':''}
@@ -813,9 +837,13 @@ async function removeUser(uid){
   toast('User removed');
 }
 async function addRound(){
-  const num=rounds.length+1, id='round_'+Date.now();
-  await setDoc(doc(db,'rounds',id),{name:`Round ${num}`,order:num,matches:[]});
-  toast(`Round ${num} added!`);
+  const nameInput = el('new-round-name');
+  const name = nameInput ? nameInput.value.trim() : '';
+  if(!name){toast('Enter a round name first',true);return;}
+  const id='round_'+Date.now(), num=rounds.length+1;
+  await setDoc(doc(db,'rounds',id),{name,order:num,matches:[]});
+  if(nameInput) nameInput.value='';
+  toast(`${name} added!`);
 }
 function populateAdminRoundSelects(){
   ['admin-match-round','admin-view-round','admin-results-round'].forEach(id=>{
@@ -846,15 +874,72 @@ function renderAdminMatchesList(){
   const container=el('admin-matches-list'); if(!container) return;
   if(!round||!(round.matches||[]).length){container.innerHTML='<div style="color:var(--muted);padding:10px 0;">No matches yet.</div>';return;}
   container.innerHTML=round.matches.map(m=>`
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);gap:12px;flex-wrap:wrap;">
-      <div style="display:flex;align-items:center;gap:8px;">
-        ${clubBadge(m.home,22)} <span style="font-weight:600;">${escHtml(m.home)}</span> <span style="color:var(--gold);">$${Number(m.homeOdds).toFixed(2)}</span>
-        <span style="color:var(--muted);margin:0 4px;">vs</span>
-        ${clubBadge(m.away,22)} <span style="font-weight:600;">${escHtml(m.away)}</span> <span style="color:var(--gold);">$${Number(m.awayOdds).toFixed(2)}</span>
-        <span style="color:var(--muted);font-size:12px;">📅 ${formatMatchDate(m.date)} ${m.time?'@ '+m.time:''} ${m.venue?'· '+escHtml(m.venue):''}</span>
+    <div style="border-bottom:1px solid var(--border);padding:12px 0;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          ${clubBadge(m.home,22)} <span style="font-weight:600;">${escHtml(m.home)}</span> <span style="color:var(--gold);">$${Number(m.homeOdds).toFixed(2)}</span>
+          <span style="color:var(--muted);margin:0 4px;">vs</span>
+          ${clubBadge(m.away,22)} <span style="font-weight:600;">${escHtml(m.away)}</span> <span style="color:var(--gold);">$${Number(m.awayOdds).toFixed(2)}</span>
+          <span style="color:var(--muted);font-size:12px;">📅 ${formatMatchDate(m.date)} ${m.time?'@ '+m.time:''} ${m.venue?'· '+escHtml(m.venue):''}</span>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-outline" style="font-size:12px;padding:5px 12px;" onclick="toggleEditMatch('${roundId}','${m.id}')">✏️ Edit</button>
+          <button class="btn btn-red" style="font-size:12px;padding:5px 12px;" onclick="removeMatch('${roundId}','${m.id}')">Remove</button>
+        </div>
       </div>
-      <button class="btn btn-red" style="font-size:12px;padding:5px 12px;" onclick="removeMatch('${roundId}','${m.id}')">Remove</button>
+      <!-- Inline edit form (hidden by default) -->
+      <div id="edit-form-${m.id}" style="display:none;margin-top:12px;padding:14px;background:var(--card2);border-radius:10px;">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-weight:600;">EDIT MATCH DETAILS</div>
+        <div style="display:grid;grid-template-columns:90px 90px 90px 120px 100px;gap:10px;align-items:center;flex-wrap:wrap;">
+          <div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Home Odds</div>
+            <input type="number" id="edit-homeodds-${m.id}" value="${m.homeOdds}" step="0.05" min="1"
+              style="width:100%;background:var(--card);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Away Odds</div>
+            <input type="number" id="edit-awayodds-${m.id}" value="${m.awayOdds}" step="0.05" min="1"
+              style="width:100%;background:var(--card);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Date</div>
+            <input type="date" id="edit-date-${m.id}" value="${m.date||''}"
+              style="width:100%;background:var(--card);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Kick-off</div>
+            <input type="time" id="edit-time-${m.id}" value="${m.time||'19:30'}"
+              style="width:100%;background:var(--card);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Venue</div>
+            <input type="text" id="edit-venue-${m.id}" value="${escHtml(m.venue||'')}" placeholder="e.g. MCG"
+              style="width:100%;background:var(--card);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button class="btn" style="font-size:13px;padding:8px 18px;" onclick="saveMatchEdit('${roundId}','${m.id}')">💾 Save Changes</button>
+          <button class="btn btn-outline" style="font-size:13px;padding:8px 14px;" onclick="toggleEditMatch('${roundId}','${m.id}')">Cancel</button>
+        </div>
+      </div>
     </div>`).join('');
+}
+function toggleEditMatch(roundId, matchId) {
+  const form = el('edit-form-'+matchId);
+  if (!form) return;
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+async function saveMatchEdit(roundId, matchId) {
+  const round = rounds.find(r=>r.id===roundId); if(!round) return;
+  const homeOdds = parseFloat(el('edit-homeodds-'+matchId)?.value);
+  const awayOdds = parseFloat(el('edit-awayodds-'+matchId)?.value);
+  const date = el('edit-date-'+matchId)?.value;
+  const time = el('edit-time-'+matchId)?.value||'19:30';
+  const venue = el('edit-venue-'+matchId)?.value.trim()||'';
+  if(isNaN(homeOdds)||isNaN(awayOdds)){toast('Please enter valid odds',true);return;}
+  const matches = round.matches.map(m=>m.id===matchId?{...m,homeOdds,awayOdds,date,time,venue}:m);
+  await updateDoc(doc(db,'rounds',roundId),{matches});
+  toast('Match updated! ✓');
 }
 async function removeMatch(roundId,matchId){
   if(!confirm('Remove this match?')) return;
@@ -1038,7 +1123,7 @@ Object.assign(window,{
   saveJoinCode,sendChat,chatKeydown,insertEmoji,deleteMessage,
   toggleAdmin,saveProfile,previewAvatar,
   joinComp,createComp,switchComp,deleteComp,renderAdminComps,
-  togglePaid,savePrizes,pickMargin
+  togglePaid,savePrizes,pickMargin,toggleEditMatch,saveMatchEdit
 });
 </script>
 
@@ -1427,7 +1512,11 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
               <label style="color:var(--muted);font-size:13px;">Round:</label>
               <select id="admin-match-round" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;"></select>
-              <button class="btn btn-outline" onclick="addRound()" style="font-size:13px;padding:7px 14px;">+ New Round</button>
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                <input type="text" id="new-round-name" placeholder="e.g. Opening Round, Round 1…"
+                  style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;min-width:220px;"/>
+                <button class="btn btn-outline" onclick="addRound()" style="font-size:13px;padding:7px 14px;">+ Add Round</button>
+              </div>
             </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 90px 1fr 90px 120px 100px 1fr auto;gap:10px;align-items:center;margin-bottom:8px;">
