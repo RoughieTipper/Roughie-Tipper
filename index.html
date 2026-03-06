@@ -1222,6 +1222,69 @@ async function deleteMessage(msgId){
 function chatKeydown(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat();}}
 function insertEmoji(emoji){const i=el('chat-input');i.value+=emoji;i.focus();}
 
+// ─── PWA INSTALL PROMPT ──────────────────────────────────────
+let deferredInstallPrompt = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  showInstallBanner();
+});
+
+window.addEventListener('appinstalled', () => {
+  hideInstallBanner();
+  deferredInstallPrompt = null;
+});
+
+function showInstallBanner() {
+  const banner = el('install-banner');
+  if (!banner) return;
+  if (window.matchMedia('(display-mode: standalone)').matches) return;
+  banner.style.display = 'block';
+}
+
+function hideInstallBanner() {
+  const banner = el('install-banner');
+  if (banner) banner.style.display = 'none';
+}
+
+function dismissInstall() {
+  hideInstallBanner();
+}
+
+async function triggerInstall() {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  const { outcome } = await deferredInstallPrompt.userChoice;
+  if (outcome === 'accepted') hideInstallBanner();
+  deferredInstallPrompt = null;
+}
+
+function isIOS() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+}
+
+function initInstallBanner() {
+  if (window.matchMedia('(display-mode: standalone)').matches) return;
+  const banner = el('install-banner');
+  if (!banner) return;
+  if (isIOS()) {
+    el('install-android').style.display = 'none';
+    el('install-ios').style.display = 'flex';
+    banner.style.display = 'block';
+  }
+  // Android handled by beforeinstallprompt event
+}
+
+// ─── SERVICE WORKER ──────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.log('SW error:', err));
+  });
+}
+
 Object.assign(window,{
   doLogin,doRegister,doLogout,showPage,showRound,showAdminTab,
   pickTip,saveTips,addRound,addMatch,removeMatch,removeUser,
