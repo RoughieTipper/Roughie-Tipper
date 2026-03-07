@@ -494,7 +494,12 @@ function renderLeaderboard() {
   // Prize money display — always use currentComp (freshest data from loadComp)
   const prizes = currentComp?.prizes||{};
   const isOwner = currentUser && currentComp?.ownerId === currentUser.uid;
-  if (prizes.first||prizes.second||prizes.third||isOwner) {
+  // Temp debug — shows on page
+  el('comp-prizes').style.display = 'block';
+  el('prize-first').textContent = 'own:'+currentComp?.ownerId?.slice(-6)+' me:'+currentUser?.uid?.slice(-6)+' match:'+(currentComp?.ownerId===currentUser?.uid);
+  el('prize-second').textContent = '—';
+  el('prize-third').textContent = '—';
+  if (false && prizes.first||prizes.second||prizes.third||isOwner) {
     el('comp-prizes').style.display = 'block';
     el('prize-first').textContent = prizes.first ? '$'+prizes.first : '—';
     el('prize-second').textContent = prizes.second ? '$'+prizes.second : '—';
