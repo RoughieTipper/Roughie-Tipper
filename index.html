@@ -402,8 +402,40 @@ async function joinComp(compId) {
   if (!compIds.includes(compId)) compIds.push(compId);
   await updateDoc(doc(db,'users',currentUser.uid),{compIds});
   userProfile.compIds = compIds;
-  toast('Joined '+comp.name+'! 🏉');
+  // Generate catch-up tips for any missed locked rounds
+  const catchUpCount = await generateCatchUpTips(currentUser.uid);
+  if (catchUpCount > 0) {
+    toast('Joined '+comp.name+'! 🎲 '+catchUpCount+' missed tips randomly generated 🏉');
+  } else {
+    toast('Joined '+comp.name+'! 🏉');
+  }
   await loadComp(compId);
+}
+
+// Generate random tips for all locked rounds a new joiner missed
+async function generateCatchUpTips(uid) {
+  const allMatches = rounds.flatMap(r=>(r.matches||[]).map(m=>({...m,roundId:r.id})));
+  const lockedFinished = allMatches.filter(m=>m.winner); // only fully finished matches
+  if (!lockedFinished.length) return 0;
+
+  // Get existing tips so we don't overwrite any real ones
+  const existingSnap = await getDoc(doc(db,'tips',uid));
+  const existing = existingSnap.exists() ? existingSnap.data() : {};
+
+  // Only generate for matches with no tip yet
+  const missing = lockedFinished.filter(m=>!existing[m.id]);
+  if (!missing.length) return 0;
+
+  const generated = {};
+  missing.forEach(m=>{
+    // Random pick — 50/50 home or away
+    generated[m.id] = Math.random() < 0.5 ? m.home : m.away;
+    // Tag as generated so we can show the badge
+    generated['gen_'+m.id] = true;
+  });
+
+  await setDoc(doc(db,'tips',uid), {...existing, ...generated});
+  return missing.length;
 }
 
 async function createComp() {
@@ -756,6 +788,7 @@ function showRound(roundId,btn){
         ${compUserIds.map(uid=>{
           const u=allUsers[uid]; if(!u) return '';
           const savedPick=(allTips[uid]||{})[m.id];
+          const isGenerated=(allTips[uid]||{})['gen_'+m.id];
           const isAuto = !savedPick && locked;
           const pick = savedPick || (isAuto ? m.away : null);
           if(!pick) return `<span class="pick-chip" style="opacity:0.4;">${escHtml(u.nick||u.name)}: —</span>`;
@@ -1005,6 +1038,96 @@ async function saveResult(roundId,matchId,isMarginGame=false){
   await updateDoc(doc(db,'rounds',roundId),{matches});
   toast(winner?`Result saved: ${winner} wins! 🎉`:'Result cleared');
 }
+// ─── SHARE FUNCTIONS ─────────────────────────────────────────
+function shareRoundResult() {
+  if (!currentCompId || !currentUser) return;
+
+  // Find the most recently completed round
+  const completedRounds = rounds.filter(r=>(r.matches||[]).length>0&&(r.matches||[]).every(m=>m.winner));
+  if (!completedRounds.length) { toast('No completed rounds yet!', true); return; }
+  const latestRound = completedRounds[completedRounds.length-1];
+
+  const myTips = allTips[currentUser.uid]||{};
+  const matches = latestRound.matches||[];
+
+  // Build emoji grid
+  const emojis = matches.map(m=>{
+    const pick = myTips[m.id] || m.away;
+    const isGenerated = myTips['gen_'+m.id];
+    if (isGenerated) return '🎲';
+    if (!m.winner) return '⬜';
+    return pick === m.winner ? '✅' : '❌';
+  });
+
+  const correct = matches.filter(m=>{
+    const pick = myTips[m.id] || m.away;
+    return m.winner && pick === m.winner && !myTips['gen_'+m.id];
+  }).length;
+  const total = matches.filter(m=>m.winner).length;
+
+  // Get my leaderboard position
+  const memberIds = Object.entries(allUsers)
+    .filter(([uid,u])=>(u.compIds||[]).includes(currentCompId))
+    .map(([uid])=>uid);
+  const scores = calcScoresForUsers(memberIds).filter(Boolean);
+  const myPos = scores.findIndex(s=>s.uid===currentUser.uid)+1;
+  const totalPlayers = scores.length;
+
+  const compName = currentComp?.name || 'Roughie Tipper';
+  const nick = userProfile?.nick || userProfile?.name || 'Someone';
+  const siteUrl = 'https://roughietipper.github.io/Roughie-Tipper';
+
+  const roughies = scores.find(s=>s.uid===currentUser.uid)?.roughieBonus||0;
+  const roughieLine = roughies > 0 ? `\n🤑 ${roughies} roughie${roughies>1?'s':''} this round!` : '';
+
+  const text = `🏉 ${compName} — ${latestRound.name}\n\n${emojis.join(' ')}\n\n${correct}/${total} correct${roughieLine}\n📍 ${myPos}${ordinal(myPos)} of ${totalPlayers}\n\n${siteUrl}`;
+
+  if (navigator.share) {
+    navigator.share({ text }).catch(()=>{});
+  } else {
+    navigator.clipboard.writeText(text).then(()=>toast('Result copied! Paste it anywhere 📋')).catch(()=>{
+      // fallback
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta);
+      ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta);
+      toast('Result copied! Paste it anywhere 📋');
+    });
+  }
+}
+
+function ordinal(n) {
+  const s=['th','st','nd','rd'], v=n%100;
+  return n+(s[(v-20)%10]||s[v]||s[0]);
+}
+
+function copyInviteLink() {
+  if (!currentComp) return;
+  const compName = currentComp.name || 'our AFL tipping comp';
+  const code = currentComp.joinCode || '';
+  const siteUrl = 'https://roughietipper.github.io/Roughie-Tipper';
+  const missedRounds = rounds.filter(r=>(r.matches||[]).length>0&&(r.matches||[]).every(m=>m.winner)).length;
+
+  let msg;
+  if (missedRounds > 0) {
+    msg = `🏉 Join ${compName} on Roughie Tipper!\n\nDon't worry if you've missed the first ${missedRounds} round${missedRounds>1?'s':''} — the app will randomly generate your missed tips so you start on a real score, not zero. You're in from here!\n\nJoin code: ${code.toUpperCase()}\n${siteUrl}`;
+  } else {
+    msg = `🏉 Join ${compName} on Roughie Tipper!\n\nAFL tipping with roughie bonus points for picking big upsets. Join code: ${code.toUpperCase()}\n${siteUrl}`;
+  }
+
+  if (navigator.share) {
+    navigator.share({ text: msg }).catch(()=>{});
+  } else {
+    navigator.clipboard.writeText(msg).then(()=>toast('Invite copied! Send it to your mates 📋')).catch(()=>{
+      const ta = document.createElement('textarea');
+      ta.value = msg; document.body.appendChild(ta);
+      ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta);
+      toast('Invite copied! Send it to your mates 📋');
+    });
+  }
+}
+
 function renderAdminRoundsList() {
   const container = el('admin-rounds-list'); if(!container) return;
   if(!rounds.length){container.innerHTML='<div style="color:var(--muted);font-size:13px;">No rounds yet.</div>';return;}
@@ -1340,8 +1463,11 @@ if ('serviceWorker' in navigator) {
 Object.assign(window,{
   doLogin,doRegister,doLogout,showPage,showRound,showAdminTab,
   pickTip,saveTips,addRound,addMatch,removeMatch,removeUser,
+  shareRoundResult,copyInviteLink,
   saveResult,removeRound,renderAdminMatchesList,renderAdminResults,
   renderAdminRoundsList,addRoundFromMgmt,promptRenameRound,moveRound,
+  generateCatchUpTips,
+  shareRoundResult,copyInviteLink,
   saveJoinCode,sendChat,chatKeydown,insertEmoji,deleteMessage,
   toggleAdmin,saveProfile,previewAvatar,
   joinComp,createComp,switchComp,deleteComp,renderAdminComps,
@@ -1609,6 +1735,17 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
       </div>
 
       <div class="stats-row" id="comp-stats"></div>
+
+      <!-- SHARE + INVITE BUTTONS -->
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+        <button class="btn" style="flex:1;min-width:140px;font-size:14px;padding:12px 16px;display:flex;align-items:center;justify-content:center;gap:8px;" onclick="shareRoundResult()">
+          📤 Share My Round
+        </button>
+        <button class="btn btn-outline" style="flex:1;min-width:140px;font-size:14px;padding:12px 16px;display:flex;align-items:center;justify-content:center;gap:8px;" onclick="copyInviteLink()">
+          🏉 Invite a Mate
+        </button>
+      </div>
+
       <div class="card">
         <div style="font-weight:600;margin-bottom:16px;">Full Standings</div>
         <div style="overflow-x:auto;">
