@@ -295,7 +295,7 @@ function subscribeGlobal() {
     if(el('page-rounds')?.classList.contains('active')) renderRoundsPage();
     if(el('page-leaderboard')?.classList.contains('active')) renderLeaderboard();
     if(el('page-global')?.classList.contains('active')) renderGlobalLeaderboard();
-    if(el('page-admin')?.classList.contains('active')) renderAdmin();
+    if(el('page-admin')?.classList.contains('active')) { renderAdmin(); renderAdminRoundsList(); }
   });
   unsubFns.push(u1);
 
@@ -802,6 +802,7 @@ function renderAdmin(){
   const isSiteAdmin = currentUser?.uid===SITE_ADMIN_UID||userProfile?.isAdmin;
   if(!isSiteAdmin) return;
   renderAdminUsers();
+  renderAdminRoundsList();
   populateAdminRoundSelects();
   renderAdminMatchesList();
   renderAdminResults();
@@ -1004,6 +1005,54 @@ async function saveResult(roundId,matchId,isMarginGame=false){
   await updateDoc(doc(db,'rounds',roundId),{matches});
   toast(winner?`Result saved: ${winner} wins! 🎉`:'Result cleared');
 }
+function renderAdminRoundsList() {
+  const container = el('admin-rounds-list'); if(!container) return;
+  if(!rounds.length){container.innerHTML='<div style="color:var(--muted);font-size:13px;">No rounds yet.</div>';return;}
+  container.innerHTML = rounds.map(r=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);gap:10px;">
+      <div style="display:flex;align-items:center;gap:10px;flex:1;">
+        <span style="font-size:12px;color:var(--muted);width:24px;text-align:right;">${r.order||'—'}</span>
+        <span id="round-name-display-${r.id}" style="font-weight:600;font-size:14px;">${escHtml(r.name)}</span>
+        <span style="font-size:12px;color:var(--muted);">(${(r.matches||[]).length} matches)</span>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;" onclick="promptRenameRound('${r.id}','${escHtml(r.name)}')">✏️ Rename</button>
+        <button class="btn btn-outline" style="font-size:11px;padding:4px 8px;" onclick="moveRound('${r.id}',-1)" title="Move up">↑</button>
+        <button class="btn btn-outline" style="font-size:11px;padding:4px 8px;" onclick="moveRound('${r.id}',1)" title="Move down">↓</button>
+        <button class="btn btn-red" style="font-size:11px;padding:4px 10px;" onclick="removeRound('${r.id}')">Delete</button>
+      </div>
+    </div>`).join('');
+}
+
+async function addRoundFromMgmt() {
+  const nameInput = el('new-round-name-mgmt');
+  const name = nameInput ? nameInput.value.trim() : '';
+  if(!name){toast('Enter a round name first',true);return;}
+  const id='round_'+Date.now(), num=rounds.length+1;
+  await setDoc(doc(db,'rounds',id),{name,order:num,matches:[]});
+  if(nameInput) nameInput.value='';
+  toast(name+' added!');
+}
+
+async function promptRenameRound(roundId, currentName) {
+  const newName = prompt('Rename round:', currentName);
+  if(!newName||newName.trim()===currentName) return;
+  await updateDoc(doc(db,'rounds',roundId),{name:newName.trim()});
+  toast('Round renamed!');
+}
+
+async function moveRound(roundId, direction) {
+  const idx = rounds.findIndex(r=>r.id===roundId);
+  if(idx===-1) return;
+  const swapIdx = idx + direction;
+  if(swapIdx<0||swapIdx>=rounds.length) return;
+  // Swap order values
+  const a = rounds[idx], b = rounds[swapIdx];
+  await updateDoc(doc(db,'rounds',a.id),{order:b.order||swapIdx+1});
+  await updateDoc(doc(db,'rounds',b.id),{order:a.order||idx+1});
+  toast('Round moved');
+}
+
 async function removeRound(roundId){
   if(!confirm('Delete this round and all its matches?')) return;
   await deleteDoc(doc(db,'rounds',roundId));
@@ -1292,6 +1341,7 @@ Object.assign(window,{
   doLogin,doRegister,doLogout,showPage,showRound,showAdminTab,
   pickTip,saveTips,addRound,addMatch,removeMatch,removeUser,
   saveResult,removeRound,renderAdminMatchesList,renderAdminResults,
+  renderAdminRoundsList,addRoundFromMgmt,promptRenameRound,moveRound,
   saveJoinCode,sendChat,chatKeydown,insertEmoji,deleteMessage,
   toggleAdmin,saveProfile,previewAvatar,
   joinComp,createComp,switchComp,deleteComp,renderAdminComps,
@@ -1737,6 +1787,17 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
       </div>
 
       <div id="admin-matches" class="admin-section" style="display:none;">
+        <!-- ROUNDS MANAGEMENT -->
+        <div class="card" style="margin-bottom:16px;">
+          <div style="font-weight:600;margin-bottom:14px;">Manage Rounds</div>
+          <div id="admin-rounds-list" style="margin-bottom:14px;"></div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:14px;">
+            <input type="text" id="new-round-name-mgmt" placeholder="e.g. Opening Round, Round 1…"
+              style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;min-width:200px;flex:1;"/>
+            <button class="btn btn-outline" onclick="addRoundFromMgmt()" style="font-size:13px;padding:7px 14px;">+ Add Round</button>
+          </div>
+        </div>
+
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
             <div style="font-weight:600;">Add Match</div>
