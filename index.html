@@ -494,24 +494,17 @@ function renderLeaderboard() {
   // Prize money display — always use currentComp (freshest data from loadComp)
   const prizes = currentComp?.prizes||{};
   const isOwner = currentUser && currentComp?.ownerId === currentUser.uid;
-  // Temp debug — shows on page
   el('comp-prizes').style.display = 'block';
-  el('prize-first').textContent = 'own:'+currentComp?.ownerId?.slice(-6)+' me:'+currentUser?.uid?.slice(-6)+' match:'+(currentComp?.ownerId===currentUser?.uid);
-  el('prize-second').textContent = '—';
-  el('prize-third').textContent = '—';
-  if (false && prizes.first||prizes.second||prizes.third||isOwner) {
-    el('comp-prizes').style.display = 'block';
-    el('prize-first').textContent = prizes.first ? '$'+prizes.first : '—';
-    el('prize-second').textContent = prizes.second ? '$'+prizes.second : '—';
-    el('prize-third').textContent = prizes.third ? '$'+prizes.third : '—';
-    el('prize-edit-section').style.display = isOwner ? 'block' : 'none';
-    if (isOwner) {
-      el('prize-input-first').value = prizes.first||'';
-      el('prize-input-second').value = prizes.second||'';
-      el('prize-input-third').value = prizes.third||'';
-    }
-  } else {
-    el('comp-prizes').style.display = 'none';
+  el('prize-first').textContent = prizes.first ? '$'+prizes.first : '—';
+  el('prize-second').textContent = prizes.second ? '$'+prizes.second : '—';
+  el('prize-third').textContent = prizes.third ? '$'+prizes.third : '—';
+  el('prize-entry').textContent = prizes.entry ? '$'+prizes.entry : '—';
+  el('prize-edit-section').style.display = isOwner ? 'block' : 'none';
+  if (isOwner) {
+    el('prize-input-entry').value = prizes.entry||'';
+    el('prize-input-first').value = prizes.first||'';
+    el('prize-input-second').value = prizes.second||'';
+    el('prize-input-third').value = prizes.third||'';
   }
 
   el('comp-stats').innerHTML = `
@@ -1107,6 +1100,7 @@ async function savePrizes() {
   if (!currentCompId||!currentComp) return;
   if (!currentUser || currentComp.ownerId !== currentUser.uid) return;
   const prizes = {
+    entry: el('prize-input-entry').value.trim(),
     first: el('prize-input-first').value.trim(),
     second: el('prize-input-second').value.trim(),
     third: el('prize-input-third').value.trim(),
@@ -1544,20 +1538,22 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
       </div>
 
       <!-- PRIZE MONEY -->
-      <div id="comp-prizes" style="display:none;background:var(--card);border:1px solid rgba(255,214,0,0.3);border-radius:14px;padding:18px 24px;margin-bottom:20px;">
+      <div id="comp-prizes" style="background:var(--card);border:1px solid rgba(255,214,0,0.3);border-radius:14px;padding:18px 24px;margin-bottom:20px;">
         <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gold);letter-spacing:1px;margin-bottom:14px;">🏆 PRIZE POOL</div>
         <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:14px;">
+          <div style="text-align:center;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">💰 Entry</div><div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--text);" id="prize-entry">—</div></div>
           <div style="text-align:center;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">🥇 First</div><div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--gold);" id="prize-first">—</div></div>
           <div style="text-align:center;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">🥈 Second</div><div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#b0b8c8;" id="prize-second">—</div></div>
           <div style="text-align:center;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">🥉 Third</div><div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#cd7f32;" id="prize-third">—</div></div>
         </div>
         <div id="prize-edit-section" style="display:none;border-top:1px solid var(--border);padding-top:12px;">
-          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Edit prize amounts (you only — as comp admin)</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Edit amounts (comp admin only)</div>
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-            <div><label style="font-size:11px;color:var(--muted);">1st $</label><input type="number" id="prize-input-first" placeholder="0" style="width:80px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;margin-left:4px;"/></div>
-            <div><label style="font-size:11px;color:var(--muted);">2nd $</label><input type="number" id="prize-input-second" placeholder="0" style="width:80px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;margin-left:4px;"/></div>
-            <div><label style="font-size:11px;color:var(--muted);">3rd $</label><input type="number" id="prize-input-third" placeholder="0" style="width:80px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;margin-left:4px;"/></div>
-            <button class="btn" style="font-size:13px;padding:8px 16px;" onclick="savePrizes()">Save Prizes</button>
+            <div><label style="font-size:11px;color:var(--muted);">Entry $</label><input type="number" id="prize-input-entry" placeholder="0" style="width:75px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;margin-left:4px;"/></div>
+            <div><label style="font-size:11px;color:var(--muted);">1st $</label><input type="number" id="prize-input-first" placeholder="0" style="width:75px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;margin-left:4px;"/></div>
+            <div><label style="font-size:11px;color:var(--muted);">2nd $</label><input type="number" id="prize-input-second" placeholder="0" style="width:75px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;margin-left:4px;"/></div>
+            <div><label style="font-size:11px;color:var(--muted);">3rd $</label><input type="number" id="prize-input-third" placeholder="0" style="width:75px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;margin-left:4px;"/></div>
+            <button class="btn" style="font-size:13px;padding:8px 16px;" onclick="savePrizes()">Save</button>
           </div>
         </div>
       </div>
