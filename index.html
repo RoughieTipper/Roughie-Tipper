@@ -167,6 +167,17 @@ function el(id) { return document.getElementById(id); }
 function escHtml(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+// Read ?join=CODE from URL on load
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const joinCode = params.get('join');
+  if (joinCode) {
+    pendingJoinCode = joinCode.trim().toLowerCase();
+    // Clean the URL so it doesn't show the code
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+})();
+
 function showPage(id) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
@@ -188,6 +199,7 @@ let rounds = [], allTips = {}, allUsers = {}, allMargins = {};
 let currentCompId = null, currentComp = null;
 let allComps = {};
 let unsubFns = [];
+let pendingJoinCode = null; // set from ?join= URL param
 
 // ─── AUTH ────────────────────────────────────────────────────
 onAuthStateChanged(auth, async user => {
@@ -212,14 +224,20 @@ onAuthStateChanged(auth, async user => {
         const isSiteAdmin = user.uid === SITE_ADMIN_UID || userProfile.isAdmin;
         el('nav-admin').style.display = isSiteAdmin ? 'inline-flex' : 'none';
         subscribeGlobal();
-        // Auto-load last used comp or show comp picker
-        const lastComp = userProfile.lastCompId;
-        if (lastComp) {
-          loadComp(lastComp);
-        } else if (userProfile.compIds && userProfile.compIds.length > 0) {
-          loadComp(userProfile.compIds[0]);
+        // If arrived via invite link, auto-join that comp
+        if (pendingJoinCode) {
+          await autoJoinFromInvite(pendingJoinCode);
+          pendingJoinCode = null;
         } else {
-          showPage('mycomps');
+          // Auto-load last used comp or show comp picker
+          const lastComp = userProfile.lastCompId;
+          if (lastComp) {
+            loadComp(lastComp);
+          } else if (userProfile.compIds && userProfile.compIds.length > 0) {
+            loadComp(userProfile.compIds[0]);
+          } else {
+            showPage('mycomps');
+          }
         }
       } else {
         await signOut(auth);
@@ -389,6 +407,51 @@ function renderMyComps() {
 async function switchComp(compId) {
   await loadComp(compId);
   toast('Switched competition!');
+}
+
+async function autoJoinFromInvite(code) {
+  try {
+    // Search all comps for matching join code
+    const snap = await getDocs(collection(db,'comps'));
+    let matchComp = null, matchId = null;
+    snap.docs.forEach(d => {
+      const data = d.data();
+      if (data.joinCode && data.joinCode.toLowerCase() === code.toLowerCase()) {
+        matchComp = data; matchId = d.id;
+      }
+    });
+
+    if (!matchComp || !matchId) {
+      toast('Invite link expired or invalid 😕', true);
+      showPage('mycomps');
+      return;
+    }
+
+    // Already a member — just load it
+    if ((userProfile.compIds||[]).includes(matchId)) {
+      toast('Welcome back to '+matchComp.name+'! 🏉');
+      await loadComp(matchId);
+      return;
+    }
+
+    // Join the comp silently (no code prompt needed — link had the code)
+    const compIds = [...(userProfile.compIds||[]), matchId];
+    await updateDoc(doc(db,'users',currentUser.uid),{compIds});
+    userProfile.compIds = compIds;
+    allComps[matchId] = matchComp;
+
+    // Generate catch-up tips
+    const catchUpCount = await generateCatchUpTips(currentUser.uid);
+    if (catchUpCount > 0) {
+      toast('Joined '+matchComp.name+'! 🎲 '+catchUpCount+' missed tips randomly generated 🏉');
+    } else {
+      toast('Joined '+matchComp.name+'! 🏉');
+    }
+    await loadComp(matchId);
+  } catch(e) {
+    console.error('Auto-join error:', e);
+    showPage('mycomps');
+  }
 }
 
 async function joinComp(compId) {
@@ -1106,13 +1169,14 @@ function copyInviteLink() {
   const compName = currentComp.name || 'our AFL tipping comp';
   const code = currentComp.joinCode || '';
   const siteUrl = 'https://roughietipper.github.io/Roughie-Tipper';
+  const inviteUrl = siteUrl + '?join=' + encodeURIComponent(code);
   const missedRounds = rounds.filter(r=>(r.matches||[]).length>0&&(r.matches||[]).every(m=>m.winner)).length;
 
   let msg;
   if (missedRounds > 0) {
-    msg = `🏉 Join ${compName} on Roughie Tipper!\n\nDon't worry if you've missed the first ${missedRounds} round${missedRounds>1?'s':''} — the app will randomly generate your missed tips so you start on a real score, not zero. You're in from here!\n\nJoin code: ${code.toUpperCase()}\n${siteUrl}`;
+    msg = `🏉 Join ${compName} on Roughie Tipper!\n\nDon't worry if you've missed the first ${missedRounds} round${missedRounds>1?'s':''} — the app will randomly generate your missed tips so you start on a real score, not zero. You're in from here!\n\n👉 ${inviteUrl}`;
   } else {
-    msg = `🏉 Join ${compName} on Roughie Tipper!\n\nAFL tipping with roughie bonus points for picking big upsets. Join code: ${code.toUpperCase()}\n${siteUrl}`;
+    msg = `🏉 Join ${compName} on Roughie Tipper!\n\nAFL tipping with roughie bonus points for picking big upsets.\n\n👉 ${inviteUrl}`;
   }
 
   if (navigator.share) {
@@ -1470,7 +1534,7 @@ Object.assign(window,{
   shareRoundResult,copyInviteLink,
   saveJoinCode,sendChat,chatKeydown,insertEmoji,deleteMessage,
   toggleAdmin,saveProfile,previewAvatar,
-  joinComp,createComp,switchComp,deleteComp,renderAdminComps,
+  joinComp,autoJoinFromInvite,createComp,switchComp,deleteComp,renderAdminComps,
   togglePaid,savePrizes,pickMargin,toggleEditMatch,saveMatchEdit,
   proposeBet,acceptBet,deleteBet,
   triggerInstall,dismissInstall
