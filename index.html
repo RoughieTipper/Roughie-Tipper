@@ -628,6 +628,21 @@ function renderLeaderboard() {
     <div class="stat-card"><div class="stat-label">Top Roughie 🔥</div><div class="stat-val" style="color:var(--gold);font-size:22px;line-height:1.1;">${topRoughie?.nick||topRoughie?.name||'—'}</div><div class="stat-sub">+${topRoughie?.roughieBonus||0} bonus</div></div>
   `;
 
+  // Calculate previous-round positions for movement arrows
+  // "Previous" = scores excluding the latest completed round
+  const completedRoundsList = rounds.filter(r=>(r.matches||[]).length>0&&(r.matches||[]).every(m=>m.winner));
+  let prevRankMap = {};
+  if (completedRoundsList.length >= 2) {
+    const prevRound = completedRoundsList[completedRoundsList.length - 2];
+    // Build scores without latest round's points
+    const prevScores = memberIds.map(uid => {
+      const s = scores.find(x=>x.uid===uid); if(!s) return null;
+      const ptsWithoutLatest = s.totalPts - (s.roundPts[latestRound?.id]||0);
+      return {uid, pts: ptsWithoutLatest, roughie: s.roughieBonus - (latestRound ? (allTips[uid]?0:0) : 0), marginDiff: s.totalMarginDiff};
+    }).filter(Boolean).sort((a,b)=>b.pts-a.pts);
+    prevScores.forEach((s,i)=>{ prevRankMap[s.uid] = i+1; });
+  }
+
   el('lb-body').innerHTML = scores.map((s,i)=>{
     const rank=i+1, rc=rank<=3?`rank-${rank}`:'rank-other', me=s.uid===currentUser?.uid;
     const thisRound = latestRound?(s.roundPts[latestRound.id]??'—'):'—';
@@ -641,21 +656,27 @@ function renderLeaderboard() {
     const paidIcon = hasPaid
       ? `<span title="Paid ✓" style="font-size:16px;cursor:${isCompOwner?'pointer':'default'};" onclick="${isCompOwner?`togglePaid('${s.uid}',true)`:''}">💰</span>`
       : `<span title="${isCompOwner?'Click to mark as paid':'Not yet paid'}" style="font-size:16px;opacity:0.2;cursor:${isCompOwner?'pointer':'default'};" onclick="${isCompOwner?`togglePaid('${s.uid}',false)`:''}">💰</span>`;
+    // Movement arrow
+    let moveHtml = '';
+    if (prevRankMap[s.uid]) {
+      const prevRank = prevRankMap[s.uid];
+      const diff = prevRank - rank; // positive = moved up
+      if (diff > 0) moveHtml = `<span style="color:#00c853;font-size:11px;font-weight:700;white-space:nowrap;">▲${diff}</span>`;
+      else if (diff < 0) moveHtml = `<span style="color:#f44336;font-size:11px;font-weight:700;white-space:nowrap;">▼${Math.abs(diff)}</span>`;
+    }
     return `<tr ${me?'style="background:rgba(0,200,83,0.05);"':''}>
       <td><span class="rank-badge ${rc}">${rank}</span></td>
-      <td><div style="display:flex;align-items:center;gap:10px;">${avatarHtml}
+      <td><div style="display:flex;align-items:center;gap:8px;">${moveHtml ? `<div style="width:28px;text-align:center;">${moveHtml}</div>` : '<div style="width:28px;"></div>'}${avatarHtml}
         <div><div class="tipper-name">${s.nick?escHtml(s.nick):escHtml(s.name)}${me?' <span style="color:var(--green);font-size:11px;">(you)</span>':''} ${paidIcon}</div>
         <div style="font-size:12px;color:var(--muted);">${s.nick?escHtml(s.name):''}</div></div>
       </div></td>
       <td><span class="pts-big">${s.totalPts}</span></td>
-      <td>${s.correct} <span style="color:var(--muted);font-size:12px;">of ${s.tipped}</span></td>
       <td><span class="roughie-pts">+${s.roughieBonus} 🔥</span></td>
-      <td><span class="accuracy">${s.accuracy}%</span></td>
       <td>${thisRound} pts</td>
       <td><span style="font-size:13px;color:var(--muted);">${s.totalMarginDiff??'—'}</span></td>
       <td><span class="rank-badge rank-other" style="font-size:11px;">#${globalRank}</span></td>
     </tr>`;
-  }).join('')||`<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:30px;">No tippers in this comp yet</td></tr>`;
+  }).join('')||`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:30px;">No tippers in this comp yet</td></tr>`;
 
   el('scoring-legend').innerHTML = [
     [1,'$1–$1.99','normal'],[2,'$2–$2.99',''],[3,'$3–$3.99',''],
@@ -701,10 +722,20 @@ let pendingTips = {};
 
 function renderTipsPage() {
   if (!currentUser) return;
+  // Odds notice banner
+  const noticeId = 'tips-odds-notice';
+  if (!el(noticeId)) {
+    const notice = document.createElement('div');
+    notice.id = noticeId;
+    notice.style.cssText = 'background:rgba(255,214,0,0.08);border:1px solid rgba(255,214,0,0.25);border-radius:12px;padding:12px 16px;margin-bottom:18px;display:flex;align-items:flex-start;gap:10px;';
+    notice.innerHTML = '<span style="font-size:18px;flex-shrink:0;">📊</span><div style="font-size:13px;color:var(--muted);line-height:1.6;"><strong style="color:var(--gold);">Odds are locked in each Wednesday night</strong> before the round and do not fluctuate — the odds shown are fixed for the entire round regardless of live market movements.</div>';
+    const tipsPage = el('page-tips');
+    tipsPage.insertBefore(notice, tipsPage.firstChild);
+  }
   const rsel = el('tip-round-select');
   rsel.innerHTML = rounds.filter(r=>(r.matches||[]).length>0).map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
   if (!rsel.onchange) rsel.onchange = renderTipMatches;
-  const openRound = [...rounds].reverse().find(r=>(r.matches||[]).some(m=>!isLocked(m.date, m.time)));
+  const openRound = rounds.find(r=>(r.matches||[]).some(m=>!isLocked(m.date, m.time)));
   if (openRound) rsel.value = openRound.id;
   else if (rounds.filter(r=>(r.matches||[]).length>0).length) rsel.value = rounds.filter(r=>(r.matches||[]).length>0).slice(-1)[0].id;
   renderTipMatches();
@@ -1942,7 +1973,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
         <div style="font-weight:600;margin-bottom:16px;">Full Standings</div>
         <div style="overflow-x:auto;">
           <table class="lb-table">
-            <thead><tr><th>#</th><th>Tipper</th><th>Total Pts</th><th>Correct</th><th>Roughie Bonus</th><th>Accuracy</th><th>Last Round</th><th>🌐 Global</th></tr></thead>
+            <thead><tr><th>#</th><th>Tipper</th><th>Total Pts</th><th>Roughie Bonus</th><th>Last Round</th><th>Margin</th><th>🌐 Global</th></tr></thead>
             <tbody id="lb-body"></tbody>
           </table>
         </div>
