@@ -18,7 +18,7 @@ import { getFirestore, doc, getDoc, setDoc, collection, getDocs, onSnapshot,
          updateDoc, deleteDoc, serverTimestamp, addDoc, query, orderBy, limit, where }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
-         signOut, onAuthStateChanged }
+         signOut, onAuthStateChanged, sendPasswordResetEmail }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 // ▼▼▼ FIREBASE CONFIG ▼▼▼
@@ -197,6 +197,7 @@ function showPage(id) {
   if(id==='admin') renderAdmin();
   if(id==='profile') renderProfilePage();
   if(id==='mycomps') renderMyComps();
+  if(id==='rules') {} // static content, no render needed
   if(id==='leaderboard') setTimeout(initInstallBanner, 1000);
 }
 
@@ -266,6 +267,17 @@ onAuthStateChanged(auth, async user => {
     el('comp-banner').style.display = 'none';
   }
 });
+
+async function doForgotPassword() {
+  const email = el('login-email').value.trim();
+  if (!email) { toast('Enter your email address first', true); return; }
+  try {
+    await sendPasswordResetEmail(auth, email);
+    toast('Password reset email sent — check your inbox 📧');
+  } catch(e) {
+    toast('Could not send reset email — check the address is correct', true);
+  }
+}
 
 async function doLogin() {
   const email = el('login-email').value.trim(), pass = el('login-pass').value;
@@ -1532,7 +1544,7 @@ if ('serviceWorker' in navigator) {
 }
 
 Object.assign(window,{
-  doLogin,doRegister,doLogout,showPage,showRound,showAdminTab,
+  doLogin,doRegister,doLogout,doForgotPassword,showPage,showRound,showAdminTab,
   pickTip,saveTips,addRound,addMatch,removeMatch,removeUser,
   shareRoundResult,copyInviteLink,
   saveResult,removeRound,renderAdminMatchesList,renderAdminResults,
@@ -1555,7 +1567,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--navy);color:var(--text);m
   background-image:radial-gradient(ellipse 80% 40% at 50% -10%,rgba(0,200,83,.12) 0%,transparent 60%),
   repeating-linear-gradient(0deg,transparent,transparent 59px,rgba(255,255,255,.02) 60px),
   repeating-linear-gradient(90deg,transparent,transparent 59px,rgba(255,255,255,.02) 60px);}
-#auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+#auth-screen{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-height:100vh;padding:32px 24px;overflow-y:auto;}
 .auth-box{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:40px;width:100%;max-width:420px;}
 .auth-logo{text-align:center;margin-bottom:32px;}
 .auth-logo h1{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;}
@@ -1718,6 +1730,9 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
       <div class="form-group"><label>Email</label><input type="email" id="login-email" placeholder="you@email.com" onkeydown="if(event.key==='Enter')doLogin()"/></div>
       <div class="form-group"><label>Password</label><input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/></div>
       <button class="btn btn-full" id="login-btn" onclick="doLogin()">Log In →</button>
+      <div style="text-align:center;margin-top:12px;">
+        <button onclick="doForgotPassword()" style="background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;text-decoration:underline;font-family:'DM Sans',sans-serif;padding:0;">Forgot your password?</button>
+      </div>
     </div>
     <div class="auth-panel" id="auth-register">
       <div class="form-group"><label>Full Name *</label><input type="text" id="reg-name" placeholder="e.g. Jake Smith"/></div>
@@ -1727,6 +1742,48 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
       <button class="btn btn-full" id="reg-btn" onclick="doRegister()">Create Account →</button>
     </div>
   </div>
+
+  <!-- RULES PREVIEW on auth screen -->
+  <div style="width:100%;max-width:420px;margin-top:24px;padding-bottom:40px;">
+    <div style="text-align:center;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;color:var(--muted);margin-bottom:14px;">📖 HOW IT WORKS</div>
+
+    <div style="display:flex;flex-direction:column;gap:10px;">
+
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;">
+        <span style="font-size:22px;flex-shrink:0;">🎯</span>
+        <div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--green);letter-spacing:1px;margin-bottom:4px;">Tip the winner, score points</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;">Points are based on the odds — bigger upsets score more. Tip the underdog and win? That's your <strong style="color:var(--gold);">Roughie Bonus</strong>. 🤑</div>
+        </div>
+      </div>
+
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;">
+        <span style="font-size:22px;flex-shrink:0;">📅</span>
+        <div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--green);letter-spacing:1px;margin-bottom:4px;">Odds locked Wednesday, tips until kick-off</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;">Odds are set Wednesday night and don't move. Change your tips as much as you like right up until the siren — then they're locked. 🔒</div>
+        </div>
+      </div>
+
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;">
+        <span style="font-size:22px;flex-shrink:0;">🎲</span>
+        <div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--green);letter-spacing:1px;margin-bottom:4px;">Join any time — missed rounds auto-filled</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;">Join mid-season and your missed rounds get randomly generated so you're on the board straight away. Roughie bonus must be earned though — no free rides! 😄</div>
+        </div>
+      </div>
+
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;">
+        <span style="font-size:22px;flex-shrink:0;">🤑</span>
+        <div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--green);letter-spacing:1px;margin-bottom:4px;">Side bets — just for fun</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;">Challenge mates to side bets (a slab, bragging rights, whatever). Zero impact on standings — pure banter. 🍺</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
 </div>
 
 <!-- APP SHELL -->
@@ -1743,6 +1800,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
       <button id="nav-tips" onclick="showPage('tips')">✏️ My Tips</button>
       <button id="nav-rounds" onclick="showPage('rounds')">📋 Rounds</button>
       <button id="nav-mycomps" onclick="showPage('mycomps')">🏟️ Comps</button>
+      <button id="nav-rules" onclick="showPage('rules')">📖 Rules</button>
       <button id="nav-profile" onclick="showPage('profile')">👤 Profile</button>
       <button id="nav-admin" onclick="showPage('admin')" style="display:none;">⚙️ Admin</button>
     </nav>
@@ -1826,19 +1884,34 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
         </button>
       </div>
 
-      <div class="card">
-        <div style="font-weight:600;margin-bottom:16px;">Full Standings</div>
-        <div style="overflow-x:auto;">
-          <table class="lb-table">
-            <thead><tr><th>#</th><th>Tipper</th><th>Total Pts</th><th>Correct</th><th>Roughie Bonus</th><th>Accuracy</th><th>Last Round</th><th>🌐 Global</th></tr></thead>
-            <tbody id="lb-body"></tbody>
-          </table>
-        </div>
-      </div>
-      <div style="margin-top:20px;">
-        <div style="font-weight:600;margin-bottom:12px;">📊 Scoring System</div>
-        <div class="legend-grid" id="scoring-legend"></div>
-      </div>
+      <div class="chat-wrap">
+        <div class="chat-header">
+          <div class="chat-header-title"><span class="chat-live-dot"></span>💬 Comp Chat</div>
+          <span style="font-size:12px;color:var(--muted);">Keep it friendly… or don't 😂</span>
+    
+        <div class="chat-feed" id="chat-feed">
+          <div style="text-align:center;color:var(--muted);padding:32px;font-size:14px;">Loading messages…</div>
+    
+        <div class="chat-footer">
+          <div class="chat-emoji-bar">
+            <button class="emoji-btn" onclick="insertEmoji('🔥')">🔥</button>
+            <button class="emoji-btn" onclick="insertEmoji('😂')">😂</button>
+            <button class="emoji-btn" onclick="insertEmoji('👏')">👏</button>
+            <button class="emoji-btn" onclick="insertEmoji('💀')">💀</button>
+            <button class="emoji-btn" onclick="insertEmoji('🤡')">🤡</button>
+            <button class="emoji-btn" onclick="insertEmoji('😤')">😤</button>
+            <button class="emoji-btn" onclick="insertEmoji('🏉')">🏉</button>
+            <button class="emoji-btn" onclick="insertEmoji('🎯')">🎯</button>
+            <button class="emoji-btn" onclick="insertEmoji('🤑')">🤑</button>
+      
+          <div class="chat-input-row">
+            <textarea class="chat-input" id="chat-input" rows="1" placeholder="Talk your footy… 🏉" onkeydown="chatKeydown(event)" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" maxlength="280"></textarea>
+            <button class="chat-send-btn" onclick="sendChat()">➤</button>
+      
+    
+  
+
+
       <!-- SIDE BETS -->
       <div class="chat-wrap" id="sidebets-wrap" style="margin-bottom:0;">
         <div class="chat-header">
@@ -1867,31 +1940,18 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
         </div>
       </div>
 
-      <div class="chat-wrap">
-        <div class="chat-header">
-          <div class="chat-header-title"><span class="chat-live-dot"></span>💬 Comp Chat</div>
-          <span style="font-size:12px;color:var(--muted);">Keep it friendly… or don't 😂</span>
+      <div class="card">
+        <div style="font-weight:600;margin-bottom:16px;">Full Standings</div>
+        <div style="overflow-x:auto;">
+          <table class="lb-table">
+            <thead><tr><th>#</th><th>Tipper</th><th>Total Pts</th><th>Correct</th><th>Roughie Bonus</th><th>Accuracy</th><th>Last Round</th><th>🌐 Global</th></tr></thead>
+            <tbody id="lb-body"></tbody>
+          </table>
         </div>
-        <div class="chat-feed" id="chat-feed">
-          <div style="text-align:center;color:var(--muted);padding:32px;font-size:14px;">Loading messages…</div>
-        </div>
-        <div class="chat-footer">
-          <div class="chat-emoji-bar">
-            <button class="emoji-btn" onclick="insertEmoji('🔥')">🔥</button>
-            <button class="emoji-btn" onclick="insertEmoji('😂')">😂</button>
-            <button class="emoji-btn" onclick="insertEmoji('👏')">👏</button>
-            <button class="emoji-btn" onclick="insertEmoji('💀')">💀</button>
-            <button class="emoji-btn" onclick="insertEmoji('🤡')">🤡</button>
-            <button class="emoji-btn" onclick="insertEmoji('😤')">😤</button>
-            <button class="emoji-btn" onclick="insertEmoji('🏉')">🏉</button>
-            <button class="emoji-btn" onclick="insertEmoji('🎯')">🎯</button>
-            <button class="emoji-btn" onclick="insertEmoji('🤑')">🤑</button>
-          </div>
-          <div class="chat-input-row">
-            <textarea class="chat-input" id="chat-input" rows="1" placeholder="Talk your footy… 🏉" onkeydown="chatKeydown(event)" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" maxlength="280"></textarea>
-            <button class="chat-send-btn" onclick="sendChat()">➤</button>
-          </div>
-        </div>
+      </div>
+      <div style="margin-top:20px;">
+        <div style="font-weight:600;margin-bottom:12px;">📊 Scoring System</div>
+        <div class="legend-grid" id="scoring-legend"></div>
       </div>
     </div>
 
@@ -1988,6 +2048,117 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
     </div>
 
     <!-- ADMIN -->
+    <!-- RULES PAGE -->
+    <div class="page" id="page-rules">
+      <div class="section-title">📖 THE <span>RULES</span></div>
+      <div class="section-sub">Everything you need to know — short and sweet</div>
+
+      <!-- SCORING -->
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:14px;">🎯 How Scoring Works</div>
+        <p style="font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:12px;">
+          Pick the winner of each match. Simple as that. Points are awarded based on the odds — the bigger the upset you tip, the more points you score.
+        </p>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--card2);border-radius:10px;">
+            <span style="font-size:20px;">✅</span>
+            <div>
+              <div style="font-weight:700;font-size:14px;">Correct tip — favourite</div>
+              <div style="font-size:13px;color:var(--muted);">Odds under 1.30 = 1pt · 1.30–1.75 = 2pts · 1.75–2.10 = 3pts</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--card2);border-radius:10px;">
+            <span style="font-size:20px;">🤑</span>
+            <div>
+              <div style="font-weight:700;font-size:14px;">Roughie Bonus — tipping a big upset</div>
+              <div style="font-size:13px;color:var(--muted);">Tip the underdog (odds 2.10+) and they win = bonus points on top. The longer the odds, the bigger the bonus. These must be earned — no roughie bonus on randomly generated tips.</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--card2);border-radius:10px;">
+            <span style="font-size:20px;">❌</span>
+            <div>
+              <div style="font-weight:700;font-size:14px;">Wrong tip</div>
+              <div style="font-size:13px;color:var(--muted);">0 points. Better luck next week 😬</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--card2);border-radius:10px;">
+            <span style="font-size:20px;">🏠</span>
+            <div>
+              <div style="font-weight:700;font-size:14px;">Missed tip</div>
+              <div style="font-size:13px;color:var(--muted);">Forgot to tip? You automatically get the away team. So get your tips in!</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ODDS -->
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:14px;">📅 Odds &amp; Deadlines</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--card2);border-radius:10px;">
+            <span style="font-size:20px;flex-shrink:0;">📊</span>
+            <div style="font-size:14px;color:var(--muted);line-height:1.65;">
+              <span style="color:var(--text);font-weight:700;">Odds are locked in on Wednesday night</span> before each round. They're set once and don't move — even if the live market shifts before kick-off. What you see Wednesday is what counts.
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--card2);border-radius:10px;">
+            <span style="font-size:20px;flex-shrink:0;">⏰</span>
+            <div style="font-size:14px;color:var(--muted);line-height:1.65;">
+              <span style="color:var(--text);font-weight:700;">Tips lock at kick-off time.</span> You can change your mind as many times as you like right up until the siren — just can't touch them once the game starts.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- JOINING MID SEASON -->
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:14px;">🎲 Joining Mid-Season</div>
+        <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--card2);border-radius:10px;margin-bottom:10px;">
+          <span style="font-size:20px;flex-shrink:0;">🏉</span>
+          <div style="font-size:14px;color:var(--muted);line-height:1.65;">
+            <span style="color:var(--text);font-weight:700;">You can join at any point in the season</span> — no FOMO required. If you've missed rounds, the app automatically generates random tips for those games so you land on the leaderboard with a real score straight away.
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--card2);border-radius:10px;">
+          <span style="font-size:20px;flex-shrink:0;">🤑</span>
+          <div style="font-size:14px;color:var(--muted);line-height:1.65;">
+            <span style="color:var(--text);font-weight:700;">Roughie bonus doesn't apply to generated tips.</span> Those lucky upset points have to be earned by picking the underdog yourself — no free roughies for the latecomers! 😄
+          </div>
+        </div>
+      </div>
+
+      <!-- SIDE BETS -->
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:14px;">🤑 Side Bets</div>
+        <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--card2);border-radius:10px;">
+          <span style="font-size:20px;flex-shrink:0;">😂</span>
+          <div style="font-size:14px;color:var(--muted);line-height:1.65;">
+            Side bets are <span style="color:var(--text);font-weight:700;">purely for fun</span> and have zero impact on the competition standings. Challenge a mate to a slab, bragging rights, whatever you like — it's an honour system. The app tracks who accepted what, the rest is between you and your dignity. 🍺
+          </div>
+        </div>
+      </div>
+
+      <!-- GENERAL -->
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:14px;">⚡ Good to Know</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--card2);border-radius:10px;">
+            <span style="font-size:18px;flex-shrink:0;">🏆</span>
+            <div style="font-size:14px;color:var(--muted);line-height:1.65;">The leaderboard is sorted by <span style="color:var(--text);font-weight:700;">total points, then correct tips, then margin accuracy</span> as the tiebreaker. Closest margin guess wins the tiebreak.</div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--card2);border-radius:10px;">
+            <span style="font-size:18px;flex-shrink:0;">👀</span>
+            <div style="font-size:14px;color:var(--muted);line-height:1.65;"><span style="color:var(--text);font-weight:700;">Tips are hidden until kick-off.</span> No sneaky last-minute copying — once the first game of the round starts, everyone's picks are revealed.</div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--card2);border-radius:10px;">
+            <span style="font-size:18px;flex-shrink:0;">🌐</span>
+            <div style="font-size:14px;color:var(--muted);line-height:1.65;"><span style="color:var(--text);font-weight:700;">Global rankings</span> pit every tipper across all comps against each other. Settle the real GOAT debate once and for all.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
     <div class="page" id="page-admin">
       <div class="section-title">ADMIN <span>PANEL</span></div>
       <div class="section-sub">Site admin only — manage matches, results and all competitions</div>
