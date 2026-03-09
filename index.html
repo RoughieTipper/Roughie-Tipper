@@ -1887,10 +1887,10 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
         <div class="chat-header">
           <div class="chat-header-title"><span class="chat-live-dot"></span>💬 Comp Chat</div>
           <span style="font-size:12px;color:var(--muted);">Keep it friendly… or don't 😂</span>
-    
+        </div>
         <div class="chat-feed" id="chat-feed">
           <div style="text-align:center;color:var(--muted);padding:32px;font-size:14px;">Loading messages…</div>
-    
+        </div>
         <div class="chat-footer">
           <div class="chat-emoji-bar">
             <button class="emoji-btn" onclick="insertEmoji('🔥')">🔥</button>
@@ -1902,14 +1902,13 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
             <button class="emoji-btn" onclick="insertEmoji('🏉')">🏉</button>
             <button class="emoji-btn" onclick="insertEmoji('🎯')">🎯</button>
             <button class="emoji-btn" onclick="insertEmoji('🤑')">🤑</button>
-      
+          </div>
           <div class="chat-input-row">
             <textarea class="chat-input" id="chat-input" rows="1" placeholder="Talk your footy… 🏉" onkeydown="chatKeydown(event)" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" maxlength="280"></textarea>
             <button class="chat-send-btn" onclick="sendChat()">➤</button>
-      
-    
-  
-
+          </div>
+        </div>
+      </div>
 
       <!-- SIDE BETS -->
       <div class="chat-wrap" id="sidebets-wrap" style="margin-bottom:0;">
