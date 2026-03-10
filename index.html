@@ -14,6 +14,31 @@
 <link rel="icon" type="image/png" sizes="192x192" href="/Roughie-Tipper/icon-192.png"/>
 <title>Roughie Tipper — AFL 2026</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    await OneSignal.init({
+      appId: "cf85e22d-4ba2-41a2-979e-84dedc9f354e",
+      safari_web_id: "web.onesignal.auto.cf85e22d-4ba2-41a2-979e-84dedc9f354e",
+      notifyButton: { enable: false },
+      promptOptions: {
+        slidedown: {
+          prompts: [{
+            type: "push",
+            autoPrompt: true,
+            text: {
+              actionMessage: "Get reminders when tips are about to close and when round results are in 🏉",
+              acceptButton: "Yes please!",
+              cancelButton: "Maybe later"
+            },
+            delay: { pageViews: 2, timeDelay: 10 }
+          }]
+        }
+      }
+    });
+  });
+</script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs, onSnapshot,
@@ -224,7 +249,7 @@ function showPage(id) {
   if(id==='tips') renderTipsPage();
   if(id==='rounds') renderRoundsPage();
   if(id==='admin') renderAdmin();
-  if(id==='profile') renderProfilePage();
+  if(id==='profile') { renderProfilePage(); setTimeout(updateNotifBtn,300); }
   if(id==='mycomps') renderMyComps();
   if(id==='rules') {} // static content, no render needed
   if(id==='leaderboard') setTimeout(initInstallBanner, 1000);
@@ -1613,6 +1638,47 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+async function requestNotifPermission() {
+  const btn = el('notif-btn');
+  const status = el('notif-status');
+  if (!window.OneSignal) {
+    if(status) status.textContent = 'Notifications not available on this browser.';
+    return;
+  }
+  try {
+    const permission = await OneSignal.Notifications.permission;
+    if (permission) {
+      if(status) status.textContent = '✓ Notifications already enabled!';
+      if(btn) btn.textContent = '✓ Notifications Enabled';
+      return;
+    }
+    await OneSignal.Notifications.requestPermission();
+    const granted = await OneSignal.Notifications.permission;
+    if(granted) {
+      if(status) status.textContent = '✓ Notifications enabled!';
+      if(btn) { btn.textContent = '✓ Notifications Enabled'; btn.style.background='var(--green)'; }
+    } else {
+      if(status) status.textContent = 'Notifications blocked — check your browser settings.';
+    }
+  } catch(e) {
+    if(status) status.textContent = 'Could not enable notifications.';
+  }
+}
+
+async function updateNotifBtn() {
+  const btn = el('notif-btn');
+  const status = el('notif-status');
+  if (!btn || !window.OneSignal) return;
+  try {
+    const permission = OneSignal.Notifications.permission;
+    if (permission) {
+      btn.textContent = '✓ Notifications Enabled';
+      btn.style.background = 'var(--green)';
+      if(status) status.textContent = '✓ You're all set — we'll remind you when tips close.';
+    }
+  } catch(e) {}
+}
+
 Object.assign(window,{
   doLogin,doRegister,doLogout,doForgotPassword,showPage,showRound,showAdminTab,
   pickTip,saveTips,addRound,addMatch,removeMatch,removeUser,
@@ -1625,7 +1691,8 @@ Object.assign(window,{
   togglePaid,savePrizes,pickMargin,toggleEditMatch,saveMatchEdit,
   proposeBet,acceptBet,deleteBet,
   triggerInstall,dismissInstall,
-  switchAuthTab
+  switchAuthTab,
+  requestNotifPermission
 });
 </script>
 
@@ -2135,6 +2202,14 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
           <div style="font-size:12px;color:var(--muted);margin-top:6px;">💡 Upload at <a href="https://imgur.com/upload" target="_blank" style="color:var(--green);">imgur.com/upload</a> → right-click image → Copy image address → paste here</div>
         </div>
         <button class="btn" onclick="saveProfile()" style="margin-top:8px;">Save Profile ✓</button>
+      </div>
+
+      <!-- NOTIFICATIONS CARD -->
+      <div class="card" style="max-width:500px;margin-top:16px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:8px;">🔔 Notifications</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6;">Get reminders when tips are about to close and when round results are in.</p>
+        <button class="btn" onclick="requestNotifPermission()" id="notif-btn" style="width:100%;">Enable Notifications 🔔</button>
+        <div id="notif-status" style="font-size:12px;color:var(--muted);margin-top:10px;text-align:center;"></div>
       </div>
     </div>
 
