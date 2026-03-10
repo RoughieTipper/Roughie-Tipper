@@ -557,13 +557,15 @@ function calcScoresForUsers(userIds) {
     let totalPts=0, correct=0, roughieBonus=0, roundPts={}, roundWins={};
     rounds.forEach(r=>{roundPts[r.id]=0; roundWins[r.id]=0;});
     finishedMatches.forEach(m=>{
+      const isDraw = m.winner === 'Draw';
       const { pick } = getEffectivePick(myTips, m);
-      if(!pick||pick!==m.winner) return;
-      const winOdds = m.winner===m.home?m.homeOdds:m.awayOdds;
-      const p = pts(winOdds);
+      if(!pick) return;
+      if(!isDraw && pick!==m.winner) return;
+      const p = isDraw ? 1 : pts(m.winner===m.home?m.homeOdds:m.awayOdds);
+      const winOdds = isDraw ? 0 : (m.winner===m.home?m.homeOdds:m.awayOdds);
       const isGen = myTips.hasOwnProperty('gen_'+m.id) && !!myTips['gen_'+m.id];
       totalPts+=p; correct++;
-      if(winOdds>=2.0 && !isGen) roughieBonus+=(p-1);
+      if(!isDraw && winOdds>=2.0 && !isGen) roughieBonus+=(p-1);
       if(roundPts[m.roundId]!==undefined) roundPts[m.roundId]+=p;
       if(roundWins[m.roundId]!==undefined) roundWins[m.roundId]++;
     });
@@ -776,19 +778,25 @@ function renderTipMatches() {
     const isDefaultAway = locked && !saved && !pending;
     const sel=pending||saved||(isDefaultAway?m.away:null);
     const hPts=pts(m.homeOdds), aPts=pts(m.awayOdds), finished=!!m.winner;
-    const hClass = finished?(m.winner===m.home?'winner-correct':(sel===m.home?'winner-wrong':''))
+    const isDraw = finished && m.winner==='Draw';
+    const hClass = finished?(isDraw?'winner-correct':(m.winner===m.home?'winner-correct':(sel===m.home?'winner-wrong':'')))
       :locked?(sel===m.home?'selected locked':'locked'):(sel===m.home?'selected':'');
-    const aClass = finished?(m.winner===m.away?'winner-correct':(sel===m.away?'winner-wrong':''))
+    const aClass = finished?(isDraw?'winner-correct':(m.winner===m.away?'winner-correct':(sel===m.away?'winner-wrong':'')))
       :locked?(sel===m.away?'selected locked':'locked'):(sel===m.away?'selected':'');
     const isPending = pendingTips[m.id]&&pendingTips[m.id]!==saved;
     const isGenerated = !!myTips['gen_'+m.id];
+    const isDrawMatch = finished && m.winner==='Draw';
     let earnedDiv='';
     if(finished&&sel){
       const winOdds=m.winner===m.home?m.homeOdds:m.awayOdds;
       const genNote = isGenerated ? ' &nbsp;<span style="font-size:11px;opacity:0.7;">🎲 randomly generated</span>' : '';
-      earnedDiv=sel===m.winner
-        ?`<div style="text-align:center;margin-top:10px;"><span class="result-badge badge-win">✓ +${pts(winOdds)} pts earned${isGenerated?' (no roughie bonus)':''}</span>${genNote}</div>`
-        :`<div style="text-align:center;margin-top:10px;"><span class="result-badge badge-loss">✗ Incorrect</span>${genNote}</div>`;
+      if(isDrawMatch){
+        earnedDiv=`<div style="text-align:center;margin-top:10px;"><span class="result-badge badge-pending">🤝 Draw — +1pt</span></div>`;
+      } else {
+        earnedDiv=sel===m.winner
+          ?`<div style="text-align:center;margin-top:10px;"><span class="result-badge badge-win">✓ +${pts(winOdds)} pts earned${isGenerated?' (no roughie bonus)':''}</span>${genNote}</div>`
+          :`<div style="text-align:center;margin-top:10px;"><span class="result-badge badge-loss">✗ Incorrect</span>${genNote}</div>`;
+      }
     } else if(isGenerated && !finished) {
       earnedDiv=`<div style="text-align:center;margin-top:10px;font-size:12px;color:var(--muted);">🎲 Randomly generated tip</div>`;
     }
@@ -916,7 +924,7 @@ function showRound(roundId,btn){
           <span style="color:var(--muted);font-size:12px;margin-left:6px;">${formatMatchDate(m.date)} ${m.time?'@ '+to12hr(m.time):''} ${m.venue?'· '+escHtml(m.venue):''}</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
-          ${m.winner?`<span class="result-badge badge-win">✓ ${escHtml(m.winner)}</span><span style="color:var(--gold);font-weight:700;">${winPts}pt${winPts>1?'s':''}</span>`
+          ${m.winner==='Draw'?'<span class="result-badge badge-pending">🤝 Draw — everyone +1pt</span>':m.winner?`<span class="result-badge badge-win">✓ ${escHtml(m.winner)}</span><span style="color:var(--gold);font-weight:700;">${winPts}pt${winPts>1?'s':''}</span>`
             :locked?'<span class="result-badge badge-pending">🔒 Locked</span>':'<span class="result-badge badge-pending">Open</span>'}
         </div>
       </div>
@@ -931,7 +939,10 @@ function showRound(roundId,btn){
           const correct=m.winner&&pick===m.winner, wrong=m.winner&&pick!==m.winner;
           const genTag = isGenerated ? ' <span title="Randomly generated" style="font-size:10px;opacity:0.8;">🎲</span>' : '';
           const autoTag = isAuto ? ' <span style="color:var(--gold);font-size:10px;">AUTO</span>' : '';
-          return `<span class="pick-chip ${correct?'chip-correct':wrong?'chip-wrong':''}">${escHtml(u.nick||u.name)}: ${escHtml(pick)}${genTag}${autoTag}${correct?' +'+pts(winOdds):wrong?' ✗':''}</span>`;
+          const isDrawResult = m.winner==='Draw';
+          return isDrawResult
+            ? `<span class="pick-chip chip-correct">${escHtml(u.nick||u.name)}: ${escHtml(pick)}${genTag}${autoTag} 🤝 +1</span>`
+            : `<span class="pick-chip ${correct?'chip-correct':wrong?'chip-wrong':''}">${escHtml(u.nick||u.name)}: ${escHtml(pick)}${genTag}${autoTag}${correct?' +'+pts(winOdds):wrong?' ✗':''}</span>`;
         }).join('')}
       </div>` : `<div style="margin-top:10px;font-size:12px;color:var(--muted);font-style:italic;">🔒 Tips hidden until kick-off</div>`}
     </div>`;
@@ -1149,6 +1160,7 @@ function renderAdminResults(){
           <option value="">-- Pick Winner --</option>
           <option value="${m.home}" ${m.winner===m.home?'selected':''}>${escHtml(m.home)} ($${Number(m.homeOdds).toFixed(2)} → ${pts(m.homeOdds)}pt${pts(m.homeOdds)>1?'s':''})</option>
           <option value="${m.away}" ${m.winner===m.away?'selected':''}>${escHtml(m.away)} ($${Number(m.awayOdds).toFixed(2)} → ${pts(m.awayOdds)}pt${pts(m.awayOdds)>1?'s':''})</option>
+          <option value="Draw" ${m.winner==='Draw'?'selected':''}>🤝 Draw — everyone gets 1pt</option>
         </select>
         ${idx===0?`<div style="display:flex;align-items:center;gap:8px;">
           <label style="font-size:12px;color:var(--muted);">Winning margin:</label>
@@ -1156,7 +1168,7 @@ function renderAdminResults(){
             style="width:72px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;"/>
         </div>`:''}
         <button class="btn" style="font-size:13px;padding:8px 16px;" onclick="saveResult('${round.id}','${m.id}',${idx===0})">Save</button>
-        ${m.winner?`<span class="result-badge badge-win">✓ ${escHtml(m.winner)} ${m.actualMargin?'by '+m.actualMargin+'pts':''}</span>`:'<span class="result-badge badge-pending">Pending</span>'}
+        ${m.winner==='Draw'?'<span class="result-badge badge-pending">🤝 Draw</span>':m.winner?`<span class="result-badge badge-win">✓ ${escHtml(m.winner)} ${m.actualMargin?'by '+m.actualMargin+'pts':''}</span>`:'<span class="result-badge badge-pending">Pending</span>'}
       </div>
     </div>`).join('');
 }
@@ -1175,7 +1187,7 @@ async function saveResult(roundId,matchId,isMarginGame=false){
     return updated;
   });
   await updateDoc(doc(db,'rounds',roundId),{matches});
-  toast(winner?`Result saved: ${winner} wins! 🎉`:'Result cleared');
+  toast(winner==='Draw'?'Result saved: Draw! 🤝 Everyone gets 1pt':winner?`Result saved: ${winner} wins! 🎉`:'Result cleared');
 }
 // ─── SHARE FUNCTIONS ─────────────────────────────────────────
 function shareRoundResult() {
@@ -1195,6 +1207,7 @@ function shareRoundResult() {
     const isGenerated = myTips['gen_'+m.id];
     if (isGenerated) return '🎲';
     if (!m.winner) return '⬜';
+    if (m.winner === 'Draw') return '🤝';
     return pick === m.winner ? '✅' : '❌';
   });
 
