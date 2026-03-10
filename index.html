@@ -156,10 +156,37 @@ function formatMatchDate(dateStr) {
 }
 
 function formatTimeInput(input) {
-  // Auto-format as HH:MM while typing, works on all browsers including Safari
+  // Auto-format as HH:MM while typing (24hr), used for inline edit fields
   let v = input.value.replace(/[^0-9]/g,'');
   if (v.length >= 3) v = v.slice(0,2) + ':' + v.slice(2,4);
   input.value = v;
+}
+function formatTimeInput12(input) {
+  // Auto-format H:MM while typing (12hr), used for add match form
+  let v = input.value.replace(/[^0-9]/g,'');
+  if (v.length >= 3) v = v.slice(0,2) + ':' + v.slice(2,4);
+  input.value = v;
+}
+function to24hr(timeStr, ampm) {
+  // Convert 12hr e.g. "7:30" + "PM" to 24hr "19:30"
+  if (!timeStr) return '19:30';
+  const parts = timeStr.split(':');
+  let h = parseInt(parts[0], 10) || 0;
+  const m = parts[1] || '00';
+  if (ampm === 'AM') { if (h === 12) h = 0; }
+  else { if (h !== 12) h += 12; }
+  return String(h).padStart(2,'0') + ':' + m.padStart(2,'0');
+}
+function to12hr(time24) {
+  // Convert stored 24hr "19:30" to "7:30 PM" for display
+  if (!time24) return '';
+  const parts = time24.split(':');
+  let h = parseInt(parts[0], 10);
+  const m = parts[1] || '00';
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  if (h === 0) h = 12;
+  else if (h > 12) h -= 12;
+  return h + ':' + m + ' ' + ampm;
 }
 
 function toast(msg, err=false) {
@@ -784,7 +811,7 @@ function renderTipMatches() {
       marginInput = `<div style="margin-top:10px;font-size:12px;color:var(--muted);">&#x1F3AF; No margin entered &mdash; auto: 1pt</div>`;
     }
     return `<div class="match-card ${sel?'tipped':''}">
-      <div class="match-meta">📅 ${formatMatchDate(m.date)} ${m.time?'@ '+m.time:''} ${m.venue?'· 📍'+escHtml(m.venue):''} &nbsp;·&nbsp; ${round.name}
+      <div class="match-meta">📅 ${formatMatchDate(m.date)} ${m.time?'@ '+to12hr(m.time):''} ${m.venue?'· 📍'+escHtml(m.venue):''} &nbsp;·&nbsp; ${round.name}
         ${locked&&!finished?'<span class="result-badge badge-pending" style="margin-left:6px;">🔒 Tips Locked</span>':''}
         ${isDefaultAway&&!finished?'<span class="result-badge badge-loss" style="margin-left:6px;">⚠️ Auto: Away</span>':''}
         ${finished?'<span class="result-badge badge-win" style="margin-left:6px;">✓ Result In</span>':''}
@@ -878,7 +905,7 @@ function showRound(roundId,btn){
           ${clubBadge(m.away,28)} <span style="font-weight:700;">${escHtml(m.away)}</span>
           <span style="color:var(--gold);">$${Number(m.awayOdds).toFixed(2)}</span>
           ${m.awayOdds>=2?'<span class="roughie-tag">R</span>':''}
-          <span style="color:var(--muted);font-size:12px;margin-left:6px;">${formatMatchDate(m.date)} ${m.time?'@ '+m.time:''} ${m.venue?'· '+escHtml(m.venue):''}</span>
+          <span style="color:var(--muted);font-size:12px;margin-left:6px;">${formatMatchDate(m.date)} ${m.time?'@ '+to12hr(m.time):''} ${m.venue?'· '+escHtml(m.venue):''}</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           ${m.winner?`<span class="result-badge badge-win">✓ ${escHtml(m.winner)}</span><span style="color:var(--gold);font-weight:700;">${winPts}pt${winPts>1?'s':''}</span>`
@@ -1004,7 +1031,7 @@ async function addMatch(){
   const homeOdds=parseFloat(el('nm-home-odds').value);
   const away=el('nm-away').value.trim()||el('nm-away').innerText.trim();
   const awayOdds=parseFloat(el('nm-away-odds').value);
-  const date=el('nm-date').value, time=el('nm-time').value||'19:30', venue=el('nm-venue').value.trim(), roundId=el('admin-match-round').value;
+  const date=el('nm-date').value, time=to24hr(el('nm-time').value||'7:30', el('nm-ampm').value||'PM'), venue=el('nm-venue').value.trim(), roundId=el('admin-match-round').value;
   if(!home){toast('Please enter home team name',true);return;}
   if(!homeOdds||isNaN(homeOdds)){toast('Please enter home team odds',true);return;}
   if(!away){toast('Please enter away team name',true);return;}
@@ -1015,6 +1042,7 @@ async function addMatch(){
   const newMatch={id:'m'+Date.now(),home,homeOdds,away,awayOdds,date,time,venue,winner:null};
   await updateDoc(doc(db,'rounds',roundId),{matches:[...(round.matches||[]),newMatch]});
   ['nm-home','nm-home-odds','nm-away','nm-away-odds','nm-date','nm-time','nm-venue'].forEach(i=>el(i).value='');
+  if(el('nm-ampm')) el('nm-ampm').value='PM';
   toast('Match added!');
 }
 function renderAdminMatchesList(){
@@ -1028,7 +1056,7 @@ function renderAdminMatchesList(){
           ${clubBadge(m.home,22)} <span style="font-weight:600;">${escHtml(m.home)}</span> <span style="color:var(--gold);">$${Number(m.homeOdds).toFixed(2)}</span>
           <span style="color:var(--muted);margin:0 4px;">vs</span>
           ${clubBadge(m.away,22)} <span style="font-weight:600;">${escHtml(m.away)}</span> <span style="color:var(--gold);">$${Number(m.awayOdds).toFixed(2)}</span>
-          <span style="color:var(--muted);font-size:12px;">📅 ${formatMatchDate(m.date)} ${m.time?'@ '+m.time:''} ${m.venue?'· '+escHtml(m.venue):''}</span>
+          <span style="color:var(--muted);font-size:12px;">📅 ${formatMatchDate(m.date)} ${m.time?'@ '+to12hr(m.time):''} ${m.venue?'· '+escHtml(m.venue):''}</span>
         </div>
         <div style="display:flex;gap:8px;">
           <button class="btn btn-outline" style="font-size:12px;padding:5px 12px;" onclick="toggleEditMatch('${roundId}','${m.id}')">✏️ Edit</button>
@@ -2231,7 +2259,13 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
             <input type="text" id="nm-away" placeholder="Carlton" oninput="this.value=this.value" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
             <input type="number" id="nm-away-odds" placeholder="2.40" step="0.01" min="1" oninput="this.value=this.value" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
             <input type="date" id="nm-date" oninput="this.value=this.value" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
-            <input type="text" id="nm-time" placeholder="19:30" maxlength="5" oninput="formatTimeInput(this)" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:80px;"/>
+            <div style="display:flex;gap:4px;align-items:center;">
+              <input type="text" id="nm-time" placeholder="7:30" maxlength="5" oninput="formatTimeInput12(this)" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 8px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:60px;"/>
+              <select id="nm-ampm" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 4px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;">
+                <option value="PM">PM</option>
+                <option value="AM">AM</option>
+              </select>
+            </div>
             <input type="text" id="nm-venue" placeholder="e.g. MCG" oninput="this.value=this.value" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
             <button class="btn" onclick="addMatch()">+ Add</button>
           </div>
