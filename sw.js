@@ -1,4 +1,4 @@
-const CACHE = 'roughie-v1';
+const CACHE = 'roughie-v2';
 const ASSETS = ['/Roughie-Tipper/'];
 
 self.addEventListener('install', e => {
