@@ -717,20 +717,14 @@ function scoringLegendHTML() {
     [7,'$7–$7.99',true],[8,'$8–$8.99',true],[9,'$9+',true],
   ];
   return `<div class="scoring-card">
-    <div class="scoring-card-title">📊 <span>Scoring System</span> — points earned = the odds tier of the team you picked</div>
+    <div class="scoring-card-title">📊 <span>Scoring System</span></div>
     <div class="scoring-grid">${tiers.map(([p,r,roughie])=>`
       <div class="legend-item ${roughie?'roughie':'normal'}">
-        <div class="odds-range">${r}</div>
+        <div class="legend-item-icon">${roughie?'⚡':'✅'}</div>
         <div class="pts-val">${p}</div>
         <div class="pts-label">PT${p>1?'S':''}</div>
-        ${roughie?'<div class="roughie-tag">★ Roughie</div>':'<div class="roughie-tag" style="opacity:0;"> </div>'}
+        <div class="odds-range">${r}</div>
       </div>`).join('')}
-    </div>
-    <div class="scoring-note">
-      ✅ <strong>Correct pick</strong> earns pts based on the team's odds — higher odds = more points &nbsp;·&nbsp;
-      ★ <strong>Roughie Bonus</strong> applies when odds are $2.00+ (you tipped the underdog or an even chance) &nbsp;·&nbsp;
-      ❌ <strong>Wrong pick</strong> earns 0 pts &nbsp;·&nbsp;
-      📐 <strong>Margin Bonus</strong> — closest margin guess each round earns +3 pts
     </div>
   </div>`;
 }
@@ -1702,18 +1696,17 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
 .scoring-grid{display:grid;grid-template-columns:repeat(9,1fr);gap:6px;}
 @media(max-width:600px){.scoring-grid{grid-template-columns:repeat(5,1fr);}}
 @media(max-width:380px){.scoring-grid{grid-template-columns:repeat(3,1fr);}}
-.legend-item{border-radius:10px;padding:10px 4px 8px;text-align:center;border:1px solid var(--border);}
-.legend-item.normal{background:rgba(0,200,83,0.08);border-color:rgba(0,200,83,0.25);}
-.legend-item.roughie{background:rgba(255,214,0,0.08);border-color:rgba(255,214,0,0.25);}
-.legend-item .odds-range{font-size:10px;color:var(--muted);margin-bottom:4px;line-height:1.3;}
-.legend-item .pts-val{font-family:'Bebas Neue',sans-serif;font-size:22px;line-height:1;}
+.legend-item{border-radius:10px;padding:10px 4px 10px;text-align:center;border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;gap:1px;}
+.legend-item.normal{background:rgba(0,200,83,0.07);border-color:rgba(0,200,83,0.3);}
+.legend-item.roughie{background:rgba(255,214,0,0.07);border-color:rgba(255,214,0,0.3);}
+.legend-item-icon{font-size:16px;line-height:1;margin-bottom:3px;}
+.legend-item .pts-val{font-family:'Bebas Neue',sans-serif;font-size:24px;line-height:1;}
 .legend-item.normal .pts-val{color:var(--green);}
 .legend-item.roughie .pts-val{color:var(--gold);}
-.legend-item .pts-label{font-size:9px;font-weight:700;letter-spacing:0.06em;margin-top:2px;}
+.legend-item .pts-label{font-size:9px;font-weight:700;letter-spacing:0.05em;}
 .legend-item.normal .pts-label{color:var(--green);}
 .legend-item.roughie .pts-label{color:var(--gold);}
-.legend-item .roughie-tag{font-size:8px;font-weight:700;letter-spacing:0.08em;color:var(--gold);text-transform:uppercase;margin-top:3px;opacity:0.9;}
-.scoring-note{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.6;padding-top:10px;border-top:1px solid var(--border);}
+.legend-item .odds-range{font-size:9px;color:var(--muted);margin-top:4px;line-height:1.3;}
 /* legacy compat */
 .legend-grid{display:flex;gap:7px;flex-wrap:wrap;}
 .round-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;}
