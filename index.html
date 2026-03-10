@@ -705,15 +705,34 @@ function renderLeaderboard() {
     </tr>`;
   }).join('')||`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:30px;">No tippers in this comp yet</td></tr>`;
 
-  el('scoring-legend').innerHTML = [
-    [1,'$1–$1.99','normal'],[2,'$2–$2.99',''],[3,'$3–$3.99',''],
-    [4,'$4–$4.99',''],[5,'$5–$5.99',''],[6,'$6–$6.99',''],
-    [7,'$7–$7.99',''],[8,'$8–$8.99',''],[9,'$9+',''],
-  ].map(([p,r,cls])=>`<div class="legend-item">
-    <div class="odds-range">${r}</div>
-    <div class="pts-val ${cls}">${p} PT${p>1?'S':''}</div>
-    ${cls!=='normal'?'<div style="font-size:10px;color:var(--gold);">ROUGHIE</div>':''}
-  </div>`).join('');
+  // Populate all scoring legend containers on the page
+  document.querySelectorAll('.scoring-legend-container').forEach(el => {
+    el.innerHTML = scoringLegendHTML();
+  });
+}
+function scoringLegendHTML() {
+  const tiers = [
+    [1,'$1–$1.99',false],[2,'$2–$2.99',true],[3,'$3–$3.99',true],
+    [4,'$4–$4.99',true],[5,'$5–$5.99',true],[6,'$6–$6.99',true],
+    [7,'$7–$7.99',true],[8,'$8–$8.99',true],[9,'$9+',true],
+  ];
+  return `<div class="scoring-card">
+    <div class="scoring-card-title">📊 <span>Scoring System</span> — points earned = the odds tier of the team you picked</div>
+    <div class="scoring-grid">${tiers.map(([p,r,roughie])=>`
+      <div class="legend-item ${roughie?'roughie':'normal'}">
+        <div class="odds-range">${r}</div>
+        <div class="pts-val">${p}</div>
+        <div class="pts-label">PT${p>1?'S':''}</div>
+        ${roughie?'<div class="roughie-tag">★ Roughie</div>':'<div class="roughie-tag" style="opacity:0;"> </div>'}
+      </div>`).join('')}
+    </div>
+    <div class="scoring-note">
+      ✅ <strong>Correct pick</strong> earns pts based on the team's odds — higher odds = more points &nbsp;·&nbsp;
+      ★ <strong>Roughie Bonus</strong> applies when odds are $2.00+ (you tipped the underdog or an even chance) &nbsp;·&nbsp;
+      ❌ <strong>Wrong pick</strong> earns 0 pts &nbsp;·&nbsp;
+      📐 <strong>Margin Bonus</strong> — closest margin guess each round earns +3 pts
+    </div>
+  </div>`;
 }
 
 // ─── GLOBAL LEADERBOARD ──────────────────────────────────────
@@ -747,6 +766,8 @@ let pendingTips = {};
 
 function renderTipsPage() {
   if (!currentUser) return;
+  // Populate scoring legend on this page
+  document.querySelectorAll('#page-tips .scoring-legend-container').forEach(c => { c.innerHTML = scoringLegendHTML(); });
   const rsel = el('tip-round-select');
   rsel.innerHTML = rounds.filter(r=>(r.matches||[]).length>0).map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
   if (!rsel.onchange) rsel.onchange = renderTipMatches;
@@ -874,6 +895,8 @@ async function saveTips(){
 
 // ─── ROUNDS PAGE ─────────────────────────────────────────────
 function renderRoundsPage(){
+  // Populate scoring legend on this page
+  document.querySelectorAll('#page-rounds .scoring-legend-container').forEach(c => { c.innerHTML = scoringLegendHTML(); });
   const activeRounds=rounds.filter(r=>(r.matches||[]).length>0);
   const nav=el('round-tabs-nav');
   nav.innerHTML=activeRounds.map((r,i)=>
@@ -1673,11 +1696,26 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
 .pts-big{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--green);}
 .roughie-pts{color:var(--gold);font-size:13px;font-weight:600;}
 .accuracy{color:var(--muted);font-size:13px;}
+.scoring-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px 20px;margin-bottom:20px;}
+.scoring-card-title{font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.scoring-card-title span{color:var(--gold);}
+.scoring-grid{display:grid;grid-template-columns:repeat(9,1fr);gap:6px;}
+@media(max-width:600px){.scoring-grid{grid-template-columns:repeat(5,1fr);}}
+@media(max-width:380px){.scoring-grid{grid-template-columns:repeat(3,1fr);}}
+.legend-item{border-radius:10px;padding:10px 4px 8px;text-align:center;border:1px solid var(--border);}
+.legend-item.normal{background:rgba(0,200,83,0.08);border-color:rgba(0,200,83,0.25);}
+.legend-item.roughie{background:rgba(255,214,0,0.08);border-color:rgba(255,214,0,0.25);}
+.legend-item .odds-range{font-size:10px;color:var(--muted);margin-bottom:4px;line-height:1.3;}
+.legend-item .pts-val{font-family:'Bebas Neue',sans-serif;font-size:22px;line-height:1;}
+.legend-item.normal .pts-val{color:var(--green);}
+.legend-item.roughie .pts-val{color:var(--gold);}
+.legend-item .pts-label{font-size:9px;font-weight:700;letter-spacing:0.06em;margin-top:2px;}
+.legend-item.normal .pts-label{color:var(--green);}
+.legend-item.roughie .pts-label{color:var(--gold);}
+.legend-item .roughie-tag{font-size:8px;font-weight:700;letter-spacing:0.08em;color:var(--gold);text-transform:uppercase;margin-top:3px;opacity:0.9;}
+.scoring-note{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.6;padding-top:10px;border-top:1px solid var(--border);}
+/* legacy compat */
 .legend-grid{display:flex;gap:7px;flex-wrap:wrap;}
-.legend-item{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 11px;text-align:center;}
-.legend-item .odds-range{font-size:10px;color:var(--muted);}
-.legend-item .pts-val{font-family:'Bebas Neue',sans-serif;font-size:19px;color:var(--gold);}
-.legend-item .pts-val.normal{color:var(--green);}
 .round-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;}
 .round-tab{background:var(--card);border:1px solid var(--border);color:var(--muted);padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif;transition:.15s;}
 .round-tab.active,.round-tab:hover{background:var(--green);color:var(--navy);border-color:var(--green);font-weight:600;}
@@ -1985,6 +2023,9 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
         </div>
       </div>
 
+      <!-- SCORING LEGEND — comp page -->
+      <div class="scoring-legend-container"></div>
+
       <div class="card">
         <div style="font-weight:600;margin-bottom:16px;">Full Standings</div>
         <div style="overflow-x:auto;">
@@ -1994,10 +2035,8 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
           </table>
         </div>
       </div>
-      <div style="margin-top:20px;">
-        <div style="font-weight:600;margin-bottom:12px;">📊 Scoring System</div>
-        <div class="legend-grid" id="scoring-legend"></div>
-      </div>
+      <!-- legacy compat id -->
+      <div id="scoring-legend" style="display:none;"></div>
     </div>
 
     <!-- GLOBAL LEADERBOARD -->
@@ -2022,6 +2061,8 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
         <div style="font-size:13px;color:var(--muted);line-height:1.6;"><strong style="color:var(--gold);">Odds are locked in each Wednesday night</strong> before the round and do not fluctuate — the odds shown are fixed for the entire round regardless of live market movements.</div>
       </div>
       <div class="section-sub">Pick your winners · Tips lock at kick-off time · Missing tip = automatic away team · Counts across all your comps</div>
+      <!-- SCORING LEGEND — tips page -->
+      <div class="scoring-legend-container"></div>
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
         <label style="color:var(--muted);font-size:14px;">Round:</label>
         <select id="tip-round-select" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;"></select>
@@ -2036,6 +2077,8 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
     <div class="page" id="page-rounds">
       <div class="section-title">ROUND <span>RESULTS</span></div>
       <div class="section-sub">Browse tips and results per round</div>
+      <!-- SCORING LEGEND — rounds page -->
+      <div class="scoring-legend-container"></div>
       <div class="round-tabs" id="round-tabs-nav"></div>
       <div id="round-results-content"></div>
     </div>
