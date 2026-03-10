@@ -238,6 +238,7 @@ let currentCompId = null, currentComp = null;
 let allComps = {};
 let unsubFns = [];
 let pendingJoinCode = null; // set from ?join= URL param
+let isRegistering = false;  // prevents onAuthStateChanged kicking user out mid-register
 
 // ─── AUTH ────────────────────────────────────────────────────
 onAuthStateChanged(auth, async user => {
@@ -277,7 +278,8 @@ onAuthStateChanged(auth, async user => {
             showPage('mycomps');
           }
         }
-      } else {
+      } else if (!isRegistering) {
+        // Only bail out if this isn't a fresh registration in progress
         await signOut(auth);
         toast('Account setup incomplete — please register again', true);
         el('login-btn').textContent = 'Log In';
@@ -323,6 +325,7 @@ async function doRegister() {
   if(!name||!email||!pass){toast('Fill in all required fields',true);return;}
   if(pass.length<6){toast('Password must be at least 6 characters',true);return;}
   el('reg-btn').textContent = 'Registering…';
+  isRegistering = true;
   try {
     const cred = await createUserWithEmailAndPassword(auth,email,pass);
     let isAdmin = false;
@@ -336,9 +339,11 @@ async function doRegister() {
         written=true; break;
       } catch(e){ await new Promise(r=>setTimeout(r,1000)); }
     }
+    isRegistering = false;
     if(!written) toast('Account created — please log in',true);
     else toast('Welcome to Roughie Tipper! 🏉');
   } catch(e){
+    isRegistering = false;
     if(e.code==='auth/email-already-in-use') toast('Email already registered — try logging in',true);
     else toast('Error: '+(e.code||e.message),true);
     el('reg-btn').textContent='Join Competition';
