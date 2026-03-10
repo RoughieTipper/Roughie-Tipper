@@ -204,19 +204,13 @@ function el(id) { return document.getElementById(id); }
 function escHtml(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-// Read ?join=CODE from URL on load
+// Read ?join=CODE from URL on load — stored for use after auth
 (function() {
   const params = new URLSearchParams(window.location.search);
   const joinCode = params.get('join');
   if (joinCode) {
-    pendingJoinCode = joinCode.trim().toLowerCase();
-    // Clean the URL so it doesn't show the code
+    sessionStorage.setItem('pendingJoin', joinCode.trim().toLowerCase());
     window.history.replaceState({}, '', window.location.pathname);
-    // Auto-switch to Register tab — invite links are for new users
-    window.addEventListener('DOMContentLoaded', () => {
-      const registerBtn = document.querySelector('.auth-tab:nth-child(2)');
-      if (registerBtn) switchAuthTab('register', registerBtn);
-    });
   }
 })();
 
@@ -242,7 +236,6 @@ let rounds = [], allTips = {}, allUsers = {}, allMargins = {};
 let currentCompId = null, currentComp = null;
 let allComps = {};
 let unsubFns = [];
-let pendingJoinCode = null; // set from ?join= URL param
 let isRegistering = false;  // prevents onAuthStateChanged kicking user out mid-register
 
 // ─── AUTH ────────────────────────────────────────────────────
@@ -269,9 +262,10 @@ onAuthStateChanged(auth, async user => {
         el('nav-admin').style.display = isSiteAdmin ? 'inline-flex' : 'none';
         subscribeGlobal();
         // If arrived via invite link, auto-join that comp
-        if (pendingJoinCode) {
-          await autoJoinFromInvite(pendingJoinCode);
-          pendingJoinCode = null;
+        const storedJoin = sessionStorage.getItem('pendingJoin');
+        if (storedJoin) {
+          sessionStorage.removeItem('pendingJoin');
+          await autoJoinFromInvite(storedJoin);
         } else {
           // Auto-load last used comp or show comp picker
           const lastComp = userProfile.lastCompId;
@@ -2389,6 +2383,13 @@ function switchAuthTab(tab,btn){
   btn.classList.add('active');
   document.getElementById('auth-'+tab).classList.add('active');
 }
+// If arriving via invite link, auto-open Register tab
+(function(){
+  if(sessionStorage.getItem('pendingJoin')){
+    var btns = document.querySelectorAll('.auth-tab');
+    if(btns.length>=2) switchAuthTab('register', btns[1]);
+  }
+})();
 </script>
 </body>
 </html>
