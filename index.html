@@ -597,7 +597,7 @@ function calcScoresForUsers(userIds) {
       if(!pick||pick!==m.winner) return;
       const winOdds = m.winner===m.home?m.homeOdds:m.awayOdds;
       const p = pts(winOdds);
-      const isGen = !!myTips['gen_'+m.id];
+      const isGen = myTips['gen_'+m.id] === true || myTips['gen_'+m.id] === 'true';
       totalPts+=p; correct++;
       if(winOdds>=2.0 && !isGen) roughieBonus+=(p-1);
       if(roundPts[m.roundId]!==undefined) roundPts[m.roundId]+=p;
