@@ -212,6 +212,11 @@ function escHtml(s) {
     pendingJoinCode = joinCode.trim().toLowerCase();
     // Clean the URL so it doesn't show the code
     window.history.replaceState({}, '', window.location.pathname);
+    // Auto-switch to Register tab — invite links are for new users
+    window.addEventListener('DOMContentLoaded', () => {
+      const registerBtn = document.querySelector('.auth-tab:nth-child(2)');
+      if (registerBtn) switchAuthTab('register', registerBtn);
+    });
   }
 })();
 
