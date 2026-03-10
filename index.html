@@ -493,13 +493,7 @@ async function autoJoinFromInvite(code) {
     userProfile.compIds = compIds;
     allComps[matchId] = matchComp;
 
-    // Generate catch-up tips
-    const catchUpCount = await generateCatchUpTips(currentUser.uid);
-    if (catchUpCount > 0) {
-      toast('Joined '+matchComp.name+'! 🎲 '+catchUpCount+' missed tips randomly generated 🏉');
-    } else {
-      toast('Joined '+matchComp.name+'! 🏉');
-    }
+    toast('Joined '+matchComp.name+'! 🏉');
     await loadComp(matchId);
   } catch(e) {
     console.error('Auto-join error:', e);
@@ -518,41 +512,11 @@ async function joinComp(compId) {
   if (!compIds.includes(compId)) compIds.push(compId);
   await updateDoc(doc(db,'users',currentUser.uid),{compIds});
   userProfile.compIds = compIds;
-  // Generate catch-up tips for any missed locked rounds
-  const catchUpCount = await generateCatchUpTips(currentUser.uid);
-  if (catchUpCount > 0) {
-    toast('Joined '+comp.name+'! 🎲 '+catchUpCount+' missed tips randomly generated 🏉');
-  } else {
-    toast('Joined '+comp.name+'! 🏉');
-  }
+  toast('Joined '+comp.name+'! 🏉');
   await loadComp(compId);
 }
 
 // Generate random tips for all locked rounds a new joiner missed
-async function generateCatchUpTips(uid) {
-  const allMatches = rounds.flatMap(r=>(r.matches||[]).map(m=>({...m,roundId:r.id})));
-  const lockedFinished = allMatches.filter(m=>m.winner); // only fully finished matches
-  if (!lockedFinished.length) return 0;
-
-  // Get existing tips so we don't overwrite any real ones
-  const existingSnap = await getDoc(doc(db,'tips',uid));
-  const existing = existingSnap.exists() ? existingSnap.data() : {};
-
-  // Only generate for matches with no tip yet
-  const missing = lockedFinished.filter(m=>!existing[m.id]);
-  if (!missing.length) return 0;
-
-  const generated = {};
-  missing.forEach(m=>{
-    // Random pick — 50/50 home or away
-    generated[m.id] = Math.random() < 0.5 ? m.home : m.away;
-    // Tag as generated so we can show the badge
-    generated['gen_'+m.id] = true;
-  });
-
-  await setDoc(doc(db,'tips',uid), {...existing, ...generated});
-  return missing.length;
-}
 
 async function createComp() {
   const name = el('new-comp-name').value.trim();
@@ -597,7 +561,7 @@ function calcScoresForUsers(userIds) {
       if(!pick||pick!==m.winner) return;
       const winOdds = m.winner===m.home?m.homeOdds:m.awayOdds;
       const p = pts(winOdds);
-      const isGen = myTips['gen_'+m.id] === true || myTips['gen_'+m.id] === 'true';
+      const isGen = myTips.hasOwnProperty('gen_'+m.id) && !!myTips['gen_'+m.id];
       totalPts+=p; correct++;
       if(winOdds>=2.0 && !isGen) roughieBonus+=(p-1);
       if(roundPts[m.roundId]!==undefined) roundPts[m.roundId]+=p;
@@ -1286,7 +1250,7 @@ function copyInviteLink() {
 
   let msg;
   if (missedRounds > 0) {
-    msg = `🏉 Join ${compName} on Roughie Tipper!\n\nDon't worry if you've missed the first ${missedRounds} round${missedRounds>1?'s':''} — the app will randomly generate your missed tips so you start on a real score, not zero. You're in from here!\n\n👉 ${inviteUrl}`;
+    msg = `🏉 Join ${compName} on Roughie Tipper!\n\nMissed the start of the season? No problem — you'll automatically receive the away team for any rounds you missed and enter with a real score. You're in from here!\n\n👉 ${inviteUrl}`;
   } else {
     msg = `🏉 Join ${compName} on Roughie Tipper!\n\nAFL tipping with roughie bonus points for picking big upsets.\n\n👉 ${inviteUrl}`;
   }
@@ -1642,7 +1606,6 @@ Object.assign(window,{
   shareRoundResult,copyInviteLink,
   saveResult,removeRound,renderAdminMatchesList,renderAdminResults,
   renderAdminRoundsList,addRoundFromMgmt,promptRenameRound,moveRound,
-  generateCatchUpTips,
   saveJoinCode,sendChat,chatKeydown,insertEmoji,deleteMessage,
   toggleAdmin,saveProfile,previewAvatar,
   joinComp,autoJoinFromInvite,createComp,switchComp,deleteComp,renderAdminComps,
@@ -1875,8 +1838,8 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
       <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;">
         <span style="font-size:22px;flex-shrink:0;">🎲</span>
         <div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--green);letter-spacing:1px;margin-bottom:4px;">Join any time — missed rounds auto-filled</div>
-          <div style="font-size:13px;color:var(--muted);line-height:1.6;">Join mid-season and your missed rounds get randomly generated so you're on the board straight away. Roughie bonus must be earned though — no free rides! 😄</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--green);letter-spacing:1px;margin-bottom:4px;">Join any time — no FOMO required</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;">Missed the start of the season? No problem — you'll receive the away team for any rounds you missed and enter with a real score straight away.</div>
         </div>
       </div>
 
@@ -1987,7 +1950,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
         </button>
         <button class="btn" style="flex:1;min-width:140px;font-size:14px;padding:10px 16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:var(--gold);color:#0a1628;border:none;" onclick="copyInviteLink()">
           <span>🏉 Invite a Mate</span>
-          <span style="font-size:10px;opacity:0.6;font-weight:400;">Missed rounds randomly generated</span>
+          <span style="font-size:10px;opacity:0.6;font-weight:400;">Missed rounds receive away team</span>
         </button>
       </div>
 
@@ -2186,7 +2149,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
             <span style="font-size:20px;">🤑</span>
             <div>
               <div style="font-weight:700;font-size:14px;">Roughie Bonus — tipping a big upset</div>
-              <div style="font-size:13px;color:var(--muted);">Tip the underdog (odds 2.10+) and they win = bonus points on top. The longer the odds, the bigger the bonus. These must be earned — no roughie bonus on randomly generated tips.</div>
+              <div style="font-size:13px;color:var(--muted);">Tip the underdog (odds 2.10+) and they win = bonus points on top. The longer the odds, the bigger the bonus. These must be earned — only tips you actually submit count for roughie bonus.</div>
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--card2);border-radius:10px;">
@@ -2227,11 +2190,11 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
 
       <!-- JOINING MID SEASON -->
       <div class="card" style="margin-bottom:16px;">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:14px;">🎲 Joining Mid-Season</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:14px;">📅 Joining Mid-Season</div>
         <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--card2);border-radius:10px;margin-bottom:10px;">
           <span style="font-size:20px;flex-shrink:0;">🏉</span>
           <div style="font-size:14px;color:var(--muted);line-height:1.65;">
-            <span style="color:var(--text);font-weight:700;">You can join at any point in the season</span> — no FOMO required. If you've missed rounds, the app automatically generates random tips for those games so you land on the leaderboard with a real score straight away.
+            <span style="color:var(--text);font-weight:700;">You can join at any point in the season</span> — no FOMO required. If you've missed rounds, you automatically get the away team for any games you missed — same as anyone who forgets to tip.
           </div>
         </div>
         <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--card2);border-radius:10px;">
