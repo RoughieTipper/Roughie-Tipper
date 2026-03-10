@@ -1794,8 +1794,8 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
   #user-display{display:none;}
   .chat-feed{height:260px;}
   .chat-bubble{max-width:88%;}
-  .lb-table th:nth-child(6),.lb-table td:nth-child(6),
-  .lb-table th:nth-child(7),.lb-table td:nth-child(7){display:none;}
+  .lb-table{min-width:520px;}
+  .lb-table th:nth-child(8),.lb-table td:nth-child(8){display:none;}
 }
 </style>
   <!-- Google Analytics -->
@@ -2039,7 +2039,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
 
       <div class="card">
         <div style="font-weight:600;margin-bottom:16px;">Full Standings</div>
-        <div style="overflow-x:auto;">
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
           <table class="lb-table">
             <thead><tr><th>#</th><th>Tipper</th><th>Total Pts</th><th>Roughie Bonus</th><th>Round Wins</th><th>Last Round</th><th>Margin</th><th>🌐 Global</th></tr></thead>
             <tbody id="lb-body"></tbody>
