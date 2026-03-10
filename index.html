@@ -635,7 +635,7 @@ function renderLeaderboard() {
 
   const completedRounds = rounds.filter(r=>(r.matches||[]).length>0&&(r.matches||[]).every(m=>m.winner)).length;
   const activeRounds = rounds.filter(r=>(r.matches||[]).length>0).length;
-  const latestRound = [...rounds].reverse().find(r=>(r.matches||[]).length>0);
+  const latestRound = [...rounds].reverse().find(r=>(r.matches||[]).some(m=>m.winner));
   const topRoughie = [...scores].sort((a,b)=>b.roughieBonus-a.roughieBonus)[0];
 
   // Prize money display — always use currentComp (freshest data from loadComp)
@@ -750,7 +750,7 @@ function scoringLegendHTML() {
 // ─── GLOBAL LEADERBOARD ──────────────────────────────────────
 function renderGlobalLeaderboard() {
   const scores = calcScoresForUsers(Object.keys(allUsers));
-  const latestRound = [...rounds].reverse().find(r=>(r.matches||[]).length>0);
+  const latestRound = [...rounds].reverse().find(r=>(r.matches||[]).some(m=>m.winner));
 
   el('global-body').innerHTML = scores.map((s,i)=>{
     const rank=i+1, rc=rank<=3?`rank-${rank}`:'rank-other', me=s.uid===currentUser?.uid;
