@@ -597,8 +597,9 @@ function calcScoresForUsers(userIds) {
       if(!pick||pick!==m.winner) return;
       const winOdds = m.winner===m.home?m.homeOdds:m.awayOdds;
       const p = pts(winOdds);
+      const isGen = !!myTips['gen_'+m.id];
       totalPts+=p; correct++;
-      if(winOdds>=2.0) roughieBonus+=(p-1);
+      if(winOdds>=2.0 && !isGen) roughieBonus+=(p-1);
       if(roundPts[m.roundId]!==undefined) roundPts[m.roundId]+=p;
       if(roundWins[m.roundId]!==undefined) roundWins[m.roundId]++;
     });
@@ -816,12 +817,16 @@ function renderTipMatches() {
     const aClass = finished?(m.winner===m.away?'winner-correct':(sel===m.away?'winner-wrong':''))
       :locked?(sel===m.away?'selected locked':'locked'):(sel===m.away?'selected':'');
     const isPending = pendingTips[m.id]&&pendingTips[m.id]!==saved;
+    const isGenerated = !!myTips['gen_'+m.id];
     let earnedDiv='';
     if(finished&&sel){
       const winOdds=m.winner===m.home?m.homeOdds:m.awayOdds;
+      const genNote = isGenerated ? ' &nbsp;<span style="font-size:11px;opacity:0.7;">🎲 randomly generated</span>' : '';
       earnedDiv=sel===m.winner
-        ?`<div style="text-align:center;margin-top:10px;"><span class="result-badge badge-win">✓ +${pts(winOdds)} pts earned</span></div>`
-        :`<div style="text-align:center;margin-top:10px;"><span class="result-badge badge-loss">✗ Incorrect</span></div>`;
+        ?`<div style="text-align:center;margin-top:10px;"><span class="result-badge badge-win">✓ +${pts(winOdds)} pts earned${isGenerated?' (no roughie bonus)':''}</span>${genNote}</div>`
+        :`<div style="text-align:center;margin-top:10px;"><span class="result-badge badge-loss">✗ Incorrect</span>${genNote}</div>`;
+    } else if(isGenerated && !finished) {
+      earnedDiv=`<div style="text-align:center;margin-top:10px;font-size:12px;color:var(--muted);">🎲 Randomly generated tip</div>`;
     }
     // Margin input: only for first match, only before lock
     const isFirstMatch = mIdx === 0;
@@ -960,7 +965,9 @@ function showRound(roundId,btn){
           const pick = savedPick || (isAuto ? m.away : null);
           if(!pick) return `<span class="pick-chip" style="opacity:0.4;">${escHtml(u.nick||u.name)}: —</span>`;
           const correct=m.winner&&pick===m.winner, wrong=m.winner&&pick!==m.winner;
-          return `<span class="pick-chip ${correct?'chip-correct':wrong?'chip-wrong':''}">${escHtml(u.nick||u.name)}: ${escHtml(pick)}${isAuto?' <span style="color:var(--gold);font-size:10px;">AUTO</span>':''}${correct?' +'+pts(winOdds):wrong?' ✗':''}</span>`;
+          const genTag = isGenerated ? ' <span title="Randomly generated" style="font-size:10px;opacity:0.8;">🎲</span>' : '';
+          const autoTag = isAuto ? ' <span style="color:var(--gold);font-size:10px;">AUTO</span>' : '';
+          return `<span class="pick-chip ${correct?'chip-correct':wrong?'chip-wrong':''}">${escHtml(u.nick||u.name)}: ${escHtml(pick)}${genTag}${autoTag}${correct?' +'+pts(winOdds):wrong?' ✗':''}</span>`;
         }).join('')}
       </div>` : `<div style="margin-top:10px;font-size:12px;color:var(--muted);font-style:italic;">🔒 Tips hidden until kick-off</div>`}
     </div>`;
