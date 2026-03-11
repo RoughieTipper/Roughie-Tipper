@@ -250,6 +250,7 @@ function showPage(id) {
   if(id==='rounds') renderRoundsPage();
   if(id==='admin') renderAdmin();
   if(id==='profile') { renderProfilePage(); setTimeout(updateNotifBtn,300); }
+  if(id==='leaderboard') setTimeout(checkRoundWinnerCelebration, 800);
   if(id==='mycomps') renderMyComps();
   if(id==='rules') {} // static content, no render needed
   if(id==='leaderboard') setTimeout(initInstallBanner, 1000);
@@ -425,6 +426,7 @@ function subscribeGlobal() {
     if(el('page-mycomps')?.classList.contains('active')) renderMyComps();
     if(el('page-leaderboard')?.classList.contains('active')) renderLeaderboard();
     if(el('page-global')?.classList.contains('active')) renderGlobalLeaderboard();
+    setTimeout(checkRoundWinnerCelebration, 1000);
   });
   unsubFns.push(u4);
 
@@ -1679,6 +1681,117 @@ async function updateNotifBtn() {
   } catch(e) {}
 }
 
+// ─── ROUND WINNER CELEBRATION ────────────────────────────────
+let confettiInterval = null;
+
+function checkRoundWinnerCelebration() {
+  if (!currentUser || !currentCompId) return;
+  // Find the most recently fully completed round
+  const completedRounds = rounds.filter(r =>
+    (r.matches||[]).length > 0 && (r.matches||[]).every(m => m.winner)
+  );
+  if (completedRounds.length === 0) return;
+  const lastRound = completedRounds[completedRounds.length - 1];
+  const celebKey = `cel_${currentUser.uid}_${currentCompId}_${lastRound.id}`;
+  if (localStorage.getItem(celebKey)) return; // already seen
+
+  // Find winner of this round in this comp
+  const memberIds = Object.entries(allUsers)
+    .filter(([uid,u]) => (u.compIds||[]).includes(currentCompId))
+    .map(([uid]) => uid);
+  const scores = calcScoresForUsers(memberIds);
+  if (scores.length === 0) return;
+
+  // Find who scored most in this round
+  let bestPts = -1, winners = [];
+  scores.forEach(s => {
+    const rp = s.roundPts[lastRound.id] || 0;
+    if (rp > bestPts) { bestPts = rp; winners = [s]; }
+    else if (rp === bestPts) winners.push(s);
+  });
+  if (bestPts <= 0) return;
+  const winner = winners[0];
+
+  // Mark as seen
+  localStorage.setItem(celebKey, '1');
+
+  // Populate overlay
+  const roundName = lastRound.name || ('Round ' + (lastRound.order || ''));
+  document.getElementById('cel-round-label').textContent = roundName.toUpperCase();
+  document.getElementById('cel-name').textContent = winner.nick || winner.name;
+  document.getElementById('cel-pts').textContent = bestPts + ' pts this round' + (winners.length > 1 ? ' (tied)' : '');
+
+  const avatarEl = document.getElementById('cel-avatar');
+  if (winner.avatar) {
+    avatarEl.style.backgroundImage = `url(${winner.avatar})`;
+    avatarEl.style.backgroundSize = 'cover';
+    avatarEl.style.backgroundPosition = 'center';
+    avatarEl.textContent = '';
+  } else {
+    avatarEl.style.backgroundImage = '';
+    avatarEl.textContent = (winner.nick || winner.name || '?')[0].toUpperCase();
+  }
+
+  // Show overlay
+  const overlay = document.getElementById('celebration-overlay');
+  overlay.style.display = 'flex';
+
+  // Start confetti
+  startConfetti();
+}
+
+function dismissCelebration() {
+  const overlay = document.getElementById('celebration-overlay');
+  overlay.style.display = 'none';
+  stopConfetti();
+}
+
+function startConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const pieces = [];
+  const colours = ['#00c853','#ffd600','#2196f3','#ff5722','#e040fb','#00bcd4','#ffffff'];
+  for (let i = 0; i < 140; i++) {
+    pieces.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height - canvas.height,
+      w: Math.random() * 10 + 6,
+      h: Math.random() * 5 + 4,
+      colour: colours[Math.floor(Math.random() * colours.length)],
+      rotation: Math.random() * 360,
+      rotSpeed: (Math.random() - 0.5) * 4,
+      speedY: Math.random() * 3 + 1.5,
+      speedX: (Math.random() - 0.5) * 2,
+    });
+  }
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pieces.forEach(p => {
+      ctx.save();
+      ctx.translate(p.x + p.w / 2, p.y + p.h / 2);
+      ctx.rotate((p.rotation * Math.PI) / 180);
+      ctx.fillStyle = p.colour;
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+      p.y += p.speedY;
+      p.x += p.speedX;
+      p.rotation += p.rotSpeed;
+      if (p.y > canvas.height) { p.y = -10; p.x = Math.random() * canvas.width; }
+    });
+    confettiInterval = requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+function stopConfetti() {
+  if (confettiInterval) { cancelAnimationFrame(confettiInterval); confettiInterval = null; }
+  const canvas = document.getElementById('confetti-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
 Object.assign(window,{
   doLogin,doRegister,doLogout,doForgotPassword,showPage,showRound,showAdminTab,
   pickTip,saveTips,addRound,addMatch,removeMatch,removeUser,
@@ -1692,7 +1805,8 @@ Object.assign(window,{
   proposeBet,acceptBet,deleteBet,
   triggerInstall,dismissInstall,
   switchAuthTab,
-  requestNotifPermission
+  requestNotifPermission,
+  dismissCelebration,checkRoundWinnerCelebration
 });
 </script>
 
@@ -2480,5 +2594,19 @@ function switchAuthTab(tab,btn){
   }
 })();
 </script>
+<!-- ROUND WINNER CELEBRATION OVERLAY -->
+<div id="celebration-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(10,22,40,0.97);display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px;cursor:pointer;" onclick="dismissCelebration()">
+  <canvas id="confetti-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;"></canvas>
+  <div style="position:relative;z-index:1;">
+    <div style="font-size:56px;margin-bottom:8px;">🏆</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:3px;color:var(--muted);margin-bottom:4px;" id="cel-round-label">ROUND 1</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:var(--green);letter-spacing:2px;margin-bottom:20px;">ROUND WINNER!</div>
+    <div id="cel-avatar" style="width:80px;height:80px;border-radius:50%;margin:0 auto 16px;background:var(--card2);border:3px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:var(--green);overflow:hidden;"></div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--text);letter-spacing:1px;" id="cel-name"></div>
+    <div style="font-size:15px;color:var(--muted);margin-top:4px;" id="cel-pts"></div>
+    <div style="margin-top:32px;font-size:13px;color:var(--muted);opacity:0.6;">Tap anywhere to continue</div>
+  </div>
+</div>
+
 </body>
 </html>
