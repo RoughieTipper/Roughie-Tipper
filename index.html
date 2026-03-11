@@ -2253,34 +2253,6 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
         </div>
       </div>
 
-      <!-- SIDE BETS -->
-      <div class="chat-wrap" id="sidebets-wrap" style="margin-bottom:0;">
-        <div class="chat-header">
-          <div class="chat-header-title">🤑 Side Bets</div>
-          <span style="font-size:12px;color:var(--muted);">Honour system — keep it fun</span>
-        </div>
-        <div style="padding:16px;">
-          <!-- New bet form -->
-          <div style="margin-bottom:16px;padding:14px;background:var(--card2);border-radius:12px;">
-            <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600;">CALL OUT A TIPPER</div>
-            <div style="display:flex;flex-direction:column;gap:10px;">
-              <select id="bet-target" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;">
-                <option value="">Select who you're challenging…</option>
-              </select>
-              <textarea id="bet-text" rows="2" maxlength="200" placeholder="e.g. I bet you a slab of beers Carlton finish higher than Collingwood…"
-                style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;resize:none;"></textarea>
-              <input type="text" id="bet-stake" maxlength="60" placeholder="Stake e.g. A slab of beers, $20, Bragging rights…"
-                style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
-              <button class="btn" style="align-self:flex-start;font-size:13px;padding:9px 20px;" onclick="proposeBet()">🤑 Send Challenge</button>
-            </div>
-          </div>
-          <!-- Bets ledger -->
-          <div id="sidebets-list">
-            <div style="text-align:center;color:var(--muted);padding:20px;font-size:13px;">No side bets yet — someone start one! 👀</div>
-          </div>
-        </div>
-      </div>
-
       <!-- SCORING LEGEND — comp page -->
       <div class="scoring-legend-container"></div>
 
@@ -2295,6 +2267,32 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
       </div>
       <!-- legacy compat id -->
       <div id="scoring-legend" style="display:none;"></div>
+
+      <!-- SIDE BETS -->
+      <div class="chat-wrap" id="sidebets-wrap" style="margin-top:16px;margin-bottom:0;">
+        <div class="chat-header">
+          <div class="chat-header-title">🤑 Side Bets</div>
+          <span style="font-size:12px;color:var(--muted);">Honour system — keep it fun</span>
+        </div>
+        <div style="padding:16px;">
+          <div style="margin-bottom:16px;padding:14px;background:var(--card2);border-radius:12px;">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600;">CALL OUT A TIPPER</div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <select id="bet-target" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;">
+                <option value="">Select who you're challenging…</option>
+              </select>
+              <textarea id="bet-text" rows="2" maxlength="200" placeholder="e.g. I bet you a slab of beers Carlton finish higher than Collingwood…"
+                style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;resize:none;"></textarea>
+              <input type="text" id="bet-stake" maxlength="60" placeholder="Stake e.g. A slab of beers, $20, Bragging rights…"
+                style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
+              <button class="btn" style="align-self:flex-start;font-size:13px;padding:9px 20px;" onclick="proposeBet()">🤑 Send Challenge</button>
+            </div>
+          </div>
+          <div id="sidebets-list">
+            <div style="text-align:center;color:var(--muted);padding:20px;font-size:13px;">No side bets yet — someone start one! 👀</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- GLOBAL LEADERBOARD -->
