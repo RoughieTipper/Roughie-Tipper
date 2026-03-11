@@ -684,11 +684,50 @@ function renderLeaderboard() {
     if(best>0) scores.forEach(s=>{ if((s.roundPts[r.id]||0)===best) roundWinCounts[s.uid]=(roundWinCounts[s.uid]||0)+1; });
   });
 
+  // ── Leaderboard emojis ──────────────────────────────────────
+  const hasCompletedRound = completedRoundsList.length > 0;
+  let emojiMap = {};
+  if (hasCompletedRound && latestRound) {
+    const roundPtsArr = scores.map(s => ({ uid: s.uid, rp: s.roundPts[latestRound.id] || 0 }));
+    const maxRoundPts = Math.max(...roundPtsArr.map(x => x.rp));
+    const minRoundPts = Math.min(...roundPtsArr.map(x => x.rp));
+    const totalMatches = (latestRound.matches || []).length;
+    scores.forEach((s, i) => {
+      const emojis = [];
+      const rp = s.roundPts[latestRound.id] || 0;
+      // 👑 First place overall
+      if (i === 0) emojis.push('👑');
+      // 🥄 Last place overall
+      if (i === scores.length - 1 && scores.length > 1) emojis.push('🥄');
+      // ⭐ Highest score this round (not if also 🥶 - avoid clash)
+      if (rp === maxRoundPts && maxRoundPts > 0 && rp !== minRoundPts) emojis.push('⭐');
+      // 🥶 Lowest score this round
+      if (rp === minRoundPts && scores.length > 1 && rp !== maxRoundPts) emojis.push('🥶');
+      // 🔮 Perfect round - all tips correct this round
+      if (s.roundPts[latestRound.id] > 0 && s.roundWins && totalMatches > 0) {
+        // Check if they got every match right this round
+        const myTips = allTips[s.uid] || {};
+        const roundMatches = latestRound.matches || [];
+        const allCorrect = roundMatches.every(m => {
+          if (!m.winner) return false;
+          const { pick } = getEffectivePick(myTips, m);
+          if (m.winner === 'Draw') return !!pick;
+          return pick === m.winner;
+        });
+        if (allCorrect && roundMatches.length > 0) emojis.push('🔮');
+      }
+      emojiMap[s.uid] = emojis;
+    });
+  }
+
   el('lb-body').innerHTML = scores.map((s,i)=>{
     const rank=i+1, rc=rank<=3?`rank-${rank}`:'rank-other', me=s.uid===currentUser?.uid;
     const thisRound = latestRound?(s.roundPts[latestRound.id]??'—'):'—';
     const globalRank = globalRankMap[s.uid]||'—';
     const rWins = roundWinCounts[s.uid]||0;
+    const emojiBadges = (emojiMap[s.uid]||[]).map(e =>
+      `<span style="font-size:16px;line-height:1;" title="${e==='👑'?'Leading the comp':e==='🥄'?'Last place':e==='⭐'?'Top score this round':e==='🥶'?'Lowest score this round':e==='🔮'?'Perfect round!':''}">${e}</span>`
+    ).join('');
     const avatarHtml = s.avatar
       ? `<div style="width:32px;height:32px;border-radius:50%;background-image:url(${s.avatar});background-size:cover;background-position:center;flex-shrink:0;"></div>`
       : `<div style="width:32px;height:32px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--green);flex-shrink:0;">${(s.nick||s.name||'?')[0].toUpperCase()}</div>`;
@@ -709,8 +748,10 @@ function renderLeaderboard() {
     return `<tr ${me?'style="background:rgba(0,200,83,0.05);"':''}>
       <td><span class="rank-badge ${rc}">${rank}</span></td>
       <td><div style="display:flex;align-items:center;gap:8px;">${moveHtml ? `<div style="width:28px;text-align:center;">${moveHtml}</div>` : '<div style="width:28px;"></div>'}${avatarHtml}
-        <div><div class="tipper-name">${s.nick?escHtml(s.nick):escHtml(s.name)}${me?' <span style="color:var(--green);font-size:11px;">(you)</span>':''} ${paidIcon}</div>
-        <div style="font-size:12px;color:var(--muted);">${s.nick?escHtml(s.name):''}</div></div>
+        <div>
+          <div class="tipper-name">${emojiBadges?`<span style="margin-right:4px;">${emojiBadges}</span>`:''}${s.nick?escHtml(s.nick):escHtml(s.name)}${me?' <span style="color:var(--green);font-size:11px;">(you)</span>':''} ${paidIcon}</div>
+          <div style="font-size:12px;color:var(--muted);">${s.nick?escHtml(s.name):''}</div>
+        </div>
       </div></td>
       <td><span class="pts-big">${s.totalPts}</span></td>
       <td><span class="roughie-pts">+${s.roughieBonus} 🔥</span></td>
