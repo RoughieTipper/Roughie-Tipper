@@ -1899,35 +1899,72 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
 
     <div style="display:flex;flex-direction:column;gap:10px;">
 
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;">
-        <span style="font-size:22px;flex-shrink:0;">🎯</span>
-        <div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--green);letter-spacing:1px;margin-bottom:4px;">Tip the winner, score points</div>
-          <div style="font-size:13px;color:var(--muted);line-height:1.6;">Points are based on the odds — bigger upsets score more. Tip the underdog and win? That's your <strong style="color:var(--gold);">Roughie Bonus</strong>. 🤑</div>
+      <!-- SCORING -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--green);letter-spacing:1px;margin-bottom:10px;">🎯 How Scoring Works</div>
+        <p style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:10px;">Pick the winner of each match. Points are awarded based on the odds — the bigger the upset you tip, the more points you score.</p>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--card2);border-radius:10px;">
+            <span style="font-size:18px;">✅</span>
+            <div>
+              <div style="font-weight:700;font-size:13px;">Correct tip — favourite</div>
+              <div style="font-size:12px;color:var(--muted);">$1.00–$1.99 = 1pt · $2.00–$2.99 = 2pts · $3.00–$3.99 = 3pts · and so on up to $10.00+ = 10pts</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--card2);border-radius:10px;">
+            <span style="font-size:18px;">🤑</span>
+            <div>
+              <div style="font-weight:700;font-size:13px;">Roughie Bonus — tipping a big upset</div>
+              <div style="font-size:12px;color:var(--muted);">Tip the underdog (odds $2.00+) and they win = bonus points on top. The longer the odds, the bigger the bonus. You can earn roughie bonus on any tip including the automatic away team.</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--card2);border-radius:10px;">
+            <span style="font-size:18px;">❌</span>
+            <div>
+              <div style="font-weight:700;font-size:13px;">Wrong tip</div>
+              <div style="font-size:12px;color:var(--muted);">0 points. Better luck next week 😬</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--card2);border-radius:10px;">
+            <span style="font-size:18px;">🏠</span>
+            <div>
+              <div style="font-weight:700;font-size:13px;">Missed tip</div>
+              <div style="font-size:12px;color:var(--muted);">Forgot to tip? You automatically get the away team. So get your tips in!</div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;">
-        <span style="font-size:22px;flex-shrink:0;">📅</span>
-        <div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--green);letter-spacing:1px;margin-bottom:4px;">Odds locked Wednesday, tips until kick-off</div>
-          <div style="font-size:13px;color:var(--muted);line-height:1.6;">Odds are set Wednesday night and don't move. Change your tips as much as you like right up until the siren — then they're locked. 🔒</div>
+      <!-- ODDS & DEADLINES -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--green);letter-spacing:1px;margin-bottom:10px;">📅 Odds &amp; Deadlines</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--card2);border-radius:10px;">
+            <span style="font-size:18px;flex-shrink:0;">📊</span>
+            <div style="font-size:13px;color:var(--muted);line-height:1.65;"><span style="color:var(--text);font-weight:700;">Odds are locked in on Wednesday night</span> before each round. They're set once and don't move — what you see Wednesday is what counts.</div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--card2);border-radius:10px;">
+            <span style="font-size:18px;flex-shrink:0;">⏰</span>
+            <div style="font-size:13px;color:var(--muted);line-height:1.65;"><span style="color:var(--text);font-weight:700;">Tips lock at kick-off time.</span> Change your mind as many times as you like right up until the siren.</div>
+          </div>
         </div>
       </div>
 
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;">
-        <span style="font-size:22px;flex-shrink:0;">🎲</span>
-        <div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--green);letter-spacing:1px;margin-bottom:4px;">Join any time — no FOMO required</div>
-          <div style="font-size:13px;color:var(--muted);line-height:1.6;">Missed the start of the season? No problem — you'll receive the away team for any rounds you missed and enter with a real score straight away.</div>
+      <!-- JOINING MID SEASON -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--green);letter-spacing:1px;margin-bottom:10px;">📅 Joining Mid-Season</div>
+        <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--card2);border-radius:10px;">
+          <span style="font-size:18px;flex-shrink:0;">🏉</span>
+          <div style="font-size:13px;color:var(--muted);line-height:1.65;"><span style="color:var(--text);font-weight:700;">You can join at any point in the season</span> — no FOMO required. Missed the start of the season? No problem — you'll receive the away team for any rounds you missed and enter with a real score straight away.</div>
         </div>
       </div>
 
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;">
-        <span style="font-size:22px;flex-shrink:0;">🤑</span>
-        <div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--green);letter-spacing:1px;margin-bottom:4px;">Side bets — just for fun</div>
-          <div style="font-size:13px;color:var(--muted);line-height:1.6;">Challenge mates to side bets (a slab, bragging rights, whatever). Zero impact on standings — pure banter. 🍺</div>
+      <!-- SIDE BETS -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--green);letter-spacing:1px;margin-bottom:10px;">🍺 Side Bets</div>
+        <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--card2);border-radius:10px;">
+          <span style="font-size:18px;flex-shrink:0;">🤑</span>
+          <div style="font-size:13px;color:var(--muted);line-height:1.65;"><span style="color:var(--text);font-weight:700;">Challenge mates to side bets</span> — a slab, bragging rights, whatever. Zero impact on standings — pure banter.</div>
         </div>
       </div>
 
@@ -2230,14 +2267,14 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
             <span style="font-size:20px;">✅</span>
             <div>
               <div style="font-weight:700;font-size:14px;">Correct tip — favourite</div>
-              <div style="font-size:13px;color:var(--muted);">Odds under 1.30 = 1pt · 1.30–1.75 = 2pts · 1.75–2.10 = 3pts</div>
+              <div style="font-size:13px;color:var(--muted);">$1.00–$1.99 = 1pt · $2.00–$2.99 = 2pts · $3.00–$3.99 = 3pts · and so on up to $10.00+ = 10pts</div>
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--card2);border-radius:10px;">
             <span style="font-size:20px;">🤑</span>
             <div>
               <div style="font-weight:700;font-size:14px;">Roughie Bonus — tipping a big upset</div>
-              <div style="font-size:13px;color:var(--muted);">Tip the underdog (odds 2.10+) and they win = bonus points on top. The longer the odds, the bigger the bonus. These must be earned — you can earn roughie bonus on any tip including the automatic away team if you missed that week.</div>
+              <div style="font-size:13px;color:var(--muted);">Tip the underdog (odds $2.00+) and they win = bonus points on top. The longer the odds, the bigger the bonus. These must be earned — you can earn roughie bonus on any tip including the automatic away team if you missed that week.</div>
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--card2);border-radius:10px;">
