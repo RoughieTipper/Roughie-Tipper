@@ -960,10 +960,14 @@ function renderRoundsPage(){
   document.querySelectorAll('#page-rounds .scoring-legend-container').forEach(c => { c.innerHTML = scoringLegendHTML(); });
   const activeRounds=rounds.filter(r=>(r.matches||[]).length>0);
   const nav=el('round-tabs-nav');
+  // Default to current/upcoming round: first round that isn't fully complete
+  // If all rounds complete, fall back to last round
+  const defaultRound = activeRounds.find(r=>!(r.matches||[]).every(m=>m.winner)) || activeRounds[activeRounds.length-1];
+  const defaultIdx = activeRounds.indexOf(defaultRound);
   nav.innerHTML=activeRounds.map((r,i)=>
-    `<button class="round-tab ${i===activeRounds.length-1?'active':''}" onclick="showRound('${r.id}',this)">${r.name}</button>`
+    `<button class="round-tab ${i===defaultIdx?'active':''}" onclick="showRound('${r.id}',this)">${r.name}</button>`
   ).join('');
-  if(activeRounds.length) showRound(activeRounds[activeRounds.length-1].id,nav.querySelector('.round-tab.active'));
+  if(activeRounds.length) showRound(defaultRound.id, nav.querySelectorAll('.round-tab')[defaultIdx]);
 }
 
 function showRound(roundId,btn){
