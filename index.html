@@ -461,31 +461,49 @@ function renderMyComps() {
     .filter(([id])=>!myCompIds.includes(id))
     .map(([id,c])=>({id,...c}));
 
-  el('my-comps-list').innerHTML = myComps.length === 0
-    ? '<div style="color:var(--muted);padding:16px 0;">You haven\'t joined any competitions yet.</div>'
-    : myComps.map(c=>`
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border);">
-        <div>
-          <div style="font-weight:700;font-size:15px;">${escHtml(c.name)}</div>
-          <div style="font-size:12px;color:var(--muted);">Created by ${escHtml(c.ownerName||'')}</div>
-        </div>
-        <div style="display:flex;gap:8px;">
-          ${currentCompId===c.id
-            ? '<span class="result-badge badge-win">✓ Active</span>'
-            : `<button class="btn" style="font-size:13px;padding:8px 14px;" onclick="switchComp('${c.id}')">Switch →</button>`}
-        </div>
-      </div>`).join('');
+  // ── Comp leaderboard: total points across all members, sorted descending ──
+  const compStats = Object.entries(allComps).map(([id, c]) => {
+    const memberIds = Object.entries(allUsers)
+      .filter(([uid,u]) => (u.compIds||[]).includes(id))
+      .map(([uid]) => uid);
+    if (memberIds.length === 0) return null;
+    const scores = calcScoresForUsers(memberIds);
+    const avg = scores.length > 0
+      ? Math.round(scores.reduce((s, x) => s + x.totalPts, 0) / scores.length)
+      : 0;
+    const totalPts = scores.reduce((s, x) => s + x.totalPts, 0);
+    return { id, name: c.name, ownerName: c.ownerName||'', memberCount: memberIds.length, avg, totalPts };
+  }).filter(Boolean).sort((a, b) => b.totalPts - a.totalPts);
 
-  el('other-comps-list').innerHTML = otherComps.length === 0
-    ? '<div style="color:var(--muted);padding:16px 0;">No other competitions available yet.</div>'
-    : otherComps.map(c=>`
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border);">
-        <div>
-          <div style="font-weight:700;font-size:15px;">${escHtml(c.name)}</div>
-          <div style="font-size:12px;color:var(--muted);">Created by ${escHtml(c.ownerName||'')}</div>
-        </div>
-        <button class="btn btn-outline" style="font-size:13px;padding:8px 14px;" onclick="joinComp('${c.id}')">Join →</button>
-      </div>`).join('');
+  const isMember = id => myCompIds.includes(id);
+
+  el('comp-leaderboard').innerHTML = compStats.length === 0
+    ? '<div style="color:var(--muted);padding:16px 0;text-align:center;">No competitions yet</div>'
+    : compStats.map((c, i) => {
+        const rank = i + 1;
+        const rc = rank <= 3 ? `rank-${rank}` : 'rank-other';
+        const isActive = currentCompId === c.id;
+        const joined = isMember(c.id);
+        const actionBtn = joined
+          ? (isActive
+              ? '<span class="result-badge badge-win" style="font-size:12px;">✓ Active</span>'
+              : `<button class="btn" style="font-size:12px;padding:6px 12px;" onclick="switchComp('${c.id}')">Switch →</button>`)
+          : `<button class="btn btn-outline" style="font-size:12px;padding:6px 12px;" onclick="joinComp('${c.id}')">Join →</button>`;
+        return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);">
+          <span class="rank-badge ${rc}" style="flex-shrink:0;">${rank}</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(c.name)}</div>
+            <div style="font-size:12px;color:var(--muted);">${c.memberCount} tipper${c.memberCount!==1?'s':''} · avg ${c.avg} pts</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+            <div style="text-align:right;">
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--green);line-height:1;">${c.totalPts}</div>
+              <div style="font-size:10px;color:var(--muted);letter-spacing:0.5px;">TOTAL PTS</div>
+            </div>
+            ${actionBtn}
+          </div>
+        </div>`;
+      }).join('');
 }
 
 async function switchComp(compId) {
@@ -806,8 +824,8 @@ function renderGlobalLeaderboard() {
     return `<tr ${me?'style="background:rgba(0,200,83,0.05);"':''}>
       <td><span class="rank-badge ${rc}">${rank}</span></td>
       <td><div style="display:flex;align-items:center;gap:10px;">${avatarHtml}
-        <div><div class="tipper-name">${s.nick?escHtml(s.nick):escHtml(s.name)}${me?' <span style="color:var(--green);font-size:11px;">(you)</span>':''}</div>
-        <div style="font-size:11px;color:var(--muted);">${s.nick?escHtml(s.name)+' · ':''} ${escHtml(userCompNames||'No comp')}</div></div>
+        <div><div class="tipper-name">${s.nick?escHtml(sanitiseNick(s.nick)):escHtml(sanitiseNick(s.name))}${me?' <span style="color:var(--green);font-size:11px;">(you)</span>':''}</div>
+        <div style="font-size:11px;color:var(--muted);">${s.nick?escHtml(sanitiseNick(s.name))+' · ':''} ${escHtml(userCompNames||'No comp')}</div></div>
       </div></td>
       <td><span class="pts-big">${s.totalPts}</span></td>
       <td><span class="roughie-pts">+${s.roughieBonus} 🔥</span></td>
@@ -2349,14 +2367,15 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
 
     <!-- MY COMPS -->
     <div class="page" id="page-mycomps">
-      <div class="section-title">MY <span>COMPETITIONS</span></div>
-      <div class="section-sub">Join or create competitions · Tips count across all of them</div>
+      <div class="section-title">🏟️ COMP <span>LEADERBOARD</span></div>
+      <div class="section-sub">All competitions ranked by total points · Average score shown per comp</div>
 
+      <!-- COMP LEADERBOARD -->
       <div class="card" style="margin-bottom:20px;">
-        <div style="font-weight:700;font-size:16px;margin-bottom:16px;">Your Competitions</div>
-        <div id="my-comps-list"></div>
+        <div id="comp-leaderboard"></div>
       </div>
 
+      <!-- CREATE COMP -->
       <div class="card" style="margin-bottom:20px;">
         <div style="font-weight:700;font-size:16px;margin-bottom:6px;">➕ Create a New Competition</div>
         <div style="font-size:13px;color:var(--muted);margin-bottom:16px;">You'll be the admin of this comp and can manage your members.</div>
@@ -2373,7 +2392,13 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
         </div>
       </div>
 
-      <div class="card">
+      <!-- MY COMPS (compact, below fold) -->
+      <div class="card" style="margin-bottom:20px;display:none;">
+        <div style="font-weight:700;font-size:16px;margin-bottom:16px;">Your Competitions</div>
+        <div id="my-comps-list"></div>
+      </div>
+
+      <div class="card" style="display:none;">
         <div style="font-weight:700;font-size:16px;margin-bottom:16px;">🏟️ Other Available Competitions</div>
         <div id="other-comps-list"></div>
       </div>
