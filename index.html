@@ -927,6 +927,7 @@ function renderTipMatches() {
         ${finished?'<span class="result-badge badge-win" style="margin-left:6px;">✓ Result In</span>':''}
         ${isPending?'<span class="result-badge" style="background:rgba(255,214,0,0.2);color:var(--gold);margin-left:6px;">⚡ Unsaved</span>':''}
       </div>
+      ${marginInput}
       <div class="match-teams">
         <div class="team-btn ${hClass}" onclick="${locked||finished?'':'pickTip(\''+m.id+'\',\''+m.home.replace(/'/g,"\\'")+'\')'}">
           <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:6px;">${clubBadge(m.home,24)}<div class="team-name">${escHtml(m.home)}</div></div>
@@ -941,7 +942,7 @@ function renderTipMatches() {
           <div class="team-odds" style="color:${m.awayOdds<2?'var(--green)':'var(--gold)'}">$${Number(m.awayOdds).toFixed(2)}</div>
           ${m.awayOdds>=2?'<div class="roughie-tag">ROUGHIE</div>':''}
         </div>
-      </div>${earnedDiv}${marginInput}</div>`;
+      </div>${earnedDiv}</div>`;
   }).join('')||'<div class="card" style="text-align:center;color:var(--muted);">No matches in this round.</div>';
   el('save-tips-btn').style.display=hasOpen&&Object.keys(pendingTips).length>0?'inline-flex':'none';
 }
