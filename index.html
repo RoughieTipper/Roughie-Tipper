@@ -254,7 +254,7 @@ function showPage(id) {
   if(id==='rounds') renderRoundsPage();
   if(id==='admin') renderAdmin();
   if(id==='profile') { renderProfilePage(); setTimeout(updateNotifBtn,300); }
-  if(id==='leaderboard') setTimeout(checkRoundWinnerCelebration, 800);
+  // celebration fires once on login only
   if(id==='mycomps') renderMyComps();
   if(id==='rules') {} // static content, no render needed
   if(id==='leaderboard') setTimeout(initInstallBanner, 1000);
@@ -291,6 +291,7 @@ onAuthStateChanged(auth, async user => {
         const isSiteAdmin = user.uid === SITE_ADMIN_UID || userProfile.isAdmin;
         el('nav-admin').style.display = isSiteAdmin ? 'inline-flex' : 'none';
         subscribeGlobal();
+        setTimeout(checkRoundWinnerCelebration, 3000); // once per login after data loads
         // If arrived via invite link, auto-join that comp
         const storedJoin = sessionStorage.getItem('pendingJoin');
         if (storedJoin) {
@@ -320,6 +321,7 @@ onAuthStateChanged(auth, async user => {
     }
   } else {
     currentUser = null; userProfile = null; currentCompId = null; currentComp = null;
+  window._celebChecked = false;
     unsubFns.forEach(fn=>fn()); unsubFns = [];
     if(unsubChat){unsubChat();unsubChat=null;}
     if(unsubSideBets){unsubSideBets();unsubSideBets=null;}
@@ -434,7 +436,6 @@ function subscribeGlobal() {
     // Also re-render if on mycomps — allComps just updated
     if(el('page-leaderboard')?.classList.contains('active')) renderLeaderboard();
     if(el('page-global')?.classList.contains('active')) renderGlobalLeaderboard();
-    setTimeout(checkRoundWinnerCelebration, 1000);
   });
   unsubFns.push(u4);
 
@@ -1758,6 +1759,8 @@ let confettiInterval = null;
 
 function checkRoundWinnerCelebration() {
   if (!currentUser || !currentCompId) return;
+  if (window._celebChecked) return; // only run once per session
+  window._celebChecked = true;
   // Find the most recently fully completed round
   const completedRounds = rounds.filter(r =>
     (r.matches||[]).length > 0 && (r.matches||[]).every(m => m.winner)
