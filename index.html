@@ -903,14 +903,15 @@ function renderTipMatches() {
     const marginVal = pendingMargin||savedMargin;
     let marginInput = '';
     if (isFirstMatch && !locked && !finished) {
-      marginInput = `<div style="margin-top:14px;padding:16px;background:rgba(255,214,0,0.1);border:2px solid rgba(255,214,0,0.6);border-radius:12px;">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gold);letter-spacing:1px;margin-bottom:4px;">🎯 Margin Guess</div>
+      const marginEntered = !!marginVal;
+      marginInput = `<div style="margin-top:14px;padding:16px;background:${marginEntered?'rgba(0,200,83,0.1)':'rgba(255,214,0,0.1)'};border:2px solid ${marginEntered?'var(--green)':'rgba(255,214,0,0.6)'};border-radius:12px;transition:.3s;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:${marginEntered?'var(--green)':'var(--gold)'};letter-spacing:1px;margin-bottom:4px;">🎯 Margin Guess</div>
         <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">How many points will the winner win by? Closest guess breaks ties on the leaderboard.</div>
         <div style="display:flex;align-items:center;gap:10px;">
           <input type="number" min="1" max="200" value="${marginVal}" placeholder="e.g. 24"
             oninput="pickMargin('${m.id}',this.value)"
-            style="width:100px;background:var(--card);border:2px solid var(--gold);color:var(--text);padding:10px 14px;border-radius:8px;font-family:'Bebas Neue',sans-serif;font-size:22px;text-align:center;"/>
-          <span style="color:var(--gold);font-size:14px;font-weight:700;">points</span>
+            style="width:100px;background:var(--card);border:2px solid ${marginEntered?'var(--green)':'var(--gold)'};color:var(--text);padding:10px 14px;border-radius:8px;font-family:'Bebas Neue',sans-serif;font-size:22px;text-align:center;"/>
+          <span style="color:${marginEntered?'var(--green)':'var(--gold)'};font-size:14px;font-weight:700;">points</span>
           ${savedMargin?`<span class="result-badge badge-win" style="margin-left:auto;">&#x2713; Saved: ${savedMargin}pts</span>`:'<span style="margin-left:auto;font-size:12px;color:var(--muted);">Not entered yet</span>'}
         </div>
       </div>`;
