@@ -396,6 +396,7 @@ function subscribeGlobal() {
     if(el('page-rounds')?.classList.contains('active')) renderRoundsPage();
     if(el('page-leaderboard')?.classList.contains('active')) renderLeaderboard();
     if(el('page-global')?.classList.contains('active')) renderGlobalLeaderboard();
+    if(el('page-mycomps')?.classList.contains('active')) renderMyComps();
     if(el('page-admin')?.classList.contains('active')) { renderAdmin(); renderAdminRoundsList(); }
   });
   unsubFns.push(u1);
@@ -412,6 +413,7 @@ function subscribeGlobal() {
     if(el('page-leaderboard')?.classList.contains('active')) renderLeaderboard();
     if(el('page-global')?.classList.contains('active')) renderGlobalLeaderboard();
     if(el('page-rounds')?.classList.contains('active')) renderRoundsPage();
+    if(el('page-mycomps')?.classList.contains('active')) renderMyComps();
   });
   unsubFns.push(u2);
 
@@ -420,6 +422,7 @@ function subscribeGlobal() {
     snap.docs.forEach(d=>{allUsers[d.id]=d.data();});
     if(el('page-leaderboard')?.classList.contains('active')) renderLeaderboard();
     if(el('page-global')?.classList.contains('active')) renderGlobalLeaderboard();
+    if(el('page-mycomps')?.classList.contains('active')) renderMyComps();
     if(el('page-admin')?.classList.contains('active')) renderAdminUsers();
   });
   unsubFns.push(u3);
@@ -428,6 +431,7 @@ function subscribeGlobal() {
     allComps={};
     snap.docs.forEach(d=>{allComps[d.id]=d.data();});
     if(el('page-mycomps')?.classList.contains('active')) renderMyComps();
+    // Also re-render if on mycomps — allComps just updated
     if(el('page-leaderboard')?.classList.contains('active')) renderLeaderboard();
     if(el('page-global')?.classList.contains('active')) renderGlobalLeaderboard();
     setTimeout(checkRoundWinnerCelebration, 1000);
@@ -455,6 +459,7 @@ async function loadComp(compId) {
 }
 
 function renderMyComps() {
+  if (!userProfile || !allComps) return;
   const myCompIds = userProfile.compIds || [];
   const myComps = myCompIds.map(id=>({id,...(allComps[id]||{})})).filter(c=>c.name);
   const otherComps = Object.entries(allComps)
