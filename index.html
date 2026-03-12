@@ -1008,7 +1008,8 @@ function showRound(roundId,btn){
   const compUserIds = currentCompId
     ? Object.entries(allUsers).filter(([uid,u])=>(u.compIds||[]).includes(currentCompId)).map(([uid])=>uid)
     : Object.keys(allUsers);
-  container.innerHTML=(round.matches||[]).map(m=>{
+  container.innerHTML=(round.matches||[]).map((m,mIdx)=>{
+    const isMarginGame = mIdx===0;
     const winOdds=m.winner?(m.winner===m.home?m.homeOdds:m.awayOdds):null;
     const winPts=winOdds?pts(winOdds):null, locked=isLocked(m.date, m.time);
     return `<div class="match-card ${m.winner?'tipped':''}">
@@ -1028,23 +1029,53 @@ function showRound(roundId,btn){
             :locked?'<span class="result-badge badge-pending">🔒 Locked</span>':'<span class="result-badge badge-pending">Open</span>'}
         </div>
       </div>
-      ${locked ? `<div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;">
-        ${compUserIds.map(uid=>{
-          const u=allUsers[uid]; if(!u) return '';
+      ${locked ? (()=>{
+        const isDraw = m.winner==='Draw';
+        // Group tippers by their pick
+        const groups = {};
+        compUserIds.forEach(uid=>{
+          const u=allUsers[uid]; if(!u) return;
           const savedPick=(allTips[uid]||{})[m.id];
-          const isGenerated=(allTips[uid]||{})['gen_'+m.id];
           const isAuto = !savedPick && locked;
           const pick = savedPick || (isAuto ? m.away : null);
-          if(!pick) return `<span class="pick-chip" style="opacity:0.4;">${escHtml(u.nick||u.name)}: —</span>`;
-          const correct=m.winner&&pick===m.winner, wrong=m.winner&&pick!==m.winner;
-          const genTag = isGenerated ? ' <span title="Randomly generated" style="font-size:10px;opacity:0.8;">🎲</span>' : '';
-          const autoTag = isAuto ? ' <span style="color:var(--gold);font-size:10px;">AUTO</span>' : '';
-          const isDrawResult = m.winner==='Draw';
-          return isDrawResult
-            ? `<span class="pick-chip chip-correct">${escHtml(u.nick||u.name)}: ${escHtml(pick)}${genTag}${autoTag} 🤝 +1</span>`
-            : `<span class="pick-chip ${correct?'chip-correct':wrong?'chip-wrong':''}">${escHtml(u.nick||u.name)}: ${escHtml(pick)}${genTag}${autoTag}${correct?' +'+pts(winOdds):wrong?' ✗':''}</span>`;
-        }).join('')}
-      </div>` : `<div style="margin-top:10px;font-size:12px;color:var(--muted);font-style:italic;">🔒 Tips hidden until kick-off</div>`}
+          if(!pick) return;
+          const isGenerated=!!(allTips[uid]||{})['gen_'+m.id];
+          const marginGuess = (allMargins[uid]||{})[m.id] ? parseInt((allMargins[uid]||{})[m.id]) : null;
+          if(!groups[pick]) groups[pick]=[]; 
+          groups[pick].push({uid, u, pick, isAuto, isGenerated, marginGuess});
+        });
+        // Order groups: home first, then away
+        const teamOrder = [m.home, m.away];
+        const otherTeams = Object.keys(groups).filter(t=>!teamOrder.includes(t));
+        const orderedTeams = [...teamOrder.filter(t=>groups[t]), ...otherTeams.filter(t=>groups[t])];
+        if(orderedTeams.length===0) return '<div style="margin-top:10px;font-size:12px;color:var(--muted);">No tips yet</div>';
+        return '<div style="margin-top:14px;display:flex;flex-direction:column;gap:10px;">' +
+          orderedTeams.map(team=>{
+            const tippers = groups[team];
+            const correct = m.winner && team===m.winner;
+            const wrong = m.winner && team!==m.winner && !isDraw;
+            const teamColour = correct||isDraw ? 'var(--green)' : wrong ? 'var(--muted)' : 'var(--text)';
+            const teamOdds = team===m.home ? m.homeOdds : m.awayOdds;
+            const resultTag = isDraw
+              ? ' <span style="color:var(--green);font-size:11px;">🤝 +1</span>'
+              : correct ? ` <span style="color:var(--green);font-size:11px;">✓ +${pts(teamOdds)}pts</span>`
+              : wrong ? ' <span style="color:var(--muted);font-size:11px;">✗</span>' : '';
+            const tipperList = tippers.map(({u, isAuto, isGenerated, marginGuess})=>{
+              const name = escHtml(sanitiseNick(u.nick||u.name));
+              const tags = (isAuto ? ' <span style="color:var(--gold);font-size:10px;">AUTO</span>' : '')
+                         + (isGenerated ? ' <span style="font-size:10px;opacity:0.7;">🎲</span>' : '');
+              const margin = isMarginGame && marginGuess ? ` <span style="font-size:11px;color:var(--muted);">(${marginGuess}pts)</span>` : '';
+              return name + tags + margin;
+            }).join(', ');
+            return '<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;">'
+              + '<div style="display:flex;align-items:center;gap:6px;min-width:160px;flex-shrink:0;">'
+              + clubBadge(team,20)
+              + '<span style="font-weight:700;color:'+teamColour+';">'+escHtml(team)+resultTag+'</span>'
+              + '</div>'
+              + '<div style="font-size:13px;color:var(--muted);flex:1;">'+tipperList+'</div>'
+              + '</div>';
+          }).join('') + '</div>';
+      })() : '<div style="margin-top:10px;font-size:12px;color:var(--muted);font-style:italic;">🔒 Tips hidden until kick-off</div>'}
     </div>`;
   }).join('')||'<div class="card" style="text-align:center;color:var(--muted);padding:20px;">No matches yet.</div>';
 }
