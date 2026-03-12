@@ -903,15 +903,15 @@ function renderTipMatches() {
     const marginVal = pendingMargin||savedMargin;
     let marginInput = '';
     if (isFirstMatch && !locked && !finished) {
-      marginInput = `<div style="margin-top:12px;padding:12px;background:rgba(255,214,0,0.06);border:1px solid rgba(255,214,0,0.2);border-radius:10px;">
-        <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:6px;">&#x1F3AF; MARGIN GUESS &mdash; First game of round</div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">How many points will your tipped team win by? Closest guess breaks ties on the leaderboard.</div>
+      marginInput = `<div style="margin-top:14px;padding:16px;background:rgba(255,214,0,0.1);border:2px solid rgba(255,214,0,0.6);border-radius:12px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gold);letter-spacing:1px;margin-bottom:4px;">🎯 Margin Guess</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">How many points will the winner win by? Closest guess breaks ties on the leaderboard.</div>
         <div style="display:flex;align-items:center;gap:10px;">
           <input type="number" min="1" max="200" value="${marginVal}" placeholder="e.g. 24"
             oninput="pickMargin('${m.id}',this.value)"
-            style="width:90px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;"/>
-          <span style="color:var(--muted);font-size:13px;">points</span>
-          ${savedMargin?`<span class="result-badge badge-win">&#x2713; Saved: ${savedMargin}pts</span>`:''}
+            style="width:100px;background:var(--card);border:2px solid var(--gold);color:var(--text);padding:10px 14px;border-radius:8px;font-family:'Bebas Neue',sans-serif;font-size:22px;text-align:center;"/>
+          <span style="color:var(--gold);font-size:14px;font-weight:700;">points</span>
+          ${savedMargin?`<span class="result-badge badge-win" style="margin-left:auto;">&#x2713; Saved: ${savedMargin}pts</span>`:'<span style="margin-left:auto;font-size:12px;color:var(--muted);">Not entered yet</span>'}
         </div>
       </div>`;
     } else if (isFirstMatch && locked && savedMargin) {
@@ -929,14 +929,14 @@ function renderTipMatches() {
       </div>
       <div class="match-teams">
         <div class="team-btn ${hClass}" onclick="${locked||finished?'':'pickTip(\''+m.id+'\',\''+m.home.replace(/'/g,"\\'")+'\')'}">
-          <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:6px;">${clubBadge(m.home)}<div class="team-name">${escHtml(m.home)}</div></div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:6px;">${clubBadge(m.home,24)}<div class="team-name">${escHtml(m.home)}</div></div>
           <div class="odds-pts">${hPts} pt${hPts>1?'s':''}</div>
           <div class="team-odds" style="color:${m.homeOdds<2?'var(--green)':'var(--gold)'}">$${Number(m.homeOdds).toFixed(2)}</div>
           ${m.homeOdds>=2?'<div class="roughie-tag">ROUGHIE</div>':''}
         </div>
         <div class="vs-divider">VS</div>
         <div class="team-btn ${aClass}" onclick="${locked||finished?'':'pickTip(\''+m.id+'\',\''+m.away.replace(/'/g,"\\'")+'\')'}">
-          <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:6px;">${clubBadge(m.away)}<div class="team-name">${escHtml(m.away)}</div></div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:6px;">${clubBadge(m.away,24)}<div class="team-name">${escHtml(m.away)}</div></div>
           <div class="odds-pts">${aPts} pt${aPts>1?'s':''}</div>
           <div class="team-odds" style="color:${m.awayOdds<2?'var(--green)':'var(--gold)'}">$${Number(m.awayOdds).toFixed(2)}</div>
           ${m.awayOdds>=2?'<div class="roughie-tag">ROUGHIE</div>':''}
@@ -2006,14 +2006,14 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
 .match-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--border);}
 .match-card.tipped::before{background:var(--green);}
 .match-meta{font-size:12px;color:var(--muted);margin-bottom:12px;}
-.match-teams{display:flex;align-items:center;gap:12px;}
-.team-btn{flex:1;padding:14px;border-radius:10px;border:2px solid var(--border);background:var(--card2);cursor:pointer;text-align:center;transition:.2s;}
+.match-teams{display:flex;align-items:stretch;gap:10px;}
+.team-btn{flex:1;min-width:0;padding:10px 6px;border-radius:10px;border:2px solid var(--border);background:var(--card2);cursor:pointer;text-align:center;transition:.2s;}
 .team-btn:not(.locked):hover{border-color:var(--green);background:rgba(0,200,83,.08);}
 .team-btn.selected{border-color:var(--green);background:rgba(0,200,83,.15);}
 .team-btn.locked{cursor:default;opacity:.8;}
 .team-btn.winner-correct{border-color:var(--green);background:rgba(0,200,83,.2);}
 .team-btn.winner-wrong{border-color:var(--red);background:rgba(255,61,61,.1);opacity:.6;}
-.team-name{font-weight:700;font-size:15px;}
+.team-name{font-weight:700;font-size:13px;word-break:break-word;line-height:1.2;}
 .team-odds{font-size:13px;color:var(--muted);margin-top:3px;}
 .odds-pts{font-family:'Bebas Neue',sans-serif;font-size:22px;font-weight:400;color:var(--green);margin-top:4px;letter-spacing:1px;}
 .roughie-tag{display:inline-block;background:var(--gold);color:var(--navy);font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;margin-top:4px;}
