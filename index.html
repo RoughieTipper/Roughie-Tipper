@@ -170,7 +170,25 @@ function clubBadge(name, size=40) {
 function isLocked(dateStr, timeStr) {
   if (!dateStr) return false;
   const time = timeStr || '19:30';
-  return new Date() >= new Date(dateStr + 'T' + time + ':00');
+  // Always compare in AEST/AEDT — match times are entered in Melbourne time.
+  // We determine the UTC offset by checking if Melbourne is currently on
+  // daylight saving (AEDT = UTC+11) or standard time (AEST = UTC+10).
+  // DST in Australia runs from first Sun in Oct to first Sun in Apr.
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  // First Sunday in October (DST starts)
+  const dstStart = new Date(Date.UTC(year, 9, 1));
+  dstStart.setUTCDate(1 + (7 - dstStart.getUTCDay()) % 7);
+  // First Sunday in April (DST ends)
+  const dstEnd = new Date(Date.UTC(year, 3, 1));
+  dstEnd.setUTCDate(1 + (7 - dstEnd.getUTCDay()) % 7);
+  const isDST = now >= dstStart || now < dstEnd;
+  const offsetMinutes = isDST ? 11 * 60 : 10 * 60; // AEDT or AEST
+  // Build kick-off time as UTC by subtracting Melbourne offset
+  const [h, m] = time.split(':').map(Number);
+  const [y, mo, d] = dateStr.split('-').map(Number);
+  const kickoffUTC = Date.UTC(y, mo - 1, d, h, m) - offsetMinutes * 60000;
+  return now.getTime() >= kickoffUTC;
 }
 // Format date as "Thursday 2nd April"
 function formatMatchDate(dateStr) {
