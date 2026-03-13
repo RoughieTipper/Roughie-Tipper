@@ -2486,24 +2486,6 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
           </div>
         </div>
       </div>
-      <!-- EDIT TIPS SECTION — site admin only -->
-      <div id="admin-edittips" class="admin-section" style="display:none;">
-        <div class="card">
-          <div style="font-weight:700;font-size:16px;margin-bottom:4px;">✏️ Edit Tips for a User</div>
-          <div style="font-size:13px;color:var(--muted);margin-bottom:16px;">Override tips for users who had trouble entering. Changes write directly to Firestore.</div>
-          <div style="display:flex;flex-direction:column;gap:12px;max-width:500px;">
-            <div class="form-group" style="margin-bottom:0;">
-              <label>Select User</label>
-              <select id="et-user" onchange="renderEditTipsMatches()" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;width:100%;"></select>
-            </div>
-            <div class="form-group" style="margin-bottom:0;">
-              <label>Select Round</label>
-              <select id="et-round" onchange="renderEditTipsMatches()" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;width:100%;"></select>
-            </div>
-          </div>
-          <div id="et-matches" style="margin-top:20px;"></div>
-        </div>
-      </div>
     </div>
 
     <!-- GLOBAL LEADERBOARD -->
@@ -2813,6 +2795,24 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
         <div class="card">
           <div style="font-weight:600;margin-bottom:14px;">All Competitions</div>
           <div id="admin-comps-list"></div>
+        </div>
+      </div>
+
+      <div id="admin-edittips" class="admin-section" style="display:none;">
+        <div class="card">
+          <div style="font-weight:700;font-size:16px;margin-bottom:4px;">✏️ Edit Tips for a User</div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:16px;">Override tips for users who had trouble entering. Changes write directly to Firestore.</div>
+          <div style="display:flex;flex-direction:column;gap:12px;max-width:500px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Select User</label>
+              <select id="et-user" onchange="renderEditTipsMatches()" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;width:100%;"></select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Select Round</label>
+              <select id="et-round" onchange="renderEditTipsMatches()" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;width:100%;"></select>
+            </div>
+          </div>
+          <div id="et-matches" style="margin-top:20px;"></div>
         </div>
       </div>
 
