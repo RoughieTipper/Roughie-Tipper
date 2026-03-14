@@ -708,7 +708,7 @@ function renderLeaderboard() {
     <div class="stat-card"><div class="stat-label">Tippers</div><div class="stat-val">${memberIds.length}</div></div>
     <div class="stat-card"><div class="stat-label">Rounds Done</div><div class="stat-val">${completedRounds}/${activeRounds}</div></div>
     <div class="stat-card"><div class="stat-label">Leader</div><div class="stat-val" style="font-size:22px;line-height:1.1;">${scores[0]?.nick||scores[0]?.name||'—'}</div><div class="stat-sub">${scores[0]?.totalPts||0} pts</div></div>
-    <div class="stat-card"><div class="stat-label">Top Roughie 🔥</div><div class="stat-val" style="color:var(--gold);font-size:22px;line-height:1.1;">${topRoughie?.nick||topRoughie?.name||'—'}</div><div class="stat-sub">+${topRoughie?.roughieBonus||0} bonus</div></div>
+    <div class="stat-card"><div class="stat-label">Most Roughies 🔥</div><div class="stat-val" style="color:var(--gold);font-size:22px;line-height:1.1;">${topRoughie?.nick||topRoughie?.name||'—'}</div><div class="stat-sub">+${topRoughie?.roughieBonus||0} points</div></div>
   `;
 
   // Calculate previous-round positions for movement arrows
@@ -806,7 +806,7 @@ function renderLeaderboard() {
         </div>
       </div></td>
       <td><span class="pts-big">${s.totalPts}</span></td>
-      <td><span class="roughie-pts">+${s.roughieBonus} 🔥</span></td>
+      <td style="display:none;"></td>
       <td>${rWins>0?`<span style="font-weight:700;color:var(--gold);">${rWins} 🥊</span>`:`<span style="color:var(--muted);">0</span>`}</td>
       <td>${thisRound} pts</td>
       <td><span style="font-size:13px;color:var(--muted);">${s.totalMarginDiff??'—'}</span></td>
@@ -858,7 +858,7 @@ function renderGlobalLeaderboard() {
         <div style="font-size:11px;color:var(--muted);">${s.nick?escHtml(sanitiseNick(s.name))+' · ':''} ${escHtml(userCompNames||'No comp')}</div></div>
       </div></td>
       <td><span class="pts-big">${s.totalPts}</span></td>
-      <td><span class="roughie-pts">+${s.roughieBonus} 🔥</span></td>
+      <td style="display:none;"></td>
       <td>${thisRound} pts</td>
     </tr>`;
   }).join('')||`<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:30px;">No tippers yet</td></tr>`;
@@ -914,7 +914,7 @@ function renderTipMatches() {
         earnedDiv=`<div style="text-align:center;margin-top:10px;"><span class="result-badge badge-pending">🤝 Draw — +1pt</span></div>`;
       } else {
         earnedDiv=sel===m.winner
-          ?`<div style="text-align:center;margin-top:10px;"><span class="result-badge badge-win">✓ +${pts(winOdds)} pts earned${isGenerated?' (no roughie bonus)':''}</span>${genNote}</div>`
+          ?`<div style="text-align:center;margin-top:10px;"><span class="result-badge badge-win">✓ +${pts(winOdds)} pts earned${isGenerated?' (no roughie points)':''}</span>${genNote}</div>`
           :`<div style="text-align:center;margin-top:10px;"><span class="result-badge badge-loss">✗ Incorrect</span>${genNote}</div>`;
       }
     } else if(isGenerated && !finished) {
@@ -1437,7 +1437,7 @@ function copyInviteLink() {
   if (missedRounds > 0) {
     msg = `🏉 Join ${compName} on Roughie Tipper!\n\nMissed the start of the season? No problem — you'll automatically receive the away team for any rounds you missed and enter with a real score. You're in from here!\n\n👉 ${inviteUrl}`;
   } else {
-    msg = `🏉 Join ${compName} on Roughie Tipper!\n\nAFL tipping with roughie bonus points for picking big upsets.\n\n👉 ${inviteUrl}`;
+    msg = `🏉 Join ${compName} on Roughie Tipper!\n\nAFL tipping with roughie points for picking big upsets.\n\n👉 ${inviteUrl}`;
   }
 
   if (navigator.share) {
@@ -2260,8 +2260,8 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
           <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--card2);border-radius:10px;">
             <span style="font-size:18px;">🤑</span>
             <div>
-              <div style="font-weight:700;font-size:13px;">Roughie Bonus — tipping a big upset</div>
-              <div style="font-size:12px;color:var(--muted);">Tip the underdog (odds $2.00+) and they win = bonus points on top. The longer the odds, the bigger the bonus. You can earn roughie bonus on any tip including the automatic away team.</div>
+              <div style="font-weight:700;font-size:13px;">Roughie Points — tipping a big upset</div>
+              <div style="font-size:12px;color:var(--muted);">Tip the underdog (odds $2.00+) and they win = extra points on top. The longer the odds, the more points. You can earn roughie points on any tip including the automatic away team.</div>
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--card2);border-radius:10px;">
@@ -2451,7 +2451,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
         <div style="font-weight:600;margin-bottom:16px;">Full Standings</div>
         <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
           <table class="lb-table">
-            <thead><tr><th>#</th><th>Tipper</th><th>Total Pts</th><th>Roughie Bonus</th><th>Round Wins</th><th>Last Round</th><th>Margin</th><th>🌐 Global</th></tr></thead>
+            <thead><tr><th>#</th><th>Tipper</th><th>Total Pts</th><th style="display:none;"></th><th>Round Wins</th><th>Last Round</th><th>Margin</th><th>🌐 Global</th></tr></thead>
             <tbody id="lb-body"></tbody>
           </table>
         </div>
@@ -2493,7 +2493,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
       <div class="card">
         <div style="overflow-x:auto;">
           <table class="lb-table">
-            <thead><tr><th>#</th><th>Tipper</th><th>Total Pts</th><th>Roughie Bonus</th><th>Last Round</th></tr></thead>
+            <thead><tr><th>#</th><th>Tipper</th><th>Total Pts</th><th style="display:none;"></th><th>Last Round</th></tr></thead>
             <tbody id="global-body"></tbody>
           </table>
         </div>
@@ -2624,8 +2624,8 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
           <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--card2);border-radius:10px;">
             <span style="font-size:20px;">🤑</span>
             <div>
-              <div style="font-weight:700;font-size:14px;">Roughie Bonus — tipping a big upset</div>
-              <div style="font-size:13px;color:var(--muted);">Tip the underdog (odds $2.00+) and they win = bonus points on top. The longer the odds, the bigger the bonus. These must be earned — you can earn roughie bonus on any tip including the automatic away team if you missed that week.</div>
+              <div style="font-weight:700;font-size:14px;">Roughie Points — tipping a big upset</div>
+              <div style="font-size:13px;color:var(--muted);">Tip the underdog (odds $2.00+) and they win = extra points on top. The longer the odds, the more points. These must be earned — you can earn roughie points on any tip including the automatic away team if you missed that week.</div>
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--card2);border-radius:10px;">
