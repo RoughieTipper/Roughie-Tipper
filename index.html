@@ -1925,7 +1925,22 @@ function checkRoundWinnerCelebration() {
   );
   if (completedRounds.length === 0) return;
   const lastRound = completedRounds[completedRounds.length - 1];
-  const celebKey = `cel_${currentUser.uid}_${currentCompId}_${lastRound.id}`;
+
+  // Only show celebration during the window between round completing and
+  // the first game of the NEXT round kicking off.
+  // Find the next incomplete round and check if its first match has started.
+  const nextRound = rounds.find(r =>
+    (r.matches||[]).length > 0 && !(r.matches||[]).every(m => m.winner)
+  );
+  if (nextRound) {
+    const firstMatch = (nextRound.matches||[])[0];
+    if (firstMatch && isLocked(firstMatch.date, firstMatch.time)) {
+      // Next round has already kicked off — celebration window has passed
+      return;
+    }
+  }
+
+  const celebKey = `cel_${currentUser.uid}_${lastRound.id}`;
   if (localStorage.getItem(celebKey)) return; // already seen
 
   // Find winner of this round in this comp
@@ -1946,7 +1961,7 @@ function checkRoundWinnerCelebration() {
   const winner = winners[0];
 
   // Mark as seen
-  localStorage.setItem(celebKey, '1');
+  localStorage.setItem(celebKey, Date.now().toString());
 
   // Populate overlay
   const roundName = lastRound.name || ('Round ' + (lastRound.order || ''));
