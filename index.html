@@ -675,8 +675,20 @@ function calcScoresForUsers(userIds) {
     });
     // A round win = scored more pts than any other comp member in that round
     // (calculated after all scores known — placeholder stored, resolved in render)
-    return {uid,name:u.name,nick:u.nick,avatar:u.avatar||'',totalPts,correct,roughieBonus,accuracy,roundPts,roundWins,tipped,totalMarginDiff};
-  }).filter(Boolean).sort((a,b)=>b.totalPts-a.totalPts||b.correct-a.correct||a.totalMarginDiff-b.totalMarginDiff);
+    // Per-round margin diffs stored separately for display
+    const roundMarginDiffs = {};
+    rounds.forEach(r=>{
+      const firstMatch = (r.matches||[])[0];
+      if(!firstMatch||!firstMatch.winner||!firstMatch.actualMargin) return;
+      const { pick: marginPick } = getEffectivePick(myTips, firstMatch);
+      const guessedMargin = myMargins[firstMatch.id] ? parseInt(myMargins[firstMatch.id]) : 1;
+      const tippedWinner = marginPick === firstMatch.winner;
+      roundMarginDiffs[r.id] = tippedWinner
+        ? Math.abs(firstMatch.actualMargin - guessedMargin)
+        : firstMatch.actualMargin + 1 + guessedMargin;
+    });
+    return {uid,name:u.name,nick:u.nick,avatar:u.avatar||'',totalPts,correct,roughieBonus,accuracy,roundPts,roundWins,tipped,totalMarginDiff,roundMarginDiffs};
+  }).filter(Boolean).sort((a,b)=>b.totalPts-a.totalPts||a.totalMarginDiff-b.totalMarginDiff);
 }
 
 // ─── LEADERBOARD (comp) ──────────────────────────────────────
@@ -750,18 +762,7 @@ function renderLeaderboard() {
     if (tied.length > 1) {
       // Get margin diff for this round for each tied player
       const withMargin = tied.map(s=>{
-        const firstMatch = (r.matches||[])[0];
-        let mDiff = 9999;
-        if (firstMatch?.actualMargin && firstMatch.winner) {
-          const myTips = allTips[s.uid]||{};
-          const myMarg = allMargins[s.uid]||{};
-          const guess = myMarg[firstMatch.id] ? parseInt(myMarg[firstMatch.id]) : 1;
-          const pick = myTips[firstMatch.id] || firstMatch.away;
-          const tippedWinner = pick === firstMatch.winner;
-          mDiff = tippedWinner
-            ? Math.abs(firstMatch.actualMargin - guess)
-            : firstMatch.actualMargin + 1 + guess;
-        }
+        const mDiff = s.roundMarginDiffs?.[r.id] ?? 9999;
         const globalRank = globalRankMap[s.uid] || 999;
         return { s, mDiff, globalRank };
       });
@@ -792,16 +793,9 @@ function renderLeaderboard() {
         const latestFirst = (latestRound?.matches||[])[0];
         const topScorers = scores.filter(x=>(x.roundPts[latestRound.id]||0)===maxRoundPts);
         let starWinner = topScorers[0];
-        if (topScorers.length > 1 && latestFirst?.actualMargin && latestFirst.winner) {
+        if (topScorers.length > 1) {
           const withM = topScorers.map(x=>{
-            const myTips = allTips[x.uid]||{};
-            const myMarg = allMargins[x.uid]||{};
-            const guess = myMarg[latestFirst.id] ? parseInt(myMarg[latestFirst.id]) : 1;
-            const pick = myTips[latestFirst.id] || latestFirst.away;
-            const tippedWinner = pick === latestFirst.winner;
-            const mDiff = tippedWinner
-              ? Math.abs(latestFirst.actualMargin - guess)
-              : latestFirst.actualMargin + 1 + guess;
+            const mDiff = x.roundMarginDiffs?.[latestRound.id] ?? 9999;
             return { x, mDiff, globalRank: globalRankMap[x.uid]||999 };
           });
           withM.sort((a,b)=> a.mDiff!==b.mDiff ? a.mDiff-b.mDiff : a.globalRank-b.globalRank);
@@ -831,6 +825,7 @@ function renderLeaderboard() {
   el('lb-body').innerHTML = scores.map((s,i)=>{
     const rank=i+1, rc=rank<=3?`rank-${rank}`:'rank-other', me=s.uid===currentUser?.uid;
     const thisRound = latestRound?(s.roundPts[latestRound.id]??'—'):'—';
+    const roundMargin = latestRound?(s.roundMarginDiffs?.[latestRound.id]??'—'):'—';
     const globalRank = globalRankMap[s.uid]||'—';
     const rWins = roundWinCounts[s.uid]||0;
     const emojiBadges = (emojiMap[s.uid]||[]).map(e =>
@@ -865,6 +860,7 @@ function renderLeaderboard() {
       <td style="display:none;"></td>
       <td>${rWins>0?`<span style="font-weight:700;color:var(--gold);">${rWins} 🥊</span>`:`<span style="color:var(--muted);">0</span>`}</td>
       <td>${thisRound} pts</td>
+      <td><span style="font-size:13px;color:var(--muted);">${roundMargin==='—'?'—':roundMargin}</span></td>
       <td><span style="font-size:13px;color:var(--muted);">${s.totalMarginDiff??'—'}</span></td>
       <td><span class="rank-badge rank-other" style="font-size:11px;">#${globalRank}</span></td>
     </tr>`;
@@ -2809,7 +2805,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
   .chat-feed{height:260px;}
   .chat-bubble{max-width:88%;}
   .lb-table{min-width:520px;}
-  .lb-table th:nth-child(8),.lb-table td:nth-child(8){display:none;}
+  .lb-table th:nth-child(9),.lb-table td:nth-child(9){display:none;}
 }
 </style>
   <!-- Google Analytics -->
@@ -3077,7 +3073,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
         <div style="font-weight:600;margin-bottom:16px;">Full Standings</div>
         <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
           <table class="lb-table">
-            <thead><tr><th>#</th><th>Tipper</th><th>Total Pts</th><th style="display:none;"></th><th>Round Wins</th><th>Last Round</th><th>Margin</th><th>📊 Overall</th></tr></thead>
+            <thead><tr><th>#</th><th>Tipper</th><th>Total Pts</th><th style="display:none;"></th><th>Round Wins</th><th>Last Round</th><th>Rnd Margin</th><th>Total Margin</th><th>📊 Overall</th></tr></thead>
             <tbody id="lb-body"></tbody>
           </table>
         </div>
