@@ -316,7 +316,7 @@ onAuthStateChanged(auth, async user => {
         el('nav-admin').style.display = isSiteAdmin ? 'inline-flex' : 'none';
         subscribeGlobal();
         setTimeout(checkRoundWinnerCelebration, 3000); // once per login after data loads
-        setTimeout(updateRTCupBanner, 1500);
+        setTimeout(updateRTCupBanner, 3500); // after RT Cup subscription loads
         // If arrived via invite link, auto-join that comp
         const storedJoin = sessionStorage.getItem('pendingJoin');
         if (storedJoin) {
@@ -1876,19 +1876,21 @@ function getRTCupWeekNumber() {
 function updateRTCupBanner() {
   const banner = el('rtcup-banner');
   if (!banner) return;
-  // Don't show if opted in
-  if (currentUser && rtCupPlayers[currentUser.uid]) { banner.style.display='none'; return; }
+  // Must have a logged-in user to key storage correctly
+  if (!currentUser) { banner.style.display='none'; return; }
+  // Don't show if already opted in
+  if (rtCupPlayers[currentUser.uid]) { banner.style.display='none'; return; }
   // Don't show if bracket already generated
   if (rtCupConfig?.status === 'active') { banner.style.display='none'; return; }
   // Check permanent dismiss
-  const dismissKey = `rtcup_banner_dismissed_${currentUser?.uid||'anon'}`;
+  const dismissKey = `rtcup_banner_dismissed_${currentUser.uid}`;
   if (localStorage.getItem(dismissKey) === 'permanent') { banner.style.display='none'; return; }
-  // Check weekly suppress
-  const weekKey = `rtcup_banner_week_${currentUser?.uid||'anon'}`;
-  const seenWeek = parseInt(localStorage.getItem(weekKey)||'0');
+  // Check weekly suppress — only suppress if they've already seen it THIS week
+  const weekKey = `rtcup_banner_seen_${currentUser.uid}`;
+  const seenWeek = parseInt(localStorage.getItem(weekKey) || '0');
   if (seenWeek === getRTCupWeekNumber()) { banner.style.display='none'; return; }
-  // Show banner and record this week
-  banner.style.display='flex';
+  // Show banner — record seen week only now (not before showing)
+  banner.style.display = 'flex';
   localStorage.setItem(weekKey, getRTCupWeekNumber().toString());
 }
 
