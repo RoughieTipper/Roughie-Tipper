@@ -740,9 +740,35 @@ function renderLeaderboard() {
   const roundWinCounts = {};
   scores.forEach(s=>{ roundWinCounts[s.uid]=0; });
   completedRoundsForWins.forEach(r=>{
+    // Find best score in this round
     let best=-1;
     scores.forEach(s=>{ if((s.roundPts[r.id]||0)>best) best=(s.roundPts[r.id]||0); });
-    if(best>0) scores.forEach(s=>{ if((s.roundPts[r.id]||0)===best) roundWinCounts[s.uid]=(roundWinCounts[s.uid]||0)+1; });
+    if(best<=0) return;
+    // Among tied leaders, apply tiebreakers: lowest margin diff, then global rank
+    const tied = scores.filter(s=>(s.roundPts[r.id]||0)===best);
+    let roundWinner = tied[0];
+    if (tied.length > 1) {
+      // Get margin diff for this round for each tied player
+      const withMargin = tied.map(s=>{
+        const firstMatch = (r.matches||[])[0];
+        let mDiff = 9999;
+        if (firstMatch?.actualMargin && firstMatch.winner) {
+          const myTips = allTips[s.uid]||{};
+          const myMarg = allMargins[s.uid]||{};
+          const guess = myMarg[firstMatch.id] ? parseInt(myMarg[firstMatch.id]) : 1;
+          const pick = myTips[firstMatch.id] || firstMatch.away;
+          const tippedWinner = pick === firstMatch.winner;
+          mDiff = tippedWinner
+            ? Math.abs(firstMatch.actualMargin - guess)
+            : firstMatch.actualMargin + 1 + guess;
+        }
+        const globalRank = globalRankMap[s.uid] || 999;
+        return { s, mDiff, globalRank };
+      });
+      withMargin.sort((a,b)=> a.mDiff!==b.mDiff ? a.mDiff-b.mDiff : a.globalRank-b.globalRank);
+      roundWinner = withMargin[0].s;
+    }
+    roundWinCounts[roundWinner.uid] = (roundWinCounts[roundWinner.uid]||0) + 1;
   });
 
   // ── Leaderboard emojis ──────────────────────────────────────
@@ -760,8 +786,29 @@ function renderLeaderboard() {
       if (i === 0) emojis.push('👑');
       // 🥄 Last place overall
       if (i === scores.length - 1 && scores.length > 1) emojis.push('🥄');
-      // ⭐ Highest score this round (not if also 🥶 - avoid clash)
-      if (rp === maxRoundPts && maxRoundPts > 0 && rp !== minRoundPts) emojis.push('⭐');
+      // ⭐ Highest score this round — only one winner after tiebreakers
+      if (maxRoundPts > 0 && rp !== minRoundPts) {
+        // Find the single winner for the latest round using same tiebreaker logic
+        const latestFirst = (latestRound?.matches||[])[0];
+        const topScorers = scores.filter(x=>(x.roundPts[latestRound.id]||0)===maxRoundPts);
+        let starWinner = topScorers[0];
+        if (topScorers.length > 1 && latestFirst?.actualMargin && latestFirst.winner) {
+          const withM = topScorers.map(x=>{
+            const myTips = allTips[x.uid]||{};
+            const myMarg = allMargins[x.uid]||{};
+            const guess = myMarg[latestFirst.id] ? parseInt(myMarg[latestFirst.id]) : 1;
+            const pick = myTips[latestFirst.id] || latestFirst.away;
+            const tippedWinner = pick === latestFirst.winner;
+            const mDiff = tippedWinner
+              ? Math.abs(latestFirst.actualMargin - guess)
+              : latestFirst.actualMargin + 1 + guess;
+            return { x, mDiff, globalRank: globalRankMap[x.uid]||999 };
+          });
+          withM.sort((a,b)=> a.mDiff!==b.mDiff ? a.mDiff-b.mDiff : a.globalRank-b.globalRank);
+          starWinner = withM[0].x;
+        }
+        if (s.uid === starWinner.uid) emojis.push('⭐');
+      }
       // 🥶 Lowest score this round
       if (rp === minRoundPts && scores.length > 1 && rp !== maxRoundPts) emojis.push('🥶');
       // 🔮 Perfect round - all tips correct this round
