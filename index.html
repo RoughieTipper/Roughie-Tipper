@@ -2204,7 +2204,7 @@ function renderRTCupPage() {
           </div>
           <div>
             <div style="font-weight:700;color:var(--green);margin-bottom:4px;">🌱 Seeding</div>
-            <div style="color:var(--muted);">Current standings are shown below as a guide. Official seedings used to draw the bracket will be locked in from the <strong style="color:var(--text);">global leaderboard at end of Round 3</strong> — so every tip between now and then counts.</div>
+            <div style="color:var(--muted);">Current standings are shown below as a guide. Official seedings used to draw the bracket will be locked in from the <strong style="color:var(--text);">Overall leaderboard at end of Round 3</strong> — so every tip between now and then counts.</div>
           </div>
           <div style="background:rgba(255,214,0,0.08);border:1px solid rgba(255,214,0,0.3);border-radius:8px;padding:10px 14px;">
             <span style="color:var(--gold);font-weight:700;">🏁 Kicks off Round ${RT_START_ROUND}</span>
@@ -2243,7 +2243,7 @@ function renderRTCupPage() {
 
       <!-- Seedings list -->
       <div class="card">
-        <div style="font-weight:700;margin-bottom:4px;">Current Standings <span style="font-size:12px;color:var(--muted);font-weight:400;">(becomes seedings after Round 3)</span></div>
+        <div style="font-weight:700;margin-bottom:4px;">Current Standings <span style="font-size:12px;color:var(--muted);font-weight:400;">(becomes official seedings after Round 3)</span></div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Only opted-in tippers shown</div>
         ${seededList.length === 0
           ? '<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px;">No tippers opted in yet — be the first!</div>'
@@ -2893,13 +2893,13 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
     </div>
     <nav>
       <button id="nav-leaderboard" onclick="showPage('leaderboard')">🏆 My Comp</button>
-      <button id="nav-global" onclick="showPage('global')">🌐 Global</button>
+      <button id="nav-rtcup" onclick="showPage('rtcup')">🥊 RT Cup</button>
       <button id="nav-tips" onclick="showPage('tips')">✏️ My Tips</button>
       <button id="nav-rounds" onclick="showPage('rounds')">📋 Live Round</button>
       <button id="nav-mycomps" onclick="showPage('mycomps')">🏟️ Comps</button>
-      <button id="nav-rules" onclick="showPage('rules')">📖 Rules</button>
+      <button id="nav-global" onclick="showPage('global')">📊 Overall</button>
       <button id="nav-profile" onclick="showPage('profile')">👤 Profile</button>
-      <button id="nav-rtcup" onclick="showPage('rtcup')">🏆 RT Cup</button>
+      <button id="nav-rules" onclick="showPage('rules')">📖 Rules</button>
       <button id="nav-admin" onclick="showPage('admin')" style="display:none;">⚙️ Admin</button>
     </nav>
     <div class="header-right">
@@ -2932,7 +2932,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
     <!-- MY COMP LEADERBOARD -->
     <div class="page" id="page-leaderboard">
       <div class="section-title">COMP <span>LADDER</span></div>
-      <div class="section-sub">Live standings for your current competition · Global rank shown on right</div>
+      <div class="section-sub">Live standings for your current competition · Overall rank shown on right</div>
       <!-- INSTALL BANNER -->
       <div id="install-banner" style="display:none;background:linear-gradient(135deg,rgba(0,200,83,0.12),rgba(0,200,83,0.06));border:1px solid rgba(0,200,83,0.35);border-radius:14px;padding:16px 18px;margin-bottom:18px;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
@@ -3028,7 +3028,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
         <div style="font-weight:600;margin-bottom:16px;">Full Standings</div>
         <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
           <table class="lb-table">
-            <thead><tr><th>#</th><th>Tipper</th><th>Total Pts</th><th style="display:none;"></th><th>Round Wins</th><th>Last Round</th><th>Margin</th><th>🌐 Global</th></tr></thead>
+            <thead><tr><th>#</th><th>Tipper</th><th>Total Pts</th><th style="display:none;"></th><th>Round Wins</th><th>Last Round</th><th>Margin</th><th>📊 Overall</th></tr></thead>
             <tbody id="lb-body"></tbody>
           </table>
         </div>
@@ -3065,7 +3065,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
 
     <!-- GLOBAL LEADERBOARD -->
     <div class="page" id="page-global">
-      <div class="section-title">GLOBAL <span>RANKINGS</span></div>
+      <div class="section-title">OVERALL <span>RANKINGS</span></div>
       <div class="section-sub">Every tipper across all competitions ranked by total points</div>
       <div class="card">
         <div style="overflow-x:auto;">
