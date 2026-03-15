@@ -2543,7 +2543,7 @@ function checkRoundWinnerCelebration() {
   const scores = calcScoresForUsers(memberIds);
   if (scores.length === 0) return;
 
-  // Find who scored most in this round
+  // Find who scored most in this round — with margin + global rank tiebreaker
   let bestPts = -1, winners = [];
   scores.forEach(s => {
     const rp = s.roundPts[lastRound.id] || 0;
@@ -2551,7 +2551,20 @@ function checkRoundWinnerCelebration() {
     else if (rp === bestPts) winners.push(s);
   });
   if (bestPts <= 0) return;
-  const winner = winners[0];
+  let winner = winners[0];
+  if (winners.length > 1) {
+    const allUids = Object.keys(allUsers);
+    const globalScores = calcScoresForUsers(allUids);
+    const globalRankMap = {};
+    globalScores.forEach((s,i) => { globalRankMap[s.uid] = i+1; });
+    const withTiebreak = winners.map(s => ({
+      s,
+      mDiff: s.roundMarginDiffs?.[lastRound.id] ?? 9999,
+      globalRank: globalRankMap[s.uid] || 999
+    }));
+    withTiebreak.sort((a,b) => a.mDiff !== b.mDiff ? a.mDiff - b.mDiff : a.globalRank - b.globalRank);
+    winner = withTiebreak[0].s;
+  }
 
   // Mark as seen
   localStorage.setItem(celebKey, Date.now().toString());
@@ -2560,7 +2573,7 @@ function checkRoundWinnerCelebration() {
   const roundName = lastRound.name || ('Round ' + (lastRound.order || ''));
   document.getElementById('cel-round-label').textContent = roundName.toUpperCase();
   document.getElementById('cel-name').textContent = winner.nick || winner.name;
-  document.getElementById('cel-pts').textContent = bestPts + ' pts this round' + (winners.length > 1 ? ' (tied)' : '');
+  document.getElementById('cel-pts').textContent = bestPts + ' pts this round';
 
   const avatarEl = document.getElementById('cel-avatar');
   if (winner.avatar) {
