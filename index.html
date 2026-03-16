@@ -104,6 +104,12 @@ const CLUB_COLOURS = {
   'Western Bulldogs':  { type:'thirds-h',c1:'#014896', c2:'#CC2031',  c3:'#FFFFFF' },
 };
 
+function clubPrimaryColour(name) {
+  const c = CLUB_COLOURS[name];
+  if (!c) return '#1e3054';
+  return c.c1;
+}
+
 function clubBadge(name, size=40) {
   const c = CLUB_COLOURS[name] || { type:'solid', c1:'#1e3054', c2:'#00c853' };
   const r = size/2, cx = r, cy = r;
@@ -1011,15 +1017,17 @@ function renderTipMatches() {
       </div>
       ${marginInput}
       <div class="match-teams">
-        <div class="team-btn ${hClass}" onclick="${locked||finished?'':'pickTip(\''+m.id+'\',\''+m.home.replace(/'/g,"\\'")+'\')'}">
-          <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:6px;">${clubBadge(m.home,24)}<div class="team-name">${escHtml(m.home)}</div></div>
+        <div class="team-btn ${hClass}" style="--team-wash:${clubPrimaryColour(m.home)};" onclick="${locked||finished?'':'pickTip(\''+m.id+'\',\''+m.home.replace(/'/g,"\\'")+'\')'}">
+          <div class="team-badge-wrap">${clubBadge(m.home,52)}</div>
+          <div class="team-name">${escHtml(m.home)}</div>
           <div class="odds-pts">${hPts} pt${hPts>1?'s':''}</div>
           <div class="team-odds" style="color:${m.homeOdds<2?'var(--green)':'var(--gold)'}">$${Number(m.homeOdds).toFixed(2)}</div>
           ${m.homeOdds>=2?'<div class="roughie-tag">ROUGHIE</div>':''}
         </div>
         <div class="vs-divider">VS</div>
-        <div class="team-btn ${aClass}" onclick="${locked||finished?'':'pickTip(\''+m.id+'\',\''+m.away.replace(/'/g,"\\'")+'\')'}">
-          <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:6px;">${clubBadge(m.away,24)}<div class="team-name">${escHtml(m.away)}</div></div>
+        <div class="team-btn ${aClass}" style="--team-wash:${clubPrimaryColour(m.away)};" onclick="${locked||finished?'':'pickTip(\''+m.id+'\',\''+m.away.replace(/'/g,"\\'")+'\')'}">
+          <div class="team-badge-wrap">${clubBadge(m.away,52)}</div>
+          <div class="team-name">${escHtml(m.away)}</div>
           <div class="odds-pts">${aPts} pt${aPts>1?'s':''}</div>
           <div class="team-odds" style="color:${m.awayOdds<2?'var(--green)':'var(--gold)'}">$${Number(m.awayOdds).toFixed(2)}</div>
           ${m.awayOdds>=2?'<div class="roughie-tag">ROUGHIE</div>':''}
@@ -2790,20 +2798,26 @@ tr:hover .rank-3{box-shadow:0 0 12px rgba(205,127,50,0.5);transform:scale(1.1);}
 .match-card:hover{border-color:rgba(255,255,255,0.1);box-shadow:0 4px 24px rgba(0,0,0,0.2);}
 .match-meta{font-size:12px;color:var(--muted);margin-bottom:12px;}
 .match-teams{display:flex;align-items:stretch;gap:10px;}
-.team-btn{flex:1;min-width:0;padding:10px 6px;border-radius:10px;border:2px solid var(--border);background:var(--card2);cursor:pointer;text-align:center;transition:all var(--transition-fast);position:relative;overflow:hidden;}
-.team-btn::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,rgba(0,200,83,0.18) 0%,transparent 70%);opacity:0;transition:opacity var(--transition-fast);}
-.team-btn:not(.locked):hover{border-color:var(--green);background:rgba(0,200,83,.08);transform:scale(1.02);}
-.team-btn:not(.locked):hover::before{opacity:1;}
-.team-btn:not(.locked):active{transform:scale(0.98);}
-.team-btn.selected{border-color:var(--green);background:rgba(0,200,83,.15);box-shadow:var(--glow-green);}
-.team-btn.selected::before{opacity:1;}
-.team-btn.locked{cursor:default;opacity:.8;}
-.team-btn.winner-correct{border-color:var(--green);background:rgba(0,200,83,.2);box-shadow:var(--glow-green);}
+.team-btn{flex:1;min-width:0;padding:14px 10px 12px;border-radius:12px;border:2px solid var(--border);background:var(--card2);cursor:pointer;text-align:center;transition:all var(--transition-fast);position:relative;overflow:hidden;}
+.team-btn::before{content:'';position:absolute;inset:0;background:var(--team-wash,rgba(0,200,83,0.0));opacity:0.18;transition:opacity var(--transition-med),background var(--transition-med);}
+.team-btn::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 30%,rgba(255,255,255,0.08) 0%,transparent 65%);opacity:0;transition:opacity var(--transition-fast);}
+.team-btn:not(.locked):hover{transform:scale(1.03);border-color:rgba(255,255,255,0.25);}
+.team-btn:not(.locked):hover::before{opacity:0.28;}
+.team-btn:not(.locked):hover::after{opacity:1;}
+.team-btn:not(.locked):active{transform:scale(0.97);}
+.team-btn.selected{border-color:rgba(255,255,255,0.4);box-shadow:0 0 0 1px rgba(255,255,255,0.15),0 8px 28px rgba(0,0,0,0.5);}
+.team-btn.selected::before{opacity:0.35;}
+.team-btn.selected::after{opacity:1;}
+.team-btn.locked{cursor:default;}
+.team-btn.winner-correct{border-color:var(--green);box-shadow:var(--glow-green);}
 .team-btn.winner-wrong{border-color:var(--red);background:rgba(255,61,61,.1);opacity:.6;}
-.team-name{font-weight:700;font-size:13px;word-break:break-word;line-height:1.2;}
+.team-badge-wrap{display:flex;justify-content:center;margin-bottom:10px;transition:transform var(--transition-fast);}
+.team-btn:not(.locked):hover .team-badge-wrap{transform:scale(1.12);}
+.team-btn.selected .team-badge-wrap{transform:scale(1.08);}
+.team-name{font-weight:800;font-size:14px;word-break:break-word;line-height:1.2;margin-bottom:4px;letter-spacing:0.2px;}
 .team-odds{font-size:13px;color:var(--muted);margin-top:3px;}
 .odds-pts{font-family:'Bebas Neue',sans-serif;font-size:22px;font-weight:400;color:var(--green);margin-top:4px;letter-spacing:1px;transition:text-shadow var(--transition-fast);}
-.team-btn:hover .odds-pts,.team-btn.selected .odds-pts{text-shadow:0 0 12px rgba(0,200,83,0.7);}
+.team-btn:hover .odds-pts,.team-btn.selected .odds-pts{text-shadow:0 0 14px rgba(0,200,83,0.8);color:var(--green2);}
 .roughie-tag{display:inline-block;background:var(--gold);color:var(--navy);font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;margin-top:4px;transition:box-shadow var(--transition-fast);}
 .team-btn:hover .roughie-tag,.team-btn.selected .roughie-tag{box-shadow:var(--glow-gold);animation:glow-pulse 2s ease-in-out infinite;}
 .vs-divider{color:var(--muted);font-weight:700;font-size:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center;align-self:center;}
