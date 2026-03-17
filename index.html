@@ -402,7 +402,15 @@ async function doRegister() {
         await setDoc(doc(db,'users',cred.user.uid),{
           name, nick:nick||'', email, isAdmin, avatar:'', compIds:[], lastCompId:null, joinedAt:serverTimestamp()
         });
-        written=true; break;
+        written=true;
+        // Update public stats so login screen shows live tipper count
+        try {
+          const statsRef = doc(db,'public','stats');
+          const statsSnap = await getDoc(statsRef);
+          const cur = statsSnap.exists() ? (statsSnap.data().userCount||0) : 0;
+          await setDoc(statsRef, { userCount: cur + 1 }, { merge: true });
+        } catch(e) {}
+        break;
       } catch(e){ await new Promise(r=>setTimeout(r,1000)); }
     }
     isRegistering = false;
@@ -2467,36 +2475,23 @@ function playLoginSiren() {
 }
 
 // ─── AUTH USER COUNT ─────────────────────────────────────────
+// Reads from public/stats doc which is readable without auth.
+// This doc is written whenever a new user registers.
 let _authCountUnsub = null;
 function startAuthUserCount() {
-  if (_authCountUnsub) return; // already listening
+  if (_authCountUnsub) return;
   try {
-    _authCountUnsub = onSnapshot(collection(db,'users'), snap => {
+    _authCountUnsub = onSnapshot(doc(db,'public','stats'), snap => {
       const countEl = el('auth-count-num');
-      if (countEl) countEl.textContent = snap.size;
-    }, err => {
-      // Retry after 2s if it fails
-      _authCountUnsub = null;
-      setTimeout(startAuthUserCount, 2000);
-    });
-  } catch(e) {
-    _authCountUnsub = null;
-    setTimeout(startAuthUserCount, 2000);
-  }
+      if (!countEl) return;
+      if (snap.exists() && snap.data().userCount) {
+        countEl.textContent = snap.data().userCount;
+      }
+    }, () => { _authCountUnsub = null; });
+  } catch(e) { _authCountUnsub = null; }
 }
-// Also fetch a one-time count immediately on page load using getDocs
-// so the number shows even before auth state resolves
-(async () => {
-  try {
-    const snap = await getDocs(collection(db,'users'));
-    const countEl = el('auth-count-num');
-    if (countEl) countEl.textContent = snap.size;
-    // Then start live listener
-    startAuthUserCount();
-  } catch(e) {
-    startAuthUserCount(); // fallback to listener
-  }
-})();
+// Start immediately on page load
+startAuthUserCount();
 
 // ─── ADMIN EDIT TIPS ─────────────────────────────────────────
 function renderAdminEditTips() {
