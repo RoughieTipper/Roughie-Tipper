@@ -321,6 +321,7 @@ onAuthStateChanged(auth, async user => {
         const isSiteAdmin = user.uid === SITE_ADMIN_UID || userProfile.isAdmin;
         el('nav-admin').style.display = isSiteAdmin ? 'inline-flex' : 'none';
         subscribeGlobal();
+        playLoginSiren();
         setTimeout(checkRoundWinnerCelebration, 3000); // once per login after data loads
         setTimeout(updateRTCupBanner, 3500); // after RT Cup subscription loads
         // If arrived via invite link, auto-join that comp
@@ -2429,6 +2430,68 @@ function renderRTCupStage(stage, btn) {
       ${roundRows?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">${roundRows}</div>`:''}
     </div>`;
   }).join('');
+}
+
+
+// ─── LOGIN SIREN + CROWD CHEER ───────────────────────────────
+function playLoginSiren() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+    // ── SIREN — single blast ──────────────────────────────────
+    const osc3 = ctx.createOscillator();
+    const gain3 = ctx.createGain();
+    osc3.connect(gain3); gain3.connect(ctx.destination);
+    osc3.type = 'sawtooth';
+    osc3.frequency.setValueAtTime(800, ctx.currentTime);
+    osc3.frequency.linearRampToValueAtTime(870, ctx.currentTime + 0.3);
+    osc3.frequency.linearRampToValueAtTime(800, ctx.currentTime + 0.6);
+    gain3.gain.setValueAtTime(0, ctx.currentTime);
+    gain3.gain.linearRampToValueAtTime(0.22, ctx.currentTime + 0.04);
+    gain3.gain.setValueAtTime(0.22, ctx.currentTime + 0.5);
+    gain3.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.7);
+    osc3.start(ctx.currentTime);
+    osc3.stop(ctx.currentTime + 0.75);
+
+    // ── CROWD CHEER ───────────────────────────────────────────
+    const cheerStart = 0.4;
+    const cheerDuration = 1.1;
+    [200, 600, 1200, 2400].forEach((filterFreq, i) => {
+      const bufSize = ctx.sampleRate * cheerDuration;
+      const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let j = 0; j < bufSize; j++) data[j] = Math.random() * 2 - 1;
+
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(filterFreq, ctx.currentTime + cheerStart);
+      filter.frequency.linearRampToValueAtTime(filterFreq * 1.5, ctx.currentTime + cheerStart + 0.6);
+      filter.frequency.linearRampToValueAtTime(filterFreq * 0.8, ctx.currentTime + cheerStart + cheerDuration);
+      filter.Q.value = 0.8;
+
+      const gain = ctx.createGain();
+      const vol = i === 1 ? 0.12 : i === 2 ? 0.09 : 0.05;
+      gain.gain.setValueAtTime(0, ctx.currentTime + cheerStart);
+      gain.gain.linearRampToValueAtTime(vol, ctx.currentTime + cheerStart + 0.15);
+      gain.gain.setValueAtTime(vol, ctx.currentTime + cheerStart + cheerDuration - 0.4);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + cheerStart + cheerDuration);
+
+      src.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      src.start(ctx.currentTime + cheerStart);
+      src.stop(ctx.currentTime + cheerStart + cheerDuration);
+    });
+
+    // Close context after sounds finish
+    setTimeout(() => ctx.close(), 1800);
+  } catch(e) {
+    // Audio not supported — silently ignore
+    console.log('Audio not available:', e);
+  }
 }
 
 // ─── ADMIN EDIT TIPS ─────────────────────────────────────────
