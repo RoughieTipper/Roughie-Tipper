@@ -2446,7 +2446,7 @@ function playLoginSiren() {
     siren.volume = 0.9;
     siren.currentTime = 1.88;
     siren.addEventListener('timeupdate', function() {
-      if (siren.currentTime >= 5.88) siren.pause();
+      if (siren.currentTime >= 5.38) siren.pause(); // stops exactly when crowd ends
     });
     siren.play().catch(()=>{});
 
