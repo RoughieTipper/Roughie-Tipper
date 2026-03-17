@@ -2441,16 +2441,23 @@ const _CROWD_SRC = 'data:audio/mp3;base64,//vQZAAP8AAAaQAAAAgAAA0gAAABAAABpAAAAC
 
 function playLoginSiren() {
   try {
-    // Siren plays immediately
+    // Siren — last 4 seconds
     const siren = new Audio(_SIREN_SRC);
     siren.volume = 0.9;
+    siren.currentTime = 1.88;
+    siren.addEventListener('timeupdate', function() {
+      if (siren.currentTime >= 5.88) siren.pause();
+    });
     siren.play().catch(()=>{});
 
-    // Crowd cheer starts 0.5s after siren, jumped to last 4 seconds
+    // Crowd cheer — first 3 seconds only, starts 0.5s after siren
     setTimeout(() => {
       const crowd = new Audio(_CROWD_SRC);
       crowd.volume = 0.7;
-      crowd.currentTime = 12.27; // last 4 seconds of 16.27s file
+      crowd.currentTime = 0;
+      crowd.addEventListener('timeupdate', function() {
+        if (crowd.currentTime >= 3.0) crowd.pause();
+      });
       crowd.play().catch(()=>{});
     }, 500);
   } catch(e) {
