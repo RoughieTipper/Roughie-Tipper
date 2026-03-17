@@ -2470,11 +2470,33 @@ function playLoginSiren() {
 let _authCountUnsub = null;
 function startAuthUserCount() {
   if (_authCountUnsub) return; // already listening
-  _authCountUnsub = onSnapshot(collection(db,'users'), snap => {
+  try {
+    _authCountUnsub = onSnapshot(collection(db,'users'), snap => {
+      const countEl = el('auth-count-num');
+      if (countEl) countEl.textContent = snap.size;
+    }, err => {
+      // Retry after 2s if it fails
+      _authCountUnsub = null;
+      setTimeout(startAuthUserCount, 2000);
+    });
+  } catch(e) {
+    _authCountUnsub = null;
+    setTimeout(startAuthUserCount, 2000);
+  }
+}
+// Also fetch a one-time count immediately on page load using getDocs
+// so the number shows even before auth state resolves
+(async () => {
+  try {
+    const snap = await getDocs(collection(db,'users'));
     const countEl = el('auth-count-num');
     if (countEl) countEl.textContent = snap.size;
-  });
-}
+    // Then start live listener
+    startAuthUserCount();
+  } catch(e) {
+    startAuthUserCount(); // fallback to listener
+  }
+})();
 
 // ─── ADMIN EDIT TIPS ─────────────────────────────────────────
 function renderAdminEditTips() {
