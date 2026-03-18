@@ -1,14 +1,13 @@
-const CACHE = 'roughie-v6';
+const CACHE = 'roughie-v7';
 
 // Only cache static assets — never cache the main HTML page
 const STATIC_ASSETS = [
-  '/Roughie-Tipper/icon-192.png',
-  '/Roughie-Tipper/icon-512.png',
-  '/Roughie-Tipper/manifest.json'
+  '/icon-192.png',
+  '/icon-512.png',
+  '/manifest.json'
 ];
 
 self.addEventListener('install', e => {
-  // Skip waiting immediately — don't hold back new SW versions
   self.skipWaiting();
   e.waitUntil(
     caches.open(CACHE).then(c => c.addAll(STATIC_ASSETS))
@@ -16,7 +15,6 @@ self.addEventListener('install', e => {
 });
 
 self.addEventListener('activate', e => {
-  // Take control of all clients immediately
   e.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
@@ -38,9 +36,8 @@ self.addEventListener('fetch', e => {
   }
 
   // For the main HTML page — always network first, never cached
-  // This ensures updates deploy instantly without reinstalling
-  if (url.pathname === '/Roughie-Tipper/' ||
-      url.pathname === '/Roughie-Tipper/index.html' ||
+  if (url.pathname === '/' ||
+      url.pathname === '/index.html' ||
       url.pathname.endsWith('.html')) {
     e.respondWith(
       fetch(e.request, { cache: 'no-store' })

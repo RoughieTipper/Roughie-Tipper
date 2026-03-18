@@ -1,9 +1,9 @@
 {
-  "name": "Roughie Tipper",
+  "name": "Roughie Tips",
   "short_name": "Roughie",
   "description": "AFL tipping comp with roughie bonus scoring",
-  "start_url": "/Roughie-Tipper/",
-  "scope": "/Roughie-Tipper/",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0a1628",
   "theme_color": "#0a1628",
