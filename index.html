@@ -8,10 +8,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Roughie Tipper"/>
 <meta name="theme-color" content="#0a1628"/>
-<link rel="manifest" href="/Roughie-Tipper/manifest.json"/>
-<link rel="apple-touch-icon" sizes="192x192" href="/Roughie-Tipper/icon-192.png"/>
-<link rel="icon" type="image/png" sizes="512x512" href="/Roughie-Tipper/icon-512.png"/>
-<link rel="icon" type="image/png" sizes="192x192" href="/Roughie-Tipper/icon-192.png"/>
+<link rel="manifest" href="/manifest.json"/>
+<link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png"/>
+<link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png"/>
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png"/>
 <title>Roughie Tipper — AFL 2026</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
@@ -1475,7 +1475,7 @@ function shareRoundResult() {
 
   const compName = currentComp?.name || 'Roughie Tipper';
   const nick = userProfile?.nick || userProfile?.name || 'Someone';
-  const siteUrl = 'https://roughietipper.github.io/Roughie-Tipper';
+  const siteUrl = 'https://roughietips.com.au';
 
   const roughies = scores.find(s=>s.uid===currentUser.uid)?.roughieBonus||0;
   const roughieLine = roughies > 0 ? `\n🤑 ${roughies} roughie${roughies>1?'s':''} this round!` : '';
@@ -1505,7 +1505,7 @@ function copyInviteLink() {
   if (!currentComp) return;
   const compName = currentComp.name || 'our AFL tipping comp';
   const code = currentComp.joinCode || '';
-  const siteUrl = 'https://roughietipper.github.io/Roughie-Tipper';
+  const siteUrl = 'https://roughietips.com.au';
   const inviteUrl = siteUrl + '?join=' + encodeURIComponent(code);
   const missedRounds = rounds.filter(r=>(r.matches||[]).length>0&&(r.matches||[]).every(m=>m.winner)).length;
 
