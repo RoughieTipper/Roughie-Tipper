@@ -2031,10 +2031,19 @@ async function updateNotifBtn() {
 }
 
 // ─── NEW URL BOOKMARK BANNER ─────────────────────────────────
-function showNewUrlBanner() {
-  const key = 'new_url_banner_seen_v1';
+async function showNewUrlBanner() {
+  const key = 'newUrlBannerSeen_v1';
+  // Check Firestore first (cross-device), fall back to localStorage
   if (localStorage.getItem(key)) return;
+  if (userProfile && userProfile[key]) return;
+  // Mark as seen in both places
   localStorage.setItem(key, '1');
+  if (currentUser) {
+    try {
+      await updateDoc(doc(db,'users',currentUser.uid), { [key]: true });
+      if (userProfile) userProfile[key] = true;
+    } catch(e) {}
+  }
 
   const banner = document.createElement('div');
   banner.id = 'new-url-banner';
@@ -2755,7 +2764,7 @@ async function adminClearTip(uid, matchId, roundId) {
 // ─── ROUND WINNER CELEBRATION ────────────────────────────────
 let confettiInterval = null;
 
-function checkRoundWinnerCelebration() {
+async function checkRoundWinnerCelebration() {
   if (!currentUser || !currentCompId) return;
   if (window._celebChecked) return; // only run once per session
   window._celebChecked = true;
@@ -2780,8 +2789,11 @@ function checkRoundWinnerCelebration() {
     }
   }
 
-  const celebKey = `cel_${currentUser.uid}_${lastRound.id}`;
-  if (localStorage.getItem(celebKey)) return; // already seen
+  const celebKey = `cel_${lastRound.id}`;
+  const celebKeyLocal = `cel_${currentUser.uid}_${lastRound.id}`;
+  // Check Firestore profile first (cross-device), then fall back to localStorage
+  if (userProfile && userProfile.seenCelebrations && userProfile.seenCelebrations[celebKey]) return;
+  if (localStorage.getItem(celebKeyLocal)) return; // legacy localStorage check
 
   // Find winner of this round in this comp
   const memberIds = Object.entries(allUsers)
@@ -2813,8 +2825,15 @@ function checkRoundWinnerCelebration() {
     winner = withTiebreak[0].s;
   }
 
-  // Mark as seen
-  localStorage.setItem(celebKey, Date.now().toString());
+  // Mark as seen in Firestore (cross-device) and localStorage (legacy fallback)
+  localStorage.setItem(celebKeyLocal, Date.now().toString());
+  if (currentUser) {
+    try {
+      const seenCelebrations = { ...(userProfile?.seenCelebrations || {}), [celebKey]: true };
+      await updateDoc(doc(db,'users',currentUser.uid), { seenCelebrations });
+      if (userProfile) userProfile.seenCelebrations = seenCelebrations;
+    } catch(e) {}
+  }
 
   // Populate overlay
   const roundName = lastRound.name || ('Round ' + (lastRound.order || ''));
