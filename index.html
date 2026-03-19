@@ -12,7 +12,20 @@
 <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png"/>
 <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png"/>
 <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png"/>
-<title>Roughie Tips — AFL 2026</title>
+<title>Roughie Tips — AFL 2026 Footy Tipping Competition</title>
+<meta name="description" content="Roughie Tips — the AFL footy tipping competition where upsets pay off. Tip every round, earn bonus points for roughies, and compete on the leaderboard."/>
+<meta name="keywords" content="AFL tipping, footy tipping, AFL 2026, footy tipping competition, roughie tips, AFL tips, tipping competition Australia"/>
+<meta name="robots" content="index, follow"/>
+<link rel="canonical" href="https://roughietips.com.au/"/>
+<meta property="og:title" content="Roughie Tips — AFL Footy Tipping"/>
+<meta property="og:description" content="Tip every AFL round, earn bonus points for backing the underdog, and compete with mates on the leaderboard."/>
+<meta property="og:url" content="https://roughietips.com.au/"/>
+<meta property="og:type" content="website"/>
+<meta property="og:image" content="https://roughietips.com.au/icon-512.png"/>
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Roughie Tips — AFL Footy Tipping"/>
+<meta name="twitter:description" content="Tip every AFL round, earn bonus points for backing the underdog."/>
+<meta name="twitter:image" content="https://roughietips.com.au/icon-512.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <script>
@@ -324,6 +337,7 @@ onAuthStateChanged(auth, async user => {
         setTimeout(checkRoundWinnerCelebration, 3000); // once per login after data loads
         setTimeout(updateRTCupBanner, 3500); // after RT Cup subscription loads
         setTimeout(showNewUrlBanner, 2000); // one-time new URL notice
+        setTimeout(checkLbNotifBanner, 4000); // nudge to enable notifications
         // If arrived via invite link, auto-join that comp
         const storedJoin = sessionStorage.getItem('pendingJoin');
         if (storedJoin) {
@@ -755,7 +769,11 @@ function renderLeaderboard() {
   // "Previous" = scores excluding the latest completed round
   const completedRoundsList = rounds.filter(r=>(r.matches||[]).length>0&&(r.matches||[]).every(m=>m.winner));
   let prevRankMap = {};
-  if (completedRoundsList.length >= 2) {
+  // Only show arrows in the window AFTER a round completes but BEFORE the next round kicks off
+  const nextRound = rounds.find(r => (r.matches||[]).length > 0 && !(r.matches||[]).every(m => m.winner));
+  const nextRoundStarted = nextRound && isLocked((nextRound.matches||[])[0]?.date, (nextRound.matches||[])[0]?.time);
+  const showMovementArrows = completedRoundsList.length >= 2 && !nextRoundStarted;
+  if (showMovementArrows) {
     const prevRound = completedRoundsList[completedRoundsList.length - 2];
     // Build scores without latest round's points
     const prevScores = memberIds.map(uid => {
@@ -822,8 +840,23 @@ function renderLeaderboard() {
         }
         if (s.uid === starWinner.uid) emojis.push('⭐');
       }
-      // 🥶 Lowest score this round
-      if (rp === minRoundPts && scores.length > 1 && rp !== maxRoundPts) emojis.push('🥶');
+      // 🥶 Lowest score this round — single worst performer using margin tiebreaker
+      if (scores.length > 1 && minRoundPts !== maxRoundPts) {
+        const bottomScorers = scores.filter(x => (x.roundPts[latestRound.id] || 0) === minRoundPts);
+        let freezeLoser = bottomScorers[0];
+        if (bottomScorers.length > 1) {
+          // Tiebreaker: worst margin diff (highest = worst) for this round
+          const withM = bottomScorers.map(x => ({
+            x,
+            mDiff: x.roundMarginDiffs?.[latestRound.id] ?? 0,
+            globalRank: globalRankMap[x.uid] || 999
+          }));
+          // Highest mDiff = worst = gets the freeze emoji
+          withM.sort((a, b) => b.mDiff !== a.mDiff ? b.mDiff - a.mDiff : b.globalRank - a.globalRank);
+          freezeLoser = withM[0].x;
+        }
+        if (s.uid === freezeLoser.uid) emojis.push('🥶');
+      }
       // 🔮 Perfect round - all tips correct this round
       if (s.roundPts[latestRound.id] > 0 && s.roundWins && totalMatches > 0) {
         // Check if they got every match right this round
@@ -1990,7 +2023,6 @@ if ('serviceWorker' in navigator) {
 }
 
 async function requestNotifPermission() {
-  const btn = el('notif-btn');
   const status = el('notif-status');
   if (!window.OneSignal) {
     if(status) status.textContent = 'Notifications not available on this browser.';
@@ -1999,51 +2031,135 @@ async function requestNotifPermission() {
   try {
     const permission = await OneSignal.Notifications.permission;
     if (permission) {
-      if(status) status.textContent = '✓ Notifications already enabled!';
-      if(btn) btn.textContent = '✓ Notifications Enabled';
+      if(status) status.textContent = 'Already enabled — you are all set!';
+      setNotifToggle(true);
       return;
     }
     await OneSignal.Notifications.requestPermission();
     const granted = await OneSignal.Notifications.permission;
     if(granted) {
-      if(status) status.textContent = '✓ Notifications enabled!';
-      if(btn) { btn.textContent = '✓ Notifications Enabled'; btn.style.background='var(--green)'; }
+      if(status) status.textContent = 'Enabled — we will remind you before tips close.';
+      setNotifToggle(true);
     } else {
-      if(status) status.textContent = 'Notifications blocked — check your browser settings.';
+      if(status) status.textContent = 'Blocked — check your browser or device settings.';
+      setNotifToggle(false);
     }
   } catch(e) {
     if(status) status.textContent = 'Could not enable notifications.';
   }
 }
 
+function setNotifToggle(on) {
+  const toggle = el('notif-toggle');
+  const knob = el('notif-knob');
+  if (!toggle || !knob) return;
+  if (on) {
+    toggle.style.background = 'var(--green)';
+    knob.style.left = '21px';
+  } else {
+    toggle.style.background = 'var(--border)';
+    knob.style.left = '3px';
+  }
+}
+
 async function updateNotifBtn() {
-  const btn = el('notif-btn');
   const status = el('notif-status');
-  if (!btn || !window.OneSignal) return;
+  if (!window.OneSignal) {
+    if(status) status.textContent = 'Not available on this browser.';
+    return;
+  }
   try {
     const permission = OneSignal.Notifications.permission;
     if (permission) {
-      btn.textContent = '✓ Notifications Enabled';
-      btn.style.background = 'var(--green)';
-      if(status) status.textContent = "All set! We will remind you when tips close.";
+      if(status) status.textContent = 'Enabled — we will remind you before tips close.';
+      setNotifToggle(true);
+    } else {
+      if(status) status.textContent = 'Tap to enable push reminders.';
+      setNotifToggle(false);
     }
+  } catch(e) {
+    if(status) status.textContent = 'Tap to enable push reminders.';
+  }
+}
+
+function downloadCalendarReminder() {
+  // Recurring weekly .ics — every Thursday at 6:30pm AEST (UTC+10)
+  // DTSTART: next upcoming Thursday
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun,4=Thu
+  const daysUntilThursday = (4 - day + 7) % 7 || 7;
+  const next = new Date(now);
+  next.setDate(now.getDate() + daysUntilThursday);
+  next.setHours(8, 30, 0, 0); // 6:30pm AEST = 08:30 UTC
+  function pad(n){return String(n).padStart(2,'0');}
+  function icsDate(d){
+    return d.getUTCFullYear()+pad(d.getUTCMonth()+1)+pad(d.getUTCDate())+'T'+pad(d.getUTCHours())+pad(d.getUTCMinutes())+'00Z';
+  }
+  const end = new Date(next.getTime() + 30*60000);
+  const stamp = icsDate(new Date());
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Roughie Tips//AFL Tipping//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'BEGIN:VEVENT',
+    'UID:roughietips-weekly-reminder@roughietips.com.au',
+    'DTSTAMP:'+stamp,
+    'DTSTART:'+icsDate(next),
+    'DTEND:'+icsDate(end),
+    'SUMMARY:Roughie Tips — Tips Close at 7:30pm!',
+    'DESCRIPTION:Get your AFL tips in before 7:30pm tonight. Visit roughietips.com.au',
+    'URL:https://roughietips.com.au',
+    'RRULE:FREQ=WEEKLY;BYDAY=TH',
+    'ALARM:',
+    'BEGIN:VALARM',
+    'TRIGGER:-PT30M',
+    'ACTION:DISPLAY',
+    'DESCRIPTION:Tips close in 30 minutes!',
+    'END:VALARM',
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ].join('\r\n');
+  const blob = new Blob([ics], {type:'text/calendar;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'roughie-tips-reminder.ics';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Calendar reminder downloaded! Open the file to add it 📅');
+}
+
+// ─── LEADERBOARD NOTIFICATION BANNER ────────────────────────
+async function checkLbNotifBanner() {
+  const banner = el('lb-notif-banner');
+  if (!banner) return;
+  if (localStorage.getItem('lb_notif_dismissed')) { banner.style.display='none'; return; }
+  if (!window.OneSignal) { banner.style.display='none'; return; }
+  try {
+    const permission = await OneSignal.Notifications.permission;
+    if (permission) { banner.style.display='none'; return; } // already opted in
   } catch(e) {}
+  banner.style.display = 'block';
+}
+
+function dismissLbNotifBanner() {
+  const banner = el('lb-notif-banner');
+  if (banner) banner.style.display='none';
+  localStorage.setItem('lb_notif_dismissed','1');
+}
+
+async function requestNotifPermissionFromBanner() {
+  await requestNotifPermission();
+  const banner = el('lb-notif-banner');
+  if (banner) banner.style.display='none';
 }
 
 // ─── NEW URL BOOKMARK BANNER ─────────────────────────────────
-async function showNewUrlBanner() {
-  const key = 'newUrlBannerSeen_v1';
-  // Check Firestore first (cross-device), fall back to localStorage
+function showNewUrlBanner() {
+  const key = 'new_url_banner_seen_v1';
   if (localStorage.getItem(key)) return;
-  if (userProfile && userProfile[key]) return;
-  // Mark as seen in both places
   localStorage.setItem(key, '1');
-  if (currentUser) {
-    try {
-      await updateDoc(doc(db,'users',currentUser.uid), { [key]: true });
-      if (userProfile) userProfile[key] = true;
-    } catch(e) {}
-  }
 
   const banner = document.createElement('div');
   banner.id = 'new-url-banner';
@@ -2118,22 +2234,16 @@ function getRTCupWeekNumber() {
 function updateRTCupBanner() {
   const banner = el('rtcup-banner');
   if (!banner) return;
-  // Must have a logged-in user to key storage correctly
   if (!currentUser) { banner.style.display='none'; return; }
   // Don't show if already opted in
   if (rtCupPlayers[currentUser.uid]) { banner.style.display='none'; return; }
   // Don't show if bracket already generated
   if (rtCupConfig?.status === 'active') { banner.style.display='none'; return; }
-  // Check permanent dismiss
+  // Only hide if permanently dismissed
   const dismissKey = `rtcup_banner_dismissed_${currentUser.uid}`;
   if (localStorage.getItem(dismissKey) === 'permanent') { banner.style.display='none'; return; }
-  // Check weekly suppress — only suppress if they've already seen it THIS week
-  const weekKey = `rtcup_banner_seen_${currentUser.uid}`;
-  const seenWeek = parseInt(localStorage.getItem(weekKey) || '0');
-  if (seenWeek === getRTCupWeekNumber()) { banner.style.display='none'; return; }
-  // Show banner — record seen week only now (not before showing)
+  // Show every login until they opt in or permanently dismiss
   banner.style.display = 'flex';
-  localStorage.setItem(weekKey, getRTCupWeekNumber().toString());
 }
 
 function dismissRTCupBanner(permanent) {
@@ -2764,7 +2874,7 @@ async function adminClearTip(uid, matchId, roundId) {
 // ─── ROUND WINNER CELEBRATION ────────────────────────────────
 let confettiInterval = null;
 
-async function checkRoundWinnerCelebration() {
+function checkRoundWinnerCelebration() {
   if (!currentUser || !currentCompId) return;
   if (window._celebChecked) return; // only run once per session
   window._celebChecked = true;
@@ -2789,11 +2899,8 @@ async function checkRoundWinnerCelebration() {
     }
   }
 
-  const celebKey = `cel_${lastRound.id}`;
-  const celebKeyLocal = `cel_${currentUser.uid}_${lastRound.id}`;
-  // Check Firestore profile first (cross-device), then fall back to localStorage
-  if (userProfile && userProfile.seenCelebrations && userProfile.seenCelebrations[celebKey]) return;
-  if (localStorage.getItem(celebKeyLocal)) return; // legacy localStorage check
+  const celebKey = `cel_${currentUser.uid}_${lastRound.id}`;
+  if (localStorage.getItem(celebKey)) return; // already seen
 
   // Find winner of this round in this comp
   const memberIds = Object.entries(allUsers)
@@ -2825,15 +2932,8 @@ async function checkRoundWinnerCelebration() {
     winner = withTiebreak[0].s;
   }
 
-  // Mark as seen in Firestore (cross-device) and localStorage (legacy fallback)
-  localStorage.setItem(celebKeyLocal, Date.now().toString());
-  if (currentUser) {
-    try {
-      const seenCelebrations = { ...(userProfile?.seenCelebrations || {}), [celebKey]: true };
-      await updateDoc(doc(db,'users',currentUser.uid), { seenCelebrations });
-      if (userProfile) userProfile.seenCelebrations = seenCelebrations;
-    } catch(e) {}
-  }
+  // Mark as seen
+  localStorage.setItem(celebKey, Date.now().toString());
 
   // Populate overlay
   const roundName = lastRound.name || ('Round ' + (lastRound.order || ''));
@@ -2925,7 +3025,7 @@ Object.assign(window,{
   proposeBet,acceptBet,declineBet,deleteBet,showBetNotification,showBetResponseNotification,
   triggerInstall,dismissInstall,
   switchAuthTab,
-  requestNotifPermission,
+  requestNotifPermission,requestNotifPermissionFromBanner,dismissLbNotifBanner,downloadCalendarReminder,
   dismissCelebration,checkRoundWinnerCelebration,
   renderEditTipsMatches,adminSetTip,adminClearTip,
   rtCupOptIn,rtCupOptOut,dismissRTCupBanner,generateRTCupBracket,autoAdvanceRTCup,renderRTCupStage
@@ -3358,6 +3458,23 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
         </div>
       </div>
 
+      <!-- NOTIFICATION PROMPT BANNER (leaderboard) -->
+      <div id="lb-notif-banner" style="display:none;background:linear-gradient(135deg,rgba(255,214,0,0.1),rgba(0,200,83,0.07));border:1px solid rgba(255,214,0,0.3);border-radius:14px;padding:14px 16px;margin-bottom:18px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="font-size:28px;">🔔</div>
+            <div>
+              <div style="font-weight:700;font-size:14px;color:var(--gold);">Never miss tips closing!</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:2px;">Enable push reminders — we'll ping you before 7:30pm each Thursday.</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
+            <button class="btn" style="font-size:13px;padding:8px 14px;" onclick="requestNotifPermissionFromBanner()">Enable 🔔</button>
+            <button onclick="dismissLbNotifBanner()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px;line-height:1;">x</button>
+          </div>
+        </div>
+      </div>
+
       <!-- PRIZE MONEY -->
       <div id="comp-prizes" style="background:var(--card);border:1px solid rgba(255,214,0,0.3);border-radius:14px;padding:18px 24px;margin-bottom:20px;">
         <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gold);letter-spacing:1px;margin-bottom:14px;">🏆 PRIZE POOL</div>
@@ -3575,8 +3692,23 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
       <div class="card" style="max-width:500px;margin-top:16px;">
         <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:8px;">🔔 Notifications</div>
         <p style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6;">Get reminders when tips are about to close and when round results are in.</p>
-        <button class="btn" onclick="requestNotifPermission()" id="notif-btn" style="width:100%;">Enable Notifications 🔔</button>
-        <div id="notif-status" style="font-size:12px;color:var(--muted);margin-top:10px;text-align:center;"></div>
+        <!-- Toggle row -->
+        <div style="display:flex;align-items:center;justify-content:space-between;background:var(--card2);border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer;" onclick="requestNotifPermission()">
+          <div>
+            <div style="font-weight:600;font-size:14px;">Push Notifications</div>
+            <div id="notif-status" style="font-size:12px;color:var(--muted);margin-top:3px;">Checking status…</div>
+          </div>
+          <div id="notif-toggle" style="width:44px;height:26px;border-radius:13px;background:var(--border);position:relative;transition:background 0.2s;flex-shrink:0;">
+            <div id="notif-knob" style="width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:3px;left:3px;transition:left 0.2s;"></div>
+          </div>
+        </div>
+        <button id="notif-btn" style="display:none;" onclick="requestNotifPermission()"></button>
+        <!-- Calendar reminder -->
+        <div style="background:var(--card2);border-radius:12px;padding:14px 16px;margin-top:4px;">
+          <div style="font-weight:600;font-size:14px;margin-bottom:4px;">📅 Add Weekly Tips Reminder</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5;">Download a recurring calendar reminder — every Thursday at 6:30pm — so you never miss tips closing at 7:30pm.</div>
+          <button class="btn btn-outline" style="width:100%;font-size:13px;" onclick="downloadCalendarReminder()">⬇️ Add to Phone Calendar</button>
+        </div>
       </div>
     </div>
 
@@ -3822,6 +3954,27 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- PRIVACY FOOTER PANEL -->
+<div id="privacy-panel" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:8500;background:rgba(10,22,40,0.98);border-top:1px solid var(--border);padding:20px 24px;max-height:55vh;overflow-y:auto;box-shadow:0 -8px 32px rgba(0,0,0,0.6);">
+  <div style="max-width:580px;margin:0 auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--green);letter-spacing:1px;">Privacy &amp; Legal</div>
+      <button onclick="document.getElementById('privacy-panel').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:24px;cursor:pointer;padding:0;line-height:1;">x</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.75;">
+      <p style="margin-bottom:10px;"><strong style="color:var(--text);">2026 Roughie Tips. All rights reserved.</strong> This website, its scoring system, design, and underlying code are the intellectual property of Roughie Tips. Unauthorised reproduction, copying, scraping, or redistribution of any part of this site is strictly prohibited.</p>
+      <p style="margin-bottom:10px;"><strong style="color:var(--text);">Your Data:</strong> We collect only what you provide (name, nickname, email) solely to run the competition. Data is stored securely via Google Firebase and is never sold, shared, or used for advertising. You may request deletion of your account at any time via the in-app chat.</p>
+      <p style="margin-bottom:0;"><strong style="color:var(--text);">Push Notifications:</strong> Entirely optional. You can revoke permission at any time via your browser or device settings. We only send tips reminders and round result alerts.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SITE-WIDE FOOTER -->
+<div style="text-align:center;padding:18px 16px 80px;font-size:11px;color:rgba(255,255,255,0.2);">
+  2026 Roughie Tips &middot;
+  <span onclick="document.getElementById('privacy-panel').style.display='block'" style="cursor:pointer;text-decoration:underline;color:rgba(255,255,255,0.3);">Privacy &amp; Legal</span>
+</div>
 
 <script>
 function switchAuthTab(tab,btn){
