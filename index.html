@@ -294,6 +294,13 @@ function showPage(id) {
   // celebration fires once on login only
   if(id==='mycomps') renderMyComps();
   if(id==='rules') {} // static content, no render needed
+  if(id==='contact') {
+    if (userProfile) {
+      if (el('contact-name') && !el('contact-name').value) el('contact-name').value = userProfile.nick || userProfile.name || '';
+      if (el('contact-email') && !el('contact-email').value) el('contact-email').value = currentUser?.email || '';
+    }
+    if (el('contact-result')) el('contact-result').style.display = 'none';
+  }
   if(id==='leaderboard') setTimeout(initInstallBanner, 1000);
   if(id==='rtcup') renderRTCupPage();
 }
@@ -749,12 +756,23 @@ function renderLeaderboard() {
   el('prize-second').textContent = prizes.second ? '$'+prizes.second : '—';
   el('prize-third').textContent = prizes.third ? '$'+prizes.third : '—';
   el('prize-entry').textContent = prizes.entry ? '$'+prizes.entry : '—';
+  // Payment info note
+  const payInfo = prizes.paymentInfo || '';
+  const payDisplay = el('prize-payment-display');
+  const payText = el('prize-payment-text');
+  if (payInfo && payDisplay && payText) {
+    payText.textContent = payInfo;
+    payDisplay.style.display = 'block';
+  } else if (payDisplay) {
+    payDisplay.style.display = 'none';
+  }
   el('prize-edit-section').style.display = isOwner ? 'block' : 'none';
   if (isOwner) {
     el('prize-input-entry').value = prizes.entry||'';
     el('prize-input-first').value = prizes.first||'';
     el('prize-input-second').value = prizes.second||'';
     el('prize-input-third').value = prizes.third||'';
+    if (el('prize-input-payment')) el('prize-input-payment').value = prizes.paymentInfo||'';
   }
 
   el('comp-stats').innerHTML = `
@@ -1710,6 +1728,7 @@ async function savePrizes() {
     first: el('prize-input-first').value.trim(),
     second: el('prize-input-second').value.trim(),
     third: el('prize-input-third').value.trim(),
+    paymentInfo: el('prize-input-payment').value.trim(),
   };
   await updateDoc(doc(db,'comps',currentCompId),{prizes});
   currentComp.prizes = prizes;
@@ -2932,6 +2951,28 @@ function stopConfetti() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
+// ─── CONTACT ─────────────────────────────────────────────────
+function sendContactMessage() {
+  const name = (el('contact-name').value || '').trim();
+  const email = (el('contact-email').value || '').trim();
+  const message = (el('contact-message').value || '').trim();
+  const result = el('contact-result');
+  if (!name || !message) {
+    if (result) { result.style.display='block'; result.style.color='var(--red)'; result.textContent='Please enter your name and message.'; }
+    return;
+  }
+  const subject = encodeURIComponent('Roughie Tips — Message from ' + name);
+  const body = encodeURIComponent(
+    'From: ' + name + (email ? ' <' + email + '>' : '') + '\n\n' + message
+  );
+  window.location.href = 'mailto:roughietipper@gmail.com?subject=' + subject + '&body=' + body;
+  if (result) {
+    result.style.display = 'block';
+    result.style.color = 'var(--green)';
+    result.textContent = 'Opening your mail app… Thanks for getting in touch! 🏉';
+  }
+}
+
 Object.assign(window,{
   doLogin,doRegister,doLogout,doForgotPassword,showPage,showRound,showAdminTab,
   pickTip,saveTips,addRound,addMatch,removeMatch,removeUser,
@@ -2945,7 +2986,7 @@ Object.assign(window,{
   proposeBet,acceptBet,declineBet,deleteBet,showBetNotification,showBetResponseNotification,
   triggerInstall,dismissInstall,
   switchAuthTab,
-  downloadCalendarReminder,
+  downloadCalendarReminder,sendContactMessage,
   dismissCelebration,checkRoundWinnerCelebration,
   renderEditTipsMatches,adminSetTip,adminClearTip,
   rtCupOptIn,rtCupOptOut,dismissRTCupBanner,generateRTCupBracket,autoAdvanceRTCup,renderRTCupStage
@@ -3317,6 +3358,7 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
       <button id="nav-mycomps" onclick="showPage('mycomps')">🏟️ Comps</button>
       <button id="nav-global" onclick="showPage('global')">📊 Overall</button>
       <button id="nav-profile" onclick="showPage('profile')">👤 Profile</button>
+      <button id="nav-contact" onclick="showPage('contact')">✉️ Contact</button>
       <button id="nav-rules" onclick="showPage('rules')">📖 Rules</button>
       <button id="nav-admin" onclick="showPage('admin')" style="display:none;">⚙️ Admin</button>
     </nav>
@@ -3402,6 +3444,11 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
           <div style="text-align:center;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">🥈 Second</div><div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#b0b8c8;" id="prize-second">—</div></div>
           <div style="text-align:center;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">🥉 Third</div><div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#cd7f32;" id="prize-third">—</div></div>
         </div>
+        <!-- Payment info note — shown to all members when set -->
+        <div id="prize-payment-display" style="display:none;background:var(--card2);border-radius:10px;padding:12px 14px;margin-bottom:4px;">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">💳 How to Pay</div>
+          <div id="prize-payment-text" style="font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap;"></div>
+        </div>
         <div id="prize-edit-section" style="display:none;border-top:1px solid var(--border);padding-top:12px;">
           <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Edit amounts (comp admin only)</div>
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
@@ -3410,6 +3457,10 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
             <div><label style="font-size:11px;color:var(--muted);">2nd $</label><input type="number" id="prize-input-second" placeholder="0" style="width:75px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;margin-left:4px;"/></div>
             <div><label style="font-size:11px;color:var(--muted);">3rd $</label><input type="number" id="prize-input-third" placeholder="0" style="width:75px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;margin-left:4px;"/></div>
             <button class="btn" style="font-size:13px;padding:8px 16px;" onclick="savePrizes()">Save</button>
+          </div>
+          <div style="margin-top:12px;">
+            <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Payment Instructions (shown to all members)</label>
+            <textarea id="prize-input-payment" placeholder="e.g. Please pay entry fee to Roughie Tipper&#10;PayID: 0400 000 000&#10;BSB: 123-456 / Acc: 789012" rows="3" style="width:100%;margin-top:6px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;resize:vertical;line-height:1.5;"></textarea>
           </div>
         </div>
       </div>
@@ -3615,6 +3666,30 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
     </div>
 
     <!-- ADMIN -->
+    <!-- CONTACT PAGE -->
+    <div class="page" id="page-contact">
+      <div class="section-title">✉️ <span>CONTACT</span></div>
+      <div class="section-sub">Questions, complaints, praise — we want to hear it all</div>
+      <div class="card" style="max-width:560px;margin-top:8px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--green);letter-spacing:1px;margin-bottom:6px;">🏉 Get In Touch</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.6;">Roughie Tips would love to hear from you — complaints, feature requests, praise, whatever. Send us a message and we'll get back to you.</p>
+        <div class="form-group">
+          <label>Your Name</label>
+          <input type="text" id="contact-name" placeholder="Your name" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:11px 14px;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;"/>
+        </div>
+        <div class="form-group">
+          <label>Your Email</label>
+          <input type="email" id="contact-email" placeholder="your@email.com" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:11px 14px;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;"/>
+        </div>
+        <div class="form-group">
+          <label>Message</label>
+          <textarea id="contact-message" placeholder="Write your message here…" rows="5" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:11px 14px;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;resize:vertical;line-height:1.6;width:100%;"></textarea>
+        </div>
+        <button class="btn" style="width:100%;font-size:14px;padding:13px;" onclick="sendContactMessage()">✉️ Send Message</button>
+        <div id="contact-result" style="margin-top:12px;font-size:13px;text-align:center;display:none;"></div>
+      </div>
+    </div>
+
     <!-- RULES PAGE -->
     <div class="page" id="page-rules">
       <div class="section-title">📖 THE <span>RULES</span></div>
