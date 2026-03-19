@@ -290,7 +290,7 @@ function showPage(id) {
   if(id==='tips') renderTipsPage();
   if(id==='rounds') renderRoundsPage();
   if(id==='admin') renderAdmin();
-  if(id==='profile') { renderProfilePage(); setTimeout(updateNotifBtn,300); }
+  if(id==='profile') { renderProfilePage(); }
   // celebration fires once on login only
   if(id==='mycomps') renderMyComps();
   if(id==='rules') {} // static content, no render needed
@@ -337,7 +337,6 @@ onAuthStateChanged(auth, async user => {
         setTimeout(checkRoundWinnerCelebration, 3000); // once per login after data loads
         setTimeout(updateRTCupBanner, 3500); // after RT Cup subscription loads
         setTimeout(showNewUrlBanner, 2000); // one-time new URL notice
-        setTimeout(checkLbNotifBanner, 4000); // nudge to enable notifications
         // If arrived via invite link, auto-join that comp
         const storedJoin = sessionStorage.getItem('pendingJoin');
         if (storedJoin) {
@@ -2022,81 +2021,28 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-async function requestNotifPermission() {
-  const status = el('notif-status');
-  if (!window.OneSignal) {
-    if(status) status.textContent = 'Notifications not available on this browser.';
-    return;
-  }
-  try {
-    const permission = await OneSignal.Notifications.permission;
-    if (permission) {
-      if(status) status.textContent = 'Already enabled — you are all set!';
-      setNotifToggle(true);
-      return;
-    }
-    await OneSignal.Notifications.requestPermission();
-    const granted = await OneSignal.Notifications.permission;
-    if(granted) {
-      if(status) status.textContent = 'Enabled — we will remind you before tips close.';
-      setNotifToggle(true);
-    } else {
-      if(status) status.textContent = 'Blocked — check your browser or device settings.';
-      setNotifToggle(false);
-    }
-  } catch(e) {
-    if(status) status.textContent = 'Could not enable notifications.';
-  }
-}
-
-function setNotifToggle(on) {
-  const toggle = el('notif-toggle');
-  const knob = el('notif-knob');
-  if (!toggle || !knob) return;
-  if (on) {
-    toggle.style.background = 'var(--green)';
-    knob.style.left = '21px';
-  } else {
-    toggle.style.background = 'var(--border)';
-    knob.style.left = '3px';
-  }
-}
-
-async function updateNotifBtn() {
-  const status = el('notif-status');
-  if (!window.OneSignal) {
-    if(status) status.textContent = 'Not available on this browser.';
-    return;
-  }
-  try {
-    const permission = OneSignal.Notifications.permission;
-    if (permission) {
-      if(status) status.textContent = 'Enabled — we will remind you before tips close.';
-      setNotifToggle(true);
-    } else {
-      if(status) status.textContent = 'Tap to enable push reminders.';
-      setNotifToggle(false);
-    }
-  } catch(e) {
-    if(status) status.textContent = 'Tap to enable push reminders.';
-  }
-}
+// ─── LEADERBOARD NOTIFICATION BANNER ────────────────────────
+// Calendar banner is always visible — no dismiss needed
+// (push notification functions removed — calendar invite is used instead)
 
 function downloadCalendarReminder() {
-  // Recurring weekly .ics — every Thursday at 6:30pm AEST (UTC+10)
-  // DTSTART: next upcoming Thursday
+  // Recurring weekly .ics — every Thursday at 6:30pm AEST (Melbourne time)
+  // 6:30pm AEST = 08:30 UTC. Using UTC with Z so all devices show the correct
+  // Melbourne time regardless of where the user is located.
   const now = new Date();
-  const day = now.getDay(); // 0=Sun,4=Thu
+  const day = now.getDay(); // 0=Sun, 4=Thu
   const daysUntilThursday = (4 - day + 7) % 7 || 7;
   const next = new Date(now);
   next.setDate(now.getDate() + daysUntilThursday);
-  next.setHours(8, 30, 0, 0); // 6:30pm AEST = 08:30 UTC
   function pad(n){return String(n).padStart(2,'0');}
-  function icsDate(d){
+  function icsUTC(year, month, date, h, m){
+    return year+pad(month)+pad(date)+'T'+pad(h)+pad(m)+'00Z';
+  }
+  function icsStamp(d){
     return d.getUTCFullYear()+pad(d.getUTCMonth()+1)+pad(d.getUTCDate())+'T'+pad(d.getUTCHours())+pad(d.getUTCMinutes())+'00Z';
   }
-  const end = new Date(next.getTime() + 30*60000);
-  const stamp = icsDate(new Date());
+  const y = next.getFullYear(), mo = pad(next.getMonth()+1), d = pad(next.getDate());
+  const stamp = icsStamp(new Date());
   const ics = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
@@ -2106,17 +2052,16 @@ function downloadCalendarReminder() {
     'BEGIN:VEVENT',
     'UID:roughietips-weekly-reminder@roughietips.com.au',
     'DTSTAMP:'+stamp,
-    'DTSTART:'+icsDate(next),
-    'DTEND:'+icsDate(end),
-    'SUMMARY:Roughie Tips — Tips Close at 7:30pm!',
-    'DESCRIPTION:Get your AFL tips in before 7:30pm tonight. Visit roughietips.com.au',
+    'DTSTART:'+y+mo+d+'T083000Z',
+    'DTEND:'+y+mo+d+'T090000Z',
+    'SUMMARY:🏉 Roughie Tips — Tips Close at 7:30pm AEST!',
+    'DESCRIPTION:Get your AFL tips in before 7:30pm Melbourne time tonight. Visit roughietips.com.au',
     'URL:https://roughietips.com.au',
     'RRULE:FREQ=WEEKLY;BYDAY=TH',
-    'ALARM:',
     'BEGIN:VALARM',
     'TRIGGER:-PT30M',
     'ACTION:DISPLAY',
-    'DESCRIPTION:Tips close in 30 minutes!',
+    'DESCRIPTION:🏉 Roughie Tips close in 30 minutes — get your tips in!',
     'END:VALARM',
     'END:VEVENT',
     'END:VCALENDAR'
@@ -2128,31 +2073,6 @@ function downloadCalendarReminder() {
   a.click();
   URL.revokeObjectURL(url);
   toast('Calendar reminder downloaded! Open the file to add it 📅');
-}
-
-// ─── LEADERBOARD NOTIFICATION BANNER ────────────────────────
-async function checkLbNotifBanner() {
-  const banner = el('lb-notif-banner');
-  if (!banner) return;
-  if (localStorage.getItem('lb_notif_dismissed')) { banner.style.display='none'; return; }
-  if (!window.OneSignal) { banner.style.display='none'; return; }
-  try {
-    const permission = await OneSignal.Notifications.permission;
-    if (permission) { banner.style.display='none'; return; } // already opted in
-  } catch(e) {}
-  banner.style.display = 'block';
-}
-
-function dismissLbNotifBanner() {
-  const banner = el('lb-notif-banner');
-  if (banner) banner.style.display='none';
-  localStorage.setItem('lb_notif_dismissed','1');
-}
-
-async function requestNotifPermissionFromBanner() {
-  await requestNotifPermission();
-  const banner = el('lb-notif-banner');
-  if (banner) banner.style.display='none';
 }
 
 // ─── NEW URL BOOKMARK BANNER ─────────────────────────────────
@@ -3025,7 +2945,7 @@ Object.assign(window,{
   proposeBet,acceptBet,declineBet,deleteBet,showBetNotification,showBetResponseNotification,
   triggerInstall,dismissInstall,
   switchAuthTab,
-  requestNotifPermission,requestNotifPermissionFromBanner,dismissLbNotifBanner,downloadCalendarReminder,
+  requestNotifPermission,downloadCalendarReminder,
   dismissCelebration,checkRoundWinnerCelebration,
   renderEditTipsMatches,adminSetTip,adminClearTip,
   rtCupOptIn,rtCupOptOut,dismissRTCupBanner,generateRTCupBracket,autoAdvanceRTCup,renderRTCupStage
@@ -3459,19 +3379,17 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
       </div>
 
       <!-- NOTIFICATION PROMPT BANNER (leaderboard) -->
-      <div id="lb-notif-banner" style="display:none;background:linear-gradient(135deg,rgba(255,214,0,0.1),rgba(0,200,83,0.07));border:1px solid rgba(255,214,0,0.3);border-radius:14px;padding:14px 16px;margin-bottom:18px;">
+      <!-- CALENDAR REMINDER BANNER (leaderboard) -->
+      <div id="lb-notif-banner" style="background:linear-gradient(135deg,rgba(0,200,83,0.12),rgba(0,200,83,0.06));border:1px solid rgba(0,200,83,0.35);border-radius:14px;padding:14px 16px;margin-bottom:18px;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
           <div style="display:flex;align-items:center;gap:12px;">
-            <div style="font-size:28px;">🔔</div>
+            <div style="font-size:28px;">📅</div>
             <div>
-              <div style="font-weight:700;font-size:14px;color:var(--gold);">Never miss tips closing!</div>
-              <div style="font-size:12px;color:var(--muted);margin-top:2px;">Enable push reminders — we'll ping you before 7:30pm each Thursday.</div>
+              <div style="font-weight:700;font-size:14px;color:var(--green);">Never miss tips closing!</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:2px;">Add a weekly Thursday 7:30pm reminder straight to your phone calendar.</div>
             </div>
           </div>
-          <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
-            <button class="btn" style="font-size:13px;padding:8px 14px;" onclick="requestNotifPermissionFromBanner()">Enable 🔔</button>
-            <button onclick="dismissLbNotifBanner()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px;line-height:1;">x</button>
-          </div>
+          <button class="btn" style="font-size:13px;padding:8px 16px;flex-shrink:0;" onclick="downloadCalendarReminder()">🏉 Add Reminder</button>
         </div>
       </div>
 
@@ -3688,27 +3606,11 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
         <button class="btn" onclick="saveProfile()" style="margin-top:8px;">Save Profile ✓</button>
       </div>
 
-      <!-- NOTIFICATIONS CARD -->
+      <!-- CALENDAR REMINDER CARD -->
       <div class="card" style="max-width:500px;margin-top:16px;">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:8px;">🔔 Notifications</div>
-        <p style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6;">Get reminders when tips are about to close and when round results are in.</p>
-        <!-- Toggle row -->
-        <div style="display:flex;align-items:center;justify-content:space-between;background:var(--card2);border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer;" onclick="requestNotifPermission()">
-          <div>
-            <div style="font-weight:600;font-size:14px;">Push Notifications</div>
-            <div id="notif-status" style="font-size:12px;color:var(--muted);margin-top:3px;">Checking status…</div>
-          </div>
-          <div id="notif-toggle" style="width:44px;height:26px;border-radius:13px;background:var(--border);position:relative;transition:background 0.2s;flex-shrink:0;">
-            <div id="notif-knob" style="width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:3px;left:3px;transition:left 0.2s;"></div>
-          </div>
-        </div>
-        <button id="notif-btn" style="display:none;" onclick="requestNotifPermission()"></button>
-        <!-- Calendar reminder -->
-        <div style="background:var(--card2);border-radius:12px;padding:14px 16px;margin-top:4px;">
-          <div style="font-weight:600;font-size:14px;margin-bottom:4px;">📅 Add Weekly Tips Reminder</div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5;">Download a recurring calendar reminder — every Thursday at 6:30pm — so you never miss tips closing at 7:30pm.</div>
-          <button class="btn btn-outline" style="width:100%;font-size:13px;" onclick="downloadCalendarReminder()">⬇️ Add to Phone Calendar</button>
-        </div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:8px;">📅 Tips Reminder</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6;">Add a recurring weekly reminder to your phone calendar — every Thursday at 7:30pm so you never miss tips closing.</p>
+        <button class="btn" style="width:100%;font-size:14px;" onclick="downloadCalendarReminder()">🏉 Add Weekly Reminder to Calendar</button>
       </div>
     </div>
 
