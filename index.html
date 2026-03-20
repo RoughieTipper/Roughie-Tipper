@@ -293,7 +293,8 @@ function showPage(id) {
   if(id==='profile') { renderProfilePage(); }
   // celebration fires once on login only
   if(id==='mycomps') renderMyComps();
-  if(id==='rules') {} // static content, no render needed
+  if(id==='rules') {}
+  if(id==='honours') renderHonoursPage();
   if(id==='contact') {
     if (userProfile) {
       if (el('contact-name') && !el('contact-name').value) el('contact-name').value = userProfile.nick || userProfile.name || '';
@@ -2951,6 +2952,132 @@ function stopConfetti() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
+// ─── HONOURS BOARD ───────────────────────────────────────────
+async function renderHonoursPage() {
+  const container = el('honours-list');
+  const adminSection = el('honours-admin-section');
+  if (!container) return;
+
+  // Show admin controls for site admin only
+  if (adminSection) {
+    adminSection.style.display = (currentUser?.uid === SITE_ADMIN_UID || userProfile?.isAdmin) ? 'block' : 'none';
+  }
+
+  container.innerHTML = '<div style="color:var(--muted);text-align:center;padding:24px;">Loading…</div>';
+
+  // ── Live current season leader (calculated from allUsers) ──
+  const allUids = Object.keys(allUsers);
+  const liveScores = calcScoresForUsers(allUids);
+  const liveLeader = liveScores[0] || null;
+  const currentYear = new Date().getFullYear();
+
+  // ── Past winners from Firestore ──
+  let pastEntries = [];
+  try {
+    const snap = await getDocs(query(collection(db, 'honours'), orderBy('year', 'desc')));
+    pastEntries = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch(e) {}
+
+  // ── Build plaque rows ──
+  let html = '';
+
+  // Current season live card (always shown at top)
+  if (liveLeader) {
+    const u = allUsers[liveLeader.uid] || {};
+    html += buildPlaqueTile({
+      year: currentYear,
+      sport: 'AFL',
+      nick: liveLeader.nick || liveLeader.name,
+      fullName: liveLeader.name,
+      pts: liveLeader.totalPts,
+      live: true,
+      avatar: liveLeader.avatar || ''
+    });
+  }
+
+  // Past entries
+  pastEntries.forEach(e => {
+    html += buildPlaqueTile({
+      year: e.year,
+      sport: e.sport || 'AFL',
+      nick: e.nick,
+      fullName: e.fullName,
+      pts: e.pts,
+      live: false,
+      avatar: e.avatar || ''
+    });
+  });
+
+  if (!liveLeader && pastEntries.length === 0) {
+    html = '<div style="color:var(--muted);text-align:center;padding:40px 0;font-size:15px;">No records yet — the first champion will be crowned at season\'s end. 🏆</div>';
+  }
+
+  container.innerHTML = html;
+}
+
+function buildPlaqueTile({ year, sport, nick, fullName, pts, live, avatar }) {
+  const initials = (nick || fullName || '?')[0].toUpperCase();
+  const avatarHtml = avatar
+    ? `<div style="width:64px;height:64px;border-radius:50%;background-image:url(${avatar});background-size:cover;background-position:center;border:3px solid var(--gold);flex-shrink:0;"></div>`
+    : `<div style="width:64px;height:64px;border-radius:50%;background:var(--card2);border:3px solid var(--gold);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--gold);flex-shrink:0;">${initials}</div>`;
+
+  const liveBadge = live
+    ? `<span style="background:rgba(0,200,83,0.15);border:1px solid var(--green);color:var(--green);font-size:10px;font-weight:700;letter-spacing:1.5px;padding:2px 8px;border-radius:4px;text-transform:uppercase;">● Season In Progress</span>`
+    : '';
+
+  return `
+    <div style="position:relative;background:linear-gradient(135deg,rgba(255,214,0,0.07) 0%,rgba(255,214,0,0.03) 100%);border:1px solid rgba(255,214,0,0.35);border-radius:16px;padding:24px 24px 20px;margin-bottom:16px;overflow:hidden;">
+      <!-- Embossed background pattern -->
+      <div style="position:absolute;inset:0;opacity:0.04;background:repeating-linear-gradient(45deg,#ffd600 0px,#ffd600 1px,transparent 1px,transparent 12px);pointer-events:none;border-radius:16px;"></div>
+      <!-- Year ribbon -->
+      <div style="position:absolute;top:0;right:0;background:var(--gold);color:#0a1628;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;padding:4px 14px 4px 18px;border-radius:0 16px 0 14px;">${year} · ${escHtml(sport)}</div>
+      <div style="display:flex;align-items:center;gap:18px;position:relative;">
+        ${avatarHtml}
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px;">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--gold);letter-spacing:1px;line-height:1;">${escHtml(nick || fullName)}</div>
+            ${liveBadge}
+          </div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">${escHtml(fullName)}</div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:20px;">🏆</span>
+            <span style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--text);">${pts}</span>
+            <span style="font-size:12px;color:var(--muted);margin-left:2px;">POINTS</span>
+          </div>
+        </div>
+      </div>
+      <!-- Decorative rule -->
+      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(255,214,0,0.3),transparent);margin-top:18px;"></div>
+      <div style="text-align:center;margin-top:10px;font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:3px;color:rgba(255,214,0,0.3);">ROUGHIE TIPS CHAMPION</div>
+    </div>`;
+}
+
+async function addHonoursEntry() {
+  const year   = parseInt(el('hon-year').value) || new Date().getFullYear();
+  const sport  = (el('hon-sport').value || 'AFL').trim();
+  const nick   = el('hon-nick').value.trim();
+  const full   = el('hon-full').value.trim();
+  const pts    = parseInt(el('hon-pts').value) || 0;
+  const avatar = el('hon-avatar').value.trim();
+  if (!nick || !full) { toast('Enter nickname and full name', true); return; }
+  try {
+    await addDoc(collection(db, 'honours'), { year, sport, nick, fullName: full, pts, avatar, addedAt: serverTimestamp() });
+    el('hon-nick').value = ''; el('hon-full').value = ''; el('hon-pts').value = '';
+    el('hon-avatar').value = ''; el('hon-year').value = ''; el('hon-sport').value = 'AFL';
+    toast('Honours entry added! 🏆');
+    renderHonoursPage();
+  } catch(e) { toast('Error saving entry', true); }
+}
+
+async function deleteHonoursEntry(id) {
+  if (!confirm('Delete this honours entry?')) return;
+  try {
+    await deleteDoc(doc(db, 'honours', id));
+    toast('Entry removed');
+    renderHonoursPage();
+  } catch(e) { toast('Error deleting entry', true); }
+}
+
 // ─── CONTACT ─────────────────────────────────────────────────
 function sendContactMessage() {
   const name = (el('contact-name').value || '').trim();
@@ -2987,6 +3114,7 @@ Object.assign(window,{
   triggerInstall,dismissInstall,
   switchAuthTab,
   downloadCalendarReminder,sendContactMessage,
+  addHonoursEntry,deleteHonoursEntry,
   dismissCelebration,checkRoundWinnerCelebration,
   renderEditTipsMatches,adminSetTip,adminClearTip,
   rtCupOptIn,rtCupOptOut,dismissRTCupBanner,generateRTCupBracket,autoAdvanceRTCup,renderRTCupStage
@@ -3359,6 +3487,7 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
       <button id="nav-global" onclick="showPage('global')">📊 Overall</button>
       <button id="nav-profile" onclick="showPage('profile')">👤 Profile</button>
       <button id="nav-contact" onclick="showPage('contact')">✉️ Contact</button>
+      <button id="nav-honours" onclick="showPage('honours')">🏅 Honours</button>
       <button id="nav-rules" onclick="showPage('rules')">📖 Rules</button>
       <button id="nav-admin" onclick="showPage('admin')" style="display:none;">⚙️ Admin</button>
     </nav>
@@ -3666,6 +3795,54 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
     </div>
 
     <!-- ADMIN -->
+    <!-- HONOURS PAGE -->
+    <div class="page" id="page-honours">
+      <div class="section-title">🏅 <span>HONOURS</span></div>
+      <div class="section-sub">The champions who conquered Roughie Tips — past and present</div>
+
+      <!-- Live board -->
+      <div id="honours-list" style="margin-top:8px;"></div>
+
+      <!-- Admin: add past entry -->
+      <div id="honours-admin-section" style="display:none;margin-top:8px;">
+        <div class="card" style="border:1px solid rgba(255,214,0,0.25);">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--gold);letter-spacing:1px;margin-bottom:14px;">⚙️ Add Past Champion</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+            <div class="form-group" style="margin:0;">
+              <label>Year</label>
+              <input type="number" id="hon-year" placeholder="2025" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;"/>
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label>Sport</label>
+              <select id="hon-sport" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;">
+                <option value="AFL">AFL</option>
+                <option value="NRL">NRL</option>
+                <option value="NFL">NFL</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label>Nickname</label>
+              <input type="text" id="hon-nick" placeholder="e.g. Roughie King" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;"/>
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label>Full Name</label>
+              <input type="text" id="hon-full" placeholder="e.g. John Smith" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;"/>
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label>Total Points</label>
+              <input type="number" id="hon-pts" placeholder="e.g. 142" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;"/>
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label>Avatar URL (optional)</label>
+              <input type="url" id="hon-avatar" placeholder="https://i.imgur.com/…" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;"/>
+            </div>
+          </div>
+          <button class="btn" style="width:100%;font-size:13px;" onclick="addHonoursEntry()">+ Add to Honours Board</button>
+        </div>
+      </div>
+    </div>
+
     <!-- CONTACT PAGE -->
     <div class="page" id="page-contact">
       <div class="section-title">✉️ <span>CONTACT</span></div>
