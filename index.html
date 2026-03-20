@@ -3062,7 +3062,7 @@ function buildEngraving({ year, sport, nick, fullName, pts, live, id }, index, t
     : '';
 
   const liveDot = live
-    ? `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#4a9;margin-left:8px;vertical-align:middle;box-shadow:0 0 6px #4a9;" title="Season in progress"></span>`
+    ? `<span style="display:inline-flex;align-items:center;gap:5px;margin-left:10px;vertical-align:middle;"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#4a9;box-shadow:0 0 6px #4a9;flex-shrink:0;"></span><span style="font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:1.5px;color:#4a9;text-transform:uppercase;font-weight:600;">In Progress</span></span>`
     : '';
 
   const deleteBtn = (isAdmin && id)
