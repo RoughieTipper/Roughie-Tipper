@@ -2958,97 +2958,137 @@ async function renderHonoursPage() {
   const adminSection = el('honours-admin-section');
   if (!container) return;
 
-  // Show admin controls for site admin only
   if (adminSection) {
     adminSection.style.display = (currentUser?.uid === SITE_ADMIN_UID || userProfile?.isAdmin) ? 'block' : 'none';
   }
 
   container.innerHTML = '<div style="color:var(--muted);text-align:center;padding:24px;">Loading…</div>';
 
-  // ── Live current season leader (calculated from allUsers) ──
+  // ── Live current season leader ──
   const allUids = Object.keys(allUsers);
   const liveScores = calcScoresForUsers(allUids);
   const liveLeader = liveScores[0] || null;
   const currentYear = new Date().getFullYear();
 
-  // ── Past winners from Firestore ──
+  // ── Past winners from Firestore (oldest first so board reads top→down chronologically) ──
   let pastEntries = [];
   try {
-    const snap = await getDocs(query(collection(db, 'honours'), orderBy('year', 'desc')));
+    const snap = await getDocs(query(collection(db, 'honours'), orderBy('year', 'asc')));
     pastEntries = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch(e) {}
 
-  // ── Build plaque rows ──
-  let html = '';
-
-  // Current season live card (always shown at top)
+  // Build engravings — past first (oldest→newest), then current season at bottom
+  const engravings = [];
+  pastEntries.forEach(e => {
+    engravings.push({ year: e.year, sport: e.sport || 'AFL', nick: e.nick, fullName: e.fullName, pts: e.pts, live: false, id: e.id });
+  });
   if (liveLeader) {
-    const u = allUsers[liveLeader.uid] || {};
-    html += buildPlaqueTile({
-      year: currentYear,
-      sport: 'AFL',
+    engravings.push({
+      year: currentYear, sport: 'AFL',
       nick: liveLeader.nick || liveLeader.name,
       fullName: liveLeader.name,
       pts: liveLeader.totalPts,
-      live: true,
-      avatar: liveLeader.avatar || ''
+      live: true, id: null
     });
   }
 
-  // Past entries
-  pastEntries.forEach(e => {
-    html += buildPlaqueTile({
-      year: e.year,
-      sport: e.sport || 'AFL',
-      nick: e.nick,
-      fullName: e.fullName,
-      pts: e.pts,
-      live: false,
-      avatar: e.avatar || ''
-    });
-  });
+  const isEmpty = engravings.length === 0;
 
-  if (!liveLeader && pastEntries.length === 0) {
-    html = '<div style="color:var(--muted);text-align:center;padding:40px 0;font-size:15px;">No records yet — the first champion will be crowned at season\'s end. 🏆</div>';
-  }
+  const isAdmin = currentUser?.uid === SITE_ADMIN_UID || userProfile?.isAdmin;
 
-  container.innerHTML = html;
+  container.innerHTML = `
+    <div style="
+      max-width:520px;margin:0 auto;
+      background:
+        linear-gradient(180deg,
+          #2c1a0e 0%, #3d2410 8%,
+          #2a1a0c 20%, #3a2210 35%,
+          #2e1c0f 50%, #3c2310 65%,
+          #2a1a0c 80%, #3d2410 92%,
+          #2c1a0e 100%);
+      border-radius:6px;
+      box-shadow:
+        0 0 0 4px #1a0f07,
+        0 0 0 7px #8B6914,
+        0 0 0 10px #1a0f07,
+        0 20px 60px rgba(0,0,0,0.8),
+        inset 0 0 80px rgba(0,0,0,0.4);
+      padding:32px 28px 36px;
+      position:relative;
+      overflow:hidden;
+    ">
+      <!-- Wood grain overlay -->
+      <div style="position:absolute;inset:0;opacity:0.07;background:repeating-linear-gradient(92deg,transparent 0px,transparent 18px,rgba(255,255,255,0.3) 19px,transparent 20px),repeating-linear-gradient(88deg,transparent 0px,transparent 40px,rgba(0,0,0,0.4) 41px,transparent 42px);pointer-events:none;"></div>
+      <!-- Corner screws -->
+      <div style="position:absolute;top:14px;left:14px;width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#d4a843,#8B6914 60%,#5a4010);box-shadow:0 1px 3px rgba(0,0,0,0.6);"></div>
+      <div style="position:absolute;top:14px;right:14px;width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#d4a843,#8B6914 60%,#5a4010);box-shadow:0 1px 3px rgba(0,0,0,0.6);"></div>
+      <div style="position:absolute;bottom:14px;left:14px;width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#d4a843,#8B6914 60%,#5a4010);box-shadow:0 1px 3px rgba(0,0,0,0.6);"></div>
+      <div style="position:absolute;bottom:14px;right:14px;width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#d4a843,#8B6914 60%,#5a4010);box-shadow:0 1px 3px rgba(0,0,0,0.6);"></div>
+
+      <!-- Brass header plate -->
+      <div style="
+        position:relative;
+        background:linear-gradient(160deg,#d4a843 0%,#b8892a 30%,#e8c060 50%,#b8892a 70%,#c9a040 100%);
+        border-radius:3px;
+        padding:16px 20px 14px;
+        margin-bottom:28px;
+        box-shadow:0 2px 8px rgba(0,0,0,0.5),inset 0 1px 0 rgba(255,255,255,0.2),inset 0 -1px 0 rgba(0,0,0,0.2);
+        text-align:center;
+      ">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:5px;color:#5a3a08;margin-bottom:4px;opacity:0.8;">EST. 2026</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:4px;color:#3d2200;line-height:1;text-shadow:0 1px 0 rgba(255,255,255,0.15);">ROUGHIE TIPS</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:6px;color:#5a3a08;margin-top:3px;">CHAMPIONS</div>
+        <!-- Decorative lines -->
+        <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+          <div style="flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(61,34,0,0.4));"></div>
+          <div style="font-size:12px;color:#5a3a08;opacity:0.7;">🏆</div>
+          <div style="flex:1;height:1px;background:linear-gradient(90deg,rgba(61,34,0,0.4),transparent);"></div>
+        </div>
+      </div>
+
+      <!-- Engravings -->
+      <div id="engravings-inner">
+        ${isEmpty ? `<div style="text-align:center;padding:32px 0;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:3px;color:rgba(200,160,80,0.3);">AWAITING THE FIRST CHAMPION</div>` :
+          engravings.map((e, i) => buildEngraving(e, i, engravings.length, isAdmin)).join('')
+        }
+      </div>
+    </div>`;
 }
 
-function buildPlaqueTile({ year, sport, nick, fullName, pts, live, avatar }) {
-  const initials = (nick || fullName || '?')[0].toUpperCase();
-  const avatarHtml = avatar
-    ? `<div style="width:64px;height:64px;border-radius:50%;background-image:url(${avatar});background-size:cover;background-position:center;border:3px solid var(--gold);flex-shrink:0;"></div>`
-    : `<div style="width:64px;height:64px;border-radius:50%;background:var(--card2);border:3px solid var(--gold);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--gold);flex-shrink:0;">${initials}</div>`;
+function buildEngraving({ year, sport, nick, fullName, pts, live, id }, index, total, isAdmin) {
+  const isLast = index === total - 1;
+  const divider = !isLast
+    ? `<div style="height:1px;background:linear-gradient(90deg,transparent,rgba(200,160,80,0.2),transparent);margin:14px 0;"></div>`
+    : '';
 
-  const liveBadge = live
-    ? `<span style="background:rgba(0,200,83,0.15);border:1px solid var(--green);color:var(--green);font-size:10px;font-weight:700;letter-spacing:1.5px;padding:2px 8px;border-radius:4px;text-transform:uppercase;">● Season In Progress</span>`
+  const liveDot = live
+    ? `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#4a9;margin-left:8px;vertical-align:middle;box-shadow:0 0 6px #4a9;" title="Season in progress"></span>`
+    : '';
+
+  const deleteBtn = (isAdmin && id)
+    ? `<button onclick="deleteHonoursEntry('${id}')" style="background:none;border:none;color:rgba(200,160,80,0.25);font-size:13px;cursor:pointer;padding:0 0 0 8px;line-height:1;float:right;" title="Remove entry">✕</button>`
     : '';
 
   return `
-    <div style="position:relative;background:linear-gradient(135deg,rgba(255,214,0,0.07) 0%,rgba(255,214,0,0.03) 100%);border:1px solid rgba(255,214,0,0.35);border-radius:16px;padding:24px 24px 20px;margin-bottom:16px;overflow:hidden;">
-      <!-- Embossed background pattern -->
-      <div style="position:absolute;inset:0;opacity:0.04;background:repeating-linear-gradient(45deg,#ffd600 0px,#ffd600 1px,transparent 1px,transparent 12px);pointer-events:none;border-radius:16px;"></div>
-      <!-- Year ribbon -->
-      <div style="position:absolute;top:0;right:0;background:var(--gold);color:#0a1628;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;padding:4px 14px 4px 18px;border-radius:0 16px 0 14px;">${year} · ${escHtml(sport)}</div>
-      <div style="display:flex;align-items:center;gap:18px;position:relative;">
-        ${avatarHtml}
+    <div style="padding:4px 0;">
+      <div style="display:flex;align-items:baseline;gap:0;">
+        ${deleteBtn}
+        <!-- Year + sport label -->
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:3px;color:rgba(200,160,80,0.5);min-width:72px;flex-shrink:0;">${year}<span style="font-size:9px;margin-left:4px;opacity:0.7;">${escHtml(sport)}</span></div>
+        <!-- Separator dot -->
+        <div style="width:1px;height:28px;background:rgba(200,160,80,0.2);margin:0 14px;flex-shrink:0;"></div>
+        <!-- Name block -->
         <div style="flex:1;min-width:0;">
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px;">
-            <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--gold);letter-spacing:1px;line-height:1;">${escHtml(nick || fullName)}</div>
-            ${liveBadge}
-          </div>
-          <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">${escHtml(fullName)}</div>
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span style="font-size:20px;">🏆</span>
-            <span style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--text);">${pts}</span>
-            <span style="font-size:12px;color:var(--muted);margin-left:2px;">POINTS</span>
-          </div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:#e8c060;line-height:1.1;text-shadow:0 1px 2px rgba(0,0,0,0.5);">${escHtml(nick || fullName)}${liveDot}</div>
+          <div style="font-size:11px;letter-spacing:1px;color:rgba(200,160,80,0.5);margin-top:1px;text-transform:uppercase;">${escHtml(fullName)}</div>
+        </div>
+        <!-- Points -->
+        <div style="text-align:right;flex-shrink:0;margin-left:12px;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:rgba(200,160,80,0.7);line-height:1;">${pts}</div>
+          <div style="font-size:9px;letter-spacing:1.5px;color:rgba(200,160,80,0.35);text-transform:uppercase;">pts</div>
         </div>
       </div>
-      <!-- Decorative rule -->
-      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(255,214,0,0.3),transparent);margin-top:18px;"></div>
-      <div style="text-align:center;margin-top:10px;font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:3px;color:rgba(255,214,0,0.3);">ROUGHIE TIPS CHAMPION</div>
+      ${divider}
     </div>`;
 }
 
@@ -3797,15 +3837,14 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
     <!-- ADMIN -->
     <!-- HONOURS PAGE -->
     <div class="page" id="page-honours">
-      <div class="section-title">🏅 <span>HONOURS</span></div>
-      <div class="section-sub">The champions who conquered Roughie Tips — past and present</div>
+      <div class="section-sub" style="margin-bottom:20px;text-align:center;">The champions who conquered Roughie Tips</div>
 
-      <!-- Live board -->
-      <div id="honours-list" style="margin-top:8px;"></div>
+      <!-- The Board -->
+      <div id="honours-list"></div>
 
       <!-- Admin: add past entry -->
-      <div id="honours-admin-section" style="display:none;margin-top:8px;">
-        <div class="card" style="border:1px solid rgba(255,214,0,0.25);">
+      <div id="honours-admin-section" style="display:none;margin-top:24px;">
+        <div class="card" style="border:1px solid rgba(255,214,0,0.25);max-width:520px;margin:0 auto;">
           <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--gold);letter-spacing:1px;margin-bottom:14px;">⚙️ Add Past Champion</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
             <div class="form-group" style="margin:0;">
@@ -3838,7 +3877,7 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
               <input type="url" id="hon-avatar" placeholder="https://i.imgur.com/…" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;"/>
             </div>
           </div>
-          <button class="btn" style="width:100%;font-size:13px;" onclick="addHonoursEntry()">+ Add to Honours Board</button>
+          <button class="btn" style="width:100%;font-size:13px;" onclick="addHonoursEntry()">+ Engrave on the Board</button>
         </div>
       </div>
     </div>
