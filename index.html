@@ -2871,23 +2871,16 @@ function renderRTCupStage(stage, btn) {
 
 
 // ─── LOGIN SIREN + CROWD CHEER ───────────────────────────────
-<audio src="AFL-Siren.mp3">
-<audio src="Crowd-Cheer.mp3">
-  
 function playLoginSiren() {
   try {
-    // AFL Siren plays immediately
     const siren = new Audio('AFL-Siren.mp3');
     siren.volume = 0.9;
     siren.play().catch(() => {});
-
-    // Crowd cheer starts 0.5 seconds after siren
     setTimeout(() => {
       const crowd = new Audio('Crowd-Cheer.mp3');
       crowd.volume = 0.7;
       crowd.play().catch(() => {});
     }, 500);
-
   } catch(e) {
     console.log('Audio not available:', e);
   }
