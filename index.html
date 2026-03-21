@@ -117,6 +117,133 @@ const CLUB_COLOURS = {
   'Western Bulldogs':  { type:'thirds-h',c1:'#014896', c2:'#CC2031',  c3:'#FFFFFF' },
 };
 
+// ─── NFL CLUB COLOURS ────────────────────────────────────────
+const NFL_COLOURS = {
+  // AFC East
+  'Buffalo Bills':         { type:'split-v',  c1:'#00338D', c2:'#C60C30' },
+  'Miami Dolphins':        { type:'split-h',  c1:'#008E97', c2:'#FC4C02', c3:'#005778' },
+  'New England Patriots':  { type:'thirds',   c1:'#002244', c2:'#C60C30', c3:'#B0B7BC' },
+  'New York Jets':         { type:'solid',    c1:'#125740', c2:'#ffffff' },
+  // AFC North
+  'Baltimore Ravens':      { type:'sash',     c1:'#241773', c2:'#000000' },
+  'Cincinnati Bengals':    { type:'stripes',  c1:'#FB4F14', c2:'#000000' },
+  'Cleveland Browns':      { type:'split-h',  c1:'#311D00', c2:'#FF3C00' },
+  'Pittsburgh Steelers':   { type:'thirds',   c1:'#FFB612', c2:'#101820', c3:'#C60C30' },
+  // AFC South
+  'Houston Texans':        { type:'split-v',  c1:'#03202F', c2:'#A71930' },
+  'Indianapolis Colts':    { type:'split-h',  c1:'#002C5F', c2:'#A2AAAD' },
+  'Jacksonville Jaguars':  { type:'thirds-h', c1:'#006778', c2:'#D7A22A', c3:'#101820' },
+  'Tennessee Titans':      { type:'hoops',    c1:'#0C2340', c2:'#4B92DB', c3:'#C8102E' },
+  // AFC West
+  'Denver Broncos':        { type:'split-h',  c1:'#FB4F14', c2:'#002244' },
+  'Kansas City Chiefs':    { type:'split-v',  c1:'#E31837', c2:'#FFB81C' },
+  'Las Vegas Raiders':     { type:'split-v',  c1:'#000000', c2:'#A5ACAF' },
+  'Los Angeles Chargers':  { type:'split-h',  c1:'#0080C6', c2:'#FFC20E', c3:'#FFFFFF' },
+  // NFC East
+  'Dallas Cowboys':        { type:'sash',     c1:'#003594', c2:'#869397' },
+  'New York Giants':       { type:'split-v',  c1:'#0B2265', c2:'#A71930' },
+  'Philadelphia Eagles':   { type:'split-h',  c1:'#004C54', c2:'#A5ACAF' },
+  'Washington Commanders': { type:'split-h',  c1:'#5A1414', c2:'#FFB612' },
+  // NFC North
+  'Chicago Bears':         { type:'split-v',  c1:'#0B162A', c2:'#C83803' },
+  'Detroit Lions':         { type:'split-h',  c1:'#0076B6', c2:'#B0B7BC' },
+  'Green Bay Packers':     { type:'split-h',  c1:'#203731', c2:'#FFB612' },
+  'Minnesota Vikings':     { type:'sash',     c1:'#4F2683', c2:'#FFC62F' },
+  // NFC South
+  'Atlanta Falcons':       { type:'split-v',  c1:'#A71930', c2:'#000000' },
+  'Carolina Panthers':     { type:'split-h',  c1:'#0085CA', c2:'#101820' },
+  'New Orleans Saints':    { type:'split-h',  c1:'#D3BC8D', c2:'#101820' },
+  'Tampa Bay Buccaneers':  { type:'thirds',   c1:'#D50A0A', c2:'#FF7900', c3:'#0A0A08' },
+  // NFC West
+  'Arizona Cardinals':     { type:'split-v',  c1:'#97233F', c2:'#000000' },
+  'Los Angeles Rams':      { type:'hoops',    c1:'#003594', c2:'#FFA300', c3:'#003594' },
+  'San Francisco 49ers':   { type:'split-h',  c1:'#AA0000', c2:'#B3995D' },
+  'Seattle Seahawks':      { type:'thirds',   c1:'#002244', c2:'#69BE28', c3:'#A5ACAF' },
+};
+
+// All badge options grouped for the picker
+const BADGE_GROUPS = [
+  {
+    label: '🏉 AFL Teams',
+    teams: Object.keys(CLUB_COLOURS)
+  },
+  {
+    label: '🏈 NFL Teams',
+    teams: Object.keys(NFL_COLOURS)
+  }
+];
+
+// Resolve colour data for any team name (AFL or NFL)
+function getBadgeColours(teamName) {
+  return CLUB_COLOURS[teamName] || NFL_COLOURS[teamName] || null;
+}
+
+// Generate badge SVG for any team (AFL or NFL)
+function teamBadge(name, size=40) {
+  const c = getBadgeColours(name) || { type:'solid', c1:'#1e3054', c2:'#00c853' };
+  const r = size/2, cx = r, cy = r;
+  const id = 'tb-'+name.replace(/[^a-z]/gi,'').toLowerCase()+size;
+  let pattern = '';
+  switch(c.type) {
+    case 'hoops':
+      pattern = `<rect x="0" y="0" width="${size}" height="${size}" fill="${c.c1}"/>
+        <rect x="0" y="${size*0.3}" width="${size}" height="${size*0.22}" fill="${c.c2}"/>
+        <rect x="0" y="${size*0.57}" width="${size}" height="${size*0.22}" fill="${c.c3||c.c1}"/>`;
+      break;
+    case 'stripes':
+      const sw = c.thin ? size/8 : size/5;
+      pattern = `<rect x="0" y="0" width="${size}" height="${size}" fill="${c.c1}"/>
+        <rect x="${sw}" y="0" width="${sw}" height="${size}" fill="${c.c2}"/>
+        <rect x="${sw*3}" y="0" width="${sw}" height="${size}" fill="${c.c2}"/>
+        <rect x="${sw*5}" y="0" width="${sw}" height="${size}" fill="${c.c2}"/>`;
+      break;
+    case 'sash':
+      pattern = `<rect x="0" y="0" width="${size}" height="${size}" fill="${c.c1}"/>
+        <polygon points="${size*0.45},0 ${size},0 ${size},${size*0.05} ${size*0.55},${size} 0,${size} 0,${size*0.95}" fill="${c.c2}"/>`;
+      break;
+    case 'chevron':
+      pattern = `<rect x="0" y="0" width="${size}" height="${size}" fill="${c.c1}"/>
+        <polyline points="${size*0.1},${size*0.35} ${size*0.5},${size*0.72} ${size*0.9},${size*0.35}" fill="none" stroke="${c.c2}" stroke-width="${size*0.14}" stroke-linejoin="round" stroke-linecap="round"/>`;
+      break;
+    case 'split-h':
+      pattern = `<rect x="0" y="0" width="${size}" height="${size}" fill="${c.c2}"/>
+        <rect x="0" y="0" width="${size}" height="${size*0.48}" fill="${c.c1}"/>
+        ${c.c3?`<rect x="0" y="${size*0.46}" width="${size}" height="${size*0.08}" fill="${c.c3}"/>`:''}`;
+      break;
+    case 'split-v':
+      pattern = `<rect x="0" y="0" width="${size}" height="${size}" fill="${c.c1}"/>
+        <rect x="${size*0.5}" y="0" width="${size*0.5}" height="${size}" fill="${c.c2}"/>`;
+      break;
+    case 'thirds':
+      pattern = `<rect x="0" y="0" width="${size}" height="${size}" fill="${c.c2}"/>
+        <rect x="0" y="0" width="${size*0.33}" height="${size}" fill="${c.c1}"/>
+        <rect x="${size*0.67}" y="0" width="${size*0.33}" height="${size}" fill="${c.c3||c.c1}"/>`;
+      break;
+    case 'thirds-h':
+      pattern = `<rect x="0" y="0" width="${size}" height="${size}" fill="${c.c1}"/>
+        <rect x="0" y="${size*0.55}" width="${size}" height="${size*0.22}" fill="${c.c2}"/>
+        <rect x="0" y="${size*0.77}" width="${size}" height="${size*0.23}" fill="${c.c3||c.c1}"/>`;
+      break;
+    default:
+      pattern = `<rect x="0" y="0" width="${size}" height="${size}" fill="${c.c1}"/>`;
+  }
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="flex-shrink:0;border-radius:50%;overflow:hidden;" xmlns="http://www.w3.org/2000/svg">
+    <defs><clipPath id="${id}"><circle cx="${cx}" cy="${cy}" r="${r}"/></clipPath></defs>
+    <g clip-path="url(#${id})">${pattern}</g>
+    <circle cx="${cx}" cy="${cy}" r="${r-0.75}" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5"/>
+  </svg>`;
+}
+
+// Render avatar: if user has a badgeTeam set, show the badge; otherwise show initial letter
+function renderUserAvatar(user, size=32) {
+  if (user && user.badgeTeam && getBadgeColours(user.badgeTeam)) {
+    return teamBadge(user.badgeTeam, size);
+  }
+  // Fallback: coloured circle with initial
+  const initial = ((user && (user.nick || user.name)) || '?')[0].toUpperCase();
+  return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:${Math.round(size*0.4)}px;font-weight:700;color:var(--green);flex-shrink:0;">${initial}</div>`;
+}
+
 function clubPrimaryColour(name) {
   const c = CLUB_COLOURS[name];
   if (!c) return '#1e3054';
@@ -335,10 +462,7 @@ onAuthStateChanged(auth, async user => {
         el('auth-screen').style.display = 'none';
         el('app-shell').style.display = 'block';
         el('user-display').textContent = userProfile.nick || userProfile.name;
-        if (userProfile.avatar) {
-          el('header-avatar').style.backgroundImage = 'url('+userProfile.avatar+')';
-          el('header-avatar').style.display = 'block';
-        }
+        updateHeaderAvatar();
         const isSiteAdmin = user.uid === SITE_ADMIN_UID || userProfile.isAdmin;
         el('nav-admin').style.display = isSiteAdmin ? 'inline-flex' : 'none';
         subscribeGlobal();
@@ -410,6 +534,7 @@ async function doLogin() {
 async function doRegister() {
   const name=el('reg-name').value.trim(), nick=el('reg-nick').value.trim();
   const email=el('reg-email').value.trim(), pass=el('reg-pass').value;
+  const badgeTeam = el('reg-badge-hidden')?.value.trim() || '';
   if(!name||!email||!pass){toast('Fill in all required fields',true);return;}
   if(pass.length<6){toast('Password must be at least 6 characters',true);return;}
   el('reg-btn').textContent = 'Registering…';
@@ -422,7 +547,7 @@ async function doRegister() {
     for(let i=0;i<3;i++){
       try {
         await setDoc(doc(db,'users',cred.user.uid),{
-          name, nick:nick||'', email, isAdmin, avatar:'', compIds:[], lastCompId:null, joinedAt:serverTimestamp()
+          name, nick:nick||'', email, isAdmin, avatar:'', badgeTeam: badgeTeam||'', compIds:[], lastCompId:null, joinedAt:serverTimestamp()
         });
         written=true;
         // Update public stats so login screen shows live tipper count
@@ -901,9 +1026,7 @@ function renderLeaderboard() {
     const emojiBadges = (emojiMap[s.uid]||[]).map(e =>
       `<span style="font-size:16px;line-height:1;" title="${e==='👑'?'Leading the comp':e==='🥄'?'Last place':e==='⭐'?'Top score this round':e==='🥶'?'Lowest score this round':e==='🔮'?'Perfect round!':''}">${e}</span>`
     ).join('');
-    const avatarHtml = s.avatar
-      ? `<div style="width:32px;height:32px;border-radius:50%;background-image:url(${s.avatar});background-size:cover;background-position:center;flex-shrink:0;"></div>`
-      : `<div style="width:32px;height:32px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--green);flex-shrink:0;">${(s.nick||s.name||'?')[0].toUpperCase()}</div>`;
+    const avatarHtml = renderUserAvatar(allUsers[s.uid], 32);
     const paidUids = currentComp?.paidUids||{};
     const hasPaid = paidUids[s.uid]===true;
     const isCompOwner = currentUser && currentComp?.ownerId === currentUser.uid;
@@ -970,9 +1093,7 @@ function renderGlobalLeaderboard() {
     const u = allUsers[s.uid];
     const userCompNames = (u?.compIds||[]).map(id=>allComps[id]?.name).filter(Boolean).join(', ');
     const thisRound = latestRound?(s.roundPts[latestRound.id]??'—'):'—';
-    const avatarHtml = s.avatar
-      ? `<div style="width:32px;height:32px;border-radius:50%;background-image:url(${s.avatar});background-size:cover;background-position:center;flex-shrink:0;"></div>`
-      : `<div style="width:32px;height:32px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--green);flex-shrink:0;">${(s.nick||s.name||'?')[0].toUpperCase()}</div>`;
+    const avatarHtml = renderUserAvatar(allUsers[s.uid], 32);
     return `<tr ${me?'style="background:rgba(0,200,83,0.05);"':''}>
       <td><span class="rank-badge ${rc}">${rank}</span></td>
       <td><div style="display:flex;align-items:center;gap:10px;">${avatarHtml}
@@ -1255,30 +1376,113 @@ function renderProfilePage(){
   el('profile-nick-display').textContent=userProfile.nick?'('+userProfile.nick+')':'';
   el('profile-name-input').value=userProfile.name||'';
   el('profile-nick-input').value=userProfile.nick||'';
-  if(userProfile.avatar){
-    el('profile-avatar-preview').src=userProfile.avatar;
-    el('profile-avatar-preview').style.display='block';
-    el('profile-avatar-url').value=userProfile.avatar;
+  // Render badge picker
+  renderBadgePicker('profile-badge-picker', userProfile.badgeTeam||'', function(teamName){
+    updateProfileBadgePreview(teamName);
+  });
+  updateProfileBadgePreview(userProfile.badgeTeam||'');
+}
+function updateProfileBadgePreview(teamName) {
+  const wrap = el('profile-avatar-wrap-inner');
+  if (!wrap) return;
+  if (teamName && getBadgeColours(teamName)) {
+    wrap.innerHTML = teamBadge(teamName, 90);
+  } else {
+    wrap.innerHTML = '<span style="font-size:32px;">👤</span>';
   }
 }
 async function saveProfile(){
   if(!currentUser) return;
   const name=el('profile-name-input').value.trim(), nick=el('profile-nick-input').value.trim();
-  const avatar=el('profile-avatar-url').value.trim();
+  const badgeTeam = el('profile-badge-hidden')?.value || '';
   if(!name){toast('Name cannot be empty',true);return;}
-  await updateDoc(doc(db,'users',currentUser.uid),{name,nick,avatar});
-  userProfile.name=name; userProfile.nick=nick; userProfile.avatar=avatar;
+  await updateDoc(doc(db,'users',currentUser.uid),{name,nick,badgeTeam});
+  userProfile.name=name; userProfile.nick=nick; userProfile.badgeTeam=badgeTeam;
+  userProfile.avatar=''; // clear legacy avatar
   el('user-display').textContent=nick||name;
-  if(avatar){el('header-avatar').style.backgroundImage='url('+avatar+')';el('header-avatar').style.display='block';}
-  else el('header-avatar').style.display='none';
+  // Update header avatar
+  updateHeaderAvatar();
   toast('Profile saved! ✓');
 }
-function previewAvatar(url){
-  const p=el('profile-avatar-preview');
-  if(url){p.src=url;p.style.display='block';}else p.style.display='none';
+function updateHeaderAvatar() {
+  const ha = el('header-avatar');
+  if (!ha) return;
+  const bt = userProfile?.badgeTeam;
+  if (bt && getBadgeColours(bt)) {
+    ha.innerHTML = teamBadge(bt, 32);
+    ha.style.backgroundImage = '';
+    ha.style.display = 'flex';
+    ha.style.alignItems = 'center';
+    ha.style.justifyContent = 'center';
+    ha.style.padding = '0';
+  } else {
+    ha.innerHTML = '';
+    ha.style.display = 'none';
+  }
+}
+function previewAvatar(url){ /* legacy no-op */ }
+
+// ─── BADGE PICKER (shared by profile + registration) ─────────
+function renderBadgePicker(containerId, selectedTeam, onSelect) {
+  const container = el(containerId);
+  if (!container) return;
+  let html = `<div style="display:flex;flex-direction:column;gap:14px;">`;
+  BADGE_GROUPS.forEach(group => {
+    html += `<div>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:8px;">${group.label}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">`;
+    group.teams.forEach(team => {
+      const isSelected = team === selectedTeam;
+      html += `<button type="button" onclick="selectBadge(this,'${containerId}','${team.replace(/'/g,"\\'")}','${escHtml(containerId)}')"
+        style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:10px;border:2px solid ${isSelected?'var(--green)':'var(--border)'};background:${isSelected?'rgba(0,200,83,0.12)':'var(--card2)'};cursor:pointer;transition:all 0.15s;min-width:0;"
+        title="${escHtml(team)}"
+        data-team="${escHtml(team)}"
+        data-container="${escHtml(containerId)}">
+        ${teamBadge(team, 28)}
+        <span style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px;">${escHtml(team)}</span>
+      </button>`;
+    });
+    html += `</div></div>`;
+  });
+  html += `</div>`;
+  container.innerHTML = html;
 }
 
-// ─── ADMIN ───────────────────────────────────────────────────
+function selectBadge(btnEl, containerId, teamName, _unused) {
+  const container = el(containerId);
+  if (!container) return;
+  // Deselect all in this container
+  container.querySelectorAll('button[data-team]').forEach(b => {
+    b.style.borderColor = 'var(--border)';
+    b.style.background = 'var(--card2)';
+  });
+  // Select clicked
+  btnEl.style.borderColor = 'var(--green)';
+  btnEl.style.background = 'rgba(0,200,83,0.12)';
+  // Write value to hidden input (profile or reg)
+  if (containerId === 'profile-badge-picker') {
+    const hidden = el('profile-badge-hidden');
+    if (hidden) hidden.value = teamName;
+    updateProfileBadgePreview(teamName);
+  } else if (containerId === 'reg-badge-picker') {
+    const hidden = el('reg-badge-hidden');
+    if (hidden) hidden.value = teamName;
+    updateRegBadgePreview(teamName);
+  }
+}
+
+function updateRegBadgePreview(teamName) {
+  const wrap = el('reg-badge-preview');
+  if (!wrap) return;
+  if (teamName && getBadgeColours(teamName)) {
+    wrap.innerHTML = teamBadge(teamName, 44) + `<span style="font-size:13px;font-weight:600;color:var(--text);margin-left:8px;">${escHtml(teamName)}</span>`;
+    wrap.style.display = 'flex';
+  } else {
+    wrap.style.display = 'none';
+  }
+}
+
+
 function renderAdmin(){
   const isSiteAdmin = currentUser?.uid===SITE_ADMIN_UID||userProfile?.isAdmin;
   if (isSiteAdmin) renderAdminEditTips();
@@ -1304,8 +1508,7 @@ function renderAdminUsers(){
   el('admin-users-list').innerHTML=Object.entries(allUsers).map(([uid,u])=>`
     <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
       <div style="display:flex;align-items:center;gap:10px;">
-        ${u.avatar?`<div style="width:36px;height:36px;border-radius:50%;background-image:url(${u.avatar});background-size:cover;"></div>`
-          :`<div style="width:36px;height:36px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--green);">${(u.nick||u.name||'?')[0].toUpperCase()}</div>`}
+        ${renderUserAvatar(u, 36)}
         <div>
           <span style="font-weight:600;">${escHtml(u.name)}</span>
           ${u.nick?`<span style="color:var(--muted);font-size:13px;"> · ${escHtml(u.nick)}</span>`:''}
@@ -1689,11 +1892,8 @@ function renderChat(messages){
     :messages.map(m=>{
       const isMe=m.uid===currentUser?.uid, u=allUsers[m.uid];
       const displayName=u?(u.nick||u.name):(m.displayName||'Unknown');
-      const avatarUrl=u?.avatar||'';
       const timeStr=m.ts?.toDate?formatTime(m.ts.toDate()):'';
-      const avatarHtml=avatarUrl
-        ?`<div style="width:28px;height:28px;border-radius:50%;background-image:url(${avatarUrl});background-size:cover;flex-shrink:0;"></div>`
-        :`<div style="width:28px;height:28px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--green);flex-shrink:0;">${(displayName||'?')[0].toUpperCase()}</div>`;
+      const avatarHtml=renderUserAvatar(u, 28);
       return `<div class="chat-msg ${isMe?'chat-msg-me':''}">
         ${!isMe?avatarHtml:''}
         <div class="chat-bubble ${isMe?'bubble-me':'bubble-them'}">
@@ -2882,15 +3082,9 @@ function checkRoundWinnerCelebration() {
   document.getElementById('cel-pts').textContent = bestPts + ' pts this round';
 
   const avatarEl = document.getElementById('cel-avatar');
-  if (winner.avatar) {
-    avatarEl.style.backgroundImage = `url(${winner.avatar})`;
-    avatarEl.style.backgroundSize = 'cover';
-    avatarEl.style.backgroundPosition = 'center';
-    avatarEl.textContent = '';
-  } else {
-    avatarEl.style.backgroundImage = '';
-    avatarEl.textContent = (winner.nick || winner.name || '?')[0].toUpperCase();
-  }
+  const winnerUser = allUsers[winner.uid];
+  avatarEl.style.backgroundImage = '';
+  avatarEl.innerHTML = renderUserAvatar(winnerUser, 80);
 
   // Show overlay
   const overlay = document.getElementById('celebration-overlay');
@@ -3148,6 +3342,7 @@ Object.assign(window,{
   renderAdminRoundsList,addRoundFromMgmt,promptRenameRound,moveRound,
   saveJoinCode,sendChat,chatKeydown,insertEmoji,deleteMessage,
   toggleAdmin,saveProfile,previewAvatar,
+  selectBadge,updateProfileBadgePreview,updateRegBadgePreview,renderBadgePicker,updateHeaderAvatar,
   joinComp,autoJoinFromInvite,createComp,switchComp,deleteComp,renderAdminComps,
   togglePaid,savePrizes,pickMargin,toggleEditMatch,saveMatchEdit,
   proposeBet,acceptBet,declineBet,deleteBet,showBetNotification,showBetResponseNotification,
@@ -3212,7 +3407,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
 .season-badge{background:var(--gold);color:var(--navy);font-weight:700;padding:2px 9px;border-radius:4px;font-size:12px;margin-left:6px;}
 .header-right{display:flex;align-items:center;gap:10px;}
 #user-display{font-size:13px;color:var(--muted);}
-#header-avatar{width:32px;height:32px;border-radius:50%;background-size:cover;background-position:center;display:none;border:2px solid var(--green);}
+#header-avatar{width:36px;height:36px;border-radius:50%;background-size:cover;background-position:center;display:none;border:2px solid var(--green);overflow:hidden;flex-shrink:0;}
 #comp-banner{display:none;background:rgba(0,200,83,0.08);border-bottom:1px solid var(--border);padding:8px 28px;align-items:center;gap:10px;font-size:13px;}
 #comp-banner .comp-label{color:var(--muted);}
 #comp-name-display{font-weight:700;color:var(--green);}
@@ -3426,6 +3621,15 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
       <div class="form-group"><label>Nickname (optional)</label><input type="text" id="reg-nick" placeholder="e.g. Jakeo"/></div>
       <div class="form-group"><label>Email *</label><input type="email" id="reg-email" placeholder="you@email.com"/></div>
       <div class="form-group"><label>Password *</label><input type="password" id="reg-pass" placeholder="Min 6 characters"/></div>
+      <div class="form-group">
+        <label>Your Club Badge <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Pick your AFL or NFL team — shows next to your name on the leaderboard</div>
+        <input type="hidden" id="reg-badge-hidden" value=""/>
+        <div id="reg-badge-preview" style="display:none;align-items:center;background:rgba(0,200,83,0.08);border:1px solid rgba(0,200,83,0.3);border-radius:8px;padding:8px 12px;margin-bottom:10px;"></div>
+        <div style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--card2);">
+          <div id="reg-badge-picker"></div>
+        </div>
+      </div>
       <button class="btn btn-full" id="reg-btn" onclick="doRegister()">Create Account →</button>
     </div>
   </div>
@@ -3806,12 +4010,11 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
     <!-- PROFILE -->
     <div class="page" id="page-profile">
       <div class="section-title">MY <span>PROFILE</span></div>
-      <div class="section-sub">Update your name, nickname and avatar</div>
-      <div class="card" style="max-width:500px;">
+      <div class="section-sub">Update your name, nickname and club badge</div>
+      <div class="card" style="max-width:520px;">
         <div style="text-align:center;margin-bottom:24px;">
           <div class="profile-avatar-wrap">
-            <img id="profile-avatar-preview" src="" style="width:100%;height:100%;object-fit:cover;display:none;"/>
-            <span id="profile-avatar-placeholder">👤</span>
+            <div id="profile-avatar-wrap-inner" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><span style="font-size:32px;">👤</span></div>
           </div>
           <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;" id="profile-name-display"></div>
           <div style="color:var(--muted);font-size:14px;" id="profile-nick-display"></div>
@@ -3819,11 +4022,14 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
         <div class="form-group"><label>Full Name</label><input type="text" id="profile-name-input" placeholder="Your name"/></div>
         <div class="form-group"><label>Nickname</label><input type="text" id="profile-nick-input" placeholder="Your nickname"/></div>
         <div class="form-group">
-          <label>Avatar Photo URL</label>
-          <input type="url" id="profile-avatar-url" placeholder="https://i.imgur.com/yourphoto.jpg" oninput="previewAvatar(this.value)"/>
-          <div style="font-size:12px;color:var(--muted);margin-top:6px;">💡 Upload at <a href="https://imgur.com/upload" target="_blank" style="color:var(--green);">imgur.com/upload</a> → right-click image → Copy image address → paste here</div>
+          <label>Your Club Badge</label>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Pick your AFL or NFL team — it shows next to your name on the leaderboard</div>
+          <input type="hidden" id="profile-badge-hidden" value=""/>
+          <div style="max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;padding:12px;background:var(--card2);">
+            <div id="profile-badge-picker"></div>
+          </div>
         </div>
-        <button class="btn" onclick="saveProfile()" style="margin-top:8px;">Save Profile ✓</button>
+        <button class="btn" onclick="saveProfile()" style="margin-top:8px;width:100%;">Save Profile ✓</button>
       </div>
 
       <!-- CALENDAR REMINDER CARD -->
@@ -4175,6 +4381,14 @@ function switchAuthTab(tab,btn){
   document.querySelectorAll('.auth-panel').forEach(p=>p.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('auth-'+tab).classList.add('active');
+  if(tab==='register') initRegBadgePicker();
+}
+function initRegBadgePicker(){
+  // Only init once
+  const picker = document.getElementById('reg-badge-picker');
+  if(!picker||picker.innerHTML.trim()) return;
+  // renderBadgePicker is defined in the module script, call via window
+  if(typeof renderBadgePicker === 'function') renderBadgePicker('reg-badge-picker','',null);
 }
 // If arriving via invite link, auto-open Register tab
 (function(){
