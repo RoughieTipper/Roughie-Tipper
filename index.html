@@ -3533,26 +3533,29 @@ Object.assign(window,{
     <div class="page" id="page-leaderboard">
 
       <!-- SLIDING PROMO BANNER -->
-<div id="promo-banner" style="position:relative;width:100%;overflow:hidden;border-radius:14px;margin-bottom:20px;">
-  <div id="promo-track" style="display:flex;transition:transform 0.5s cubic-bezier(0.4,0,0.2,1);">
-    <!-- SLIDE 1 - no link -->
-    <div class="promo-slide">
-      <img src="savebookmark.webp" alt="Promo 1" style="width:100%;height:auto;display:block;border-radius:14px;"/>
-    </div>
-    <!-- SLIDE 2 - calendar reminder -->
+<div id="promo-banner" style="position:relative;width:100%;overflow:hidden;border-radius:14px;margin-bottom:20px;height:144px;">
+  <div id="promo-track" style="display:flex;transition:transform 0.5s cubic-bezier(0.4,0,0.2,1);width:100%;">
+ <!-- SLIDE 1 -->
+<div class="promo-slide">
+  <img src="savebookmark.webp" alt="Promo 1"/>
+</div>
+
+<!-- SLIDE 2 - calendar reminder -->
 <div class="promo-slide">
   <a href="#" onclick="downloadCalendarReminder();return false;">
-    <img src="reminder.webp" alt="Add Tips Reminder" style="width:100%;height:auto;display:block;border-radius:14px;"/>
+    <img src="reminder.webp" alt="Add Tips Reminder" loading="lazy"/>
   </a>
 </div>
-    <!-- SLIDE 3 - no link -->
-    <div class="promo-slide">
-      <img src="rtcup.webp" alt="Promo 3" style="width:100%;height:auto;display:block;border-radius:14px;"/>
-    </div>
-    <!-- SLIDE 4 - honours page -->
+
+<!-- SLIDE 3 -->
+<div class="promo-slide">
+  <img src="rtcup.webp" alt="Promo 3" loading="lazy"/>
+</div>
+
+<!-- SLIDE 4 - honours page -->
 <div class="promo-slide">
   <a href="#" onclick="showPage('honours');return false;">
-    <img src="honourboard.webp" alt="Honours Board" style="width:100%;height:auto;display:block;border-radius:14px;"/>
+    <img src="honourboard.webp" alt="Honours Board" loading="lazy"/>
   </a>
 </div>
 
