@@ -3531,6 +3531,44 @@ Object.assign(window,{
 
     <!-- MY COMP LEADERBOARD -->
     <div class="page" id="page-leaderboard">
+
+      <!-- SLIDING PROMO BANNER -->
+<div id="promo-banner" style="position:relative;width:100%;overflow:hidden;border-radius:14px;margin-bottom:20px;">
+  <div id="promo-track" style="display:flex;transition:transform 0.5s cubic-bezier(0.4,0,0.2,1);">
+    <!-- SLIDE 1 - no link -->
+    <div class="promo-slide">
+      <img src="savebookmark.png" alt="Promo 1" style="width:100%;height:auto;display:block;border-radius:14px;"/>
+    </div>
+    <!-- SLIDE 2 - calendar reminder -->
+<div class="promo-slide">
+  <a href="#" onclick="downloadCalendarReminder();return false;">
+    <img src="reminder.png" alt="Add Tips Reminder" style="width:100%;height:auto;display:block;border-radius:14px;"/>
+  </a>
+</div>
+    <!-- SLIDE 3 - no link -->
+    <div class="promo-slide">
+      <img src="rtcup.png" alt="Promo 3" style="width:100%;height:auto;display:block;border-radius:14px;"/>
+    </div>
+    <!-- SLIDE 4 - honours page -->
+<div class="promo-slide">
+  <a href="#" onclick="showPage('honours');return false;">
+    <img src="honourboard.png" alt="Honours Board" style="width:100%;height:auto;display:block;border-radius:14px;"/>
+  </a>
+</div>
+
+  <!-- PREV / NEXT ARROWS -->
+  <button onclick="promoPrev()" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.45);border:none;color:#fff;font-size:20px;width:36px;height:36px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2;">‹</button>
+  <button onclick="promoNext()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.45);border:none;color:#fff;font-size:20px;width:36px;height:36px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2;">›</button>
+
+  <!-- DOTS -->
+  <div id="promo-dots" style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:2;">
+    <div class="promo-dot active" onclick="promoGoTo(0)"></div>
+    <div class="promo-dot" onclick="promoGoTo(1)"></div>
+    <div class="promo-dot" onclick="promoGoTo(2)"></div>
+    <div class="promo-dot" onclick="promoGoTo(3)"></div>
+  </div>
+</div>
+      
       <div class="section-title">COMP <span>LADDER</span></div>
       <div class="section-sub">Live standings for your current competition · Overall rank shown on right</div>
       <!-- INSTALL BANNER -->
