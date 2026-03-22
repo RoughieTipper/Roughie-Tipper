@@ -4195,8 +4195,11 @@ let promoTimer = null;
 
 function promoGoTo(index) {
   promoIndex = index;
+  const slide = document.querySelector('.promo-slide');
+  if (!slide) return;
+  const slideWidth = slide.offsetWidth;
   const track = document.getElementById('promo-track');
-  if (track) track.style.transform = `translateX(-${promoIndex * 100}%)`;
+  if (track) track.style.transform = `translateX(-${promoIndex * slideWidth}px)`;
   document.querySelectorAll('.promo-dot').forEach((d, i) => {
     d.classList.toggle('active', i === promoIndex);
   });
@@ -4219,6 +4222,10 @@ function promoResetTimer() {
 
 window.addEventListener('load', () => {
   promoTimer = setInterval(promoNext, 5000);
+});
+
+window.addEventListener('resize', () => {
+  promoGoTo(promoIndex);
 });
 </script>
 <!-- ROUND WINNER CELEBRATION OVERLAY -->
