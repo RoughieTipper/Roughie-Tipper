@@ -223,3 +223,7 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
   .lb-table{min-width:520px;}
   .lb-table th:nth-child(9),.lb-table td:nth-child(9){display:none;}
 }
+.promo-slide{min-width:100%;box-sizing:border-box;height:180px;}
+.promo-slide img{width:100%;height:100%;object-fit:cover;display:block;border-radius:14px;}
+.promo-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.4);cursor:pointer;transition:background .3s;}
+.promo-dot.active{background:#fff;}
