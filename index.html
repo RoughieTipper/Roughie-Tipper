@@ -3533,8 +3533,8 @@ Object.assign(window,{
     <div class="page" id="page-leaderboard">
 
       <!-- SLIDING PROMO BANNER -->
-<div id="promo-banner" style="position:relative;margin-bottom:20px;">
-  <div id="promo-track" style="display:flex;overflow-x:hidden;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;">
+<div id="promo-banner">
+  <div id="promo-track">
     <div class="promo-slide"><img src="savebookmark.webp" alt="Promo 1"/></div>
     <div class="promo-slide"><a href="#" onclick="downloadCalendarReminder();return false;"><img src="reminder.webp" alt="Add Tips Reminder"/></a></div>
     <div class="promo-slide"><img src="rtcup.webp" alt="RT Cup"/></div>
@@ -3549,18 +3549,6 @@ Object.assign(window,{
     <div class="promo-dot" onclick="promoGoTo(3)"></div>
   </div>
 </div>
-
-  <!-- PREV / NEXT ARROWS -->
-  <button onclick="promoPrev()" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.45);border:none;color:#fff;font-size:20px;width:36px;height:36px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2;">‹</button>
-  <button onclick="promoNext()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.45);border:none;color:#fff;font-size:20px;width:36px;height:36px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2;">›</button>
-
-  <!-- DOTS -->
-  <div id="promo-dots" style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:2;">
-    <div class="promo-dot active" onclick="promoGoTo(0)"></div>
-    <div class="promo-dot" onclick="promoGoTo(1)"></div>
-    <div class="promo-dot" onclick="promoGoTo(2)"></div>
-    <div class="promo-dot" onclick="promoGoTo(3)"></div>
-  </div>
 </div><!-- END promo-banner -->
       
       <div class="section-title">COMP <span>LADDER</span></div>
