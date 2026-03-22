@@ -4202,6 +4202,38 @@ function initRegBadgePicker(){
     if(btns.length>=2) switchAuthTab('register', btns[1]);
   }
 })();
+  // ── PROMO BANNER ──────────────────────────────────────────
+let promoIndex = 0;
+const promoTotal = 4;
+let promoTimer = null;
+
+function promoGoTo(index) {
+  promoIndex = index;
+  const track = document.getElementById('promo-track');
+  if (track) track.style.transform = `translateX(-${promoIndex * 100}%)`;
+  document.querySelectorAll('.promo-dot').forEach((d, i) => {
+    d.classList.toggle('active', i === promoIndex);
+  });
+}
+
+function promoNext() {
+  promoGoTo((promoIndex + 1) % promoTotal);
+  promoResetTimer();
+}
+
+function promoPrev() {
+  promoGoTo((promoIndex - 1 + promoTotal) % promoTotal);
+  promoResetTimer();
+}
+
+function promoResetTimer() {
+  clearInterval(promoTimer);
+  promoTimer = setInterval(promoNext, 5000);
+}
+
+window.addEventListener('load', () => {
+  promoTimer = setInterval(promoNext, 5000);
+});
 </script>
 <!-- ROUND WINNER CELEBRATION OVERLAY -->
 <div id="celebration-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(10,22,40,0.97);display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px;cursor:pointer;" onclick="dismissCelebration()">
