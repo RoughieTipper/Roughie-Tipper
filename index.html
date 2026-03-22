@@ -4187,32 +4187,45 @@ const promoTotal = 4;
 let promoTimer = null;
 
 function promoGoTo(index) {
-  promoIndex = index;
-  const track = document.getElementById('promo-track');
-  if (!track) return;
-  track.scrollLeft = track.offsetWidth * promoIndex;
-  document.querySelectorAll('.promo-dot').forEach((d, i) => {
-    d.classList.toggle('active', i === promoIndex);
-  });
+  try {
+    promoIndex = index;
+    const track = document.getElementById('promo-track');
+    if (!track) return;
+    const slides = track.querySelectorAll('.promo-slide');
+    if (!slides.length) return;
+    const slideWidth = slides[0].getBoundingClientRect().width;
+    track.scrollLeft = slideWidth * promoIndex;
+    document.querySelectorAll('.promo-dot').forEach((d, i) => {
+      d.classList.toggle('active', i === promoIndex);
+    });
+  } catch(e) { console.log('promo error:', e); }
 }
 
 function promoNext() {
-  promoGoTo((promoIndex + 1) % promoTotal);
-  promoResetTimer();
+  try {
+    promoGoTo((promoIndex + 1) % promoTotal);
+    promoResetTimer();
+  } catch(e) {}
 }
 
 function promoPrev() {
-  promoGoTo((promoIndex - 1 + promoTotal) % promoTotal);
-  promoResetTimer();
+  try {
+    promoGoTo((promoIndex - 1 + promoTotal) % promoTotal);
+    promoResetTimer();
+  } catch(e) {}
 }
 
 function promoResetTimer() {
-  clearInterval(promoTimer);
-  promoTimer = setInterval(promoNext, 5000);
+  try {
+    clearInterval(promoTimer);
+    promoTimer = setInterval(promoNext, 5000);
+  } catch(e) {}
 }
 
 window.addEventListener('load', () => {
-  promoTimer = setInterval(promoNext, 5000);
+  try {
+    promoTimer = setInterval(promoNext, 5000);
+  } catch(e) {}
 });
 </script>
 <!-- ROUND WINNER CELEBRATION OVERLAY -->
