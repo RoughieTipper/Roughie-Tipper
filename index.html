@@ -3533,31 +3533,29 @@ Object.assign(window,{
     <div class="page" id="page-leaderboard">
 
       <!-- SLIDING PROMO BANNER -->
-<div id="promo-banner" style="position:relative;width:100%;max-width:100%;margin-bottom:20px;border-radius:14px;overflow:hidden;">
+<div id="promo-banner" style="position:relative;width:100%;margin-bottom:20px;border-radius:14px;overflow:hidden;">
   <div id="promo-track" style="display:flex;width:100%;transition:transform 0.5s cubic-bezier(0.4,0,0.2,1);">
- <!-- SLIDE 1 -->
-<div class="promo-slide">
-  <img src="savebookmark.webp" alt="Promo 1"/>
-</div>
-
-<!-- SLIDE 2 - calendar reminder -->
-<div class="promo-slide">
-  <a href="#" onclick="downloadCalendarReminder();return false;">
-    <img src="reminder.webp" alt="Add Tips Reminder" loading="lazy"/>
-  </a>
-</div>
-
-<!-- SLIDE 3 -->
-<div class="promo-slide">
-  <img src="rtcup.webp" alt="Promo 3" loading="lazy"/>
-</div>
-
-<!-- SLIDE 4 - honours page -->
-<div class="promo-slide">
-  <a href="#" onclick="showPage('honours');return false;">
-    <img src="honourboard.webp" alt="Honours Board" loading="lazy"/>
-  </a>
-</div>
+    <!-- SLIDE 1 -->
+    <div class="promo-slide">
+      <img src="savebookmark.webp" alt="Promo 1"/>
+    </div>
+    <!-- SLIDE 2 - calendar reminder -->
+    <div class="promo-slide">
+      <a href="#" onclick="downloadCalendarReminder();return false;">
+        <img src="reminder.webp" alt="Add Tips Reminder" loading="lazy"/>
+      </a>
+    </div>
+    <!-- SLIDE 3 -->
+    <div class="promo-slide">
+      <img src="rtcup.webp" alt="Promo 3" loading="lazy"/>
+    </div>
+    <!-- SLIDE 4 - honours page -->
+    <div class="promo-slide">
+      <a href="#" onclick="showPage('honours');return false;">
+        <img src="honourboard.webp" alt="Honours Board" loading="lazy"/>
+      </a>
+    </div>
+  </div><!-- END promo-track -->
 
   <!-- PREV / NEXT ARROWS -->
   <button onclick="promoPrev()" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.45);border:none;color:#fff;font-size:20px;width:36px;height:36px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2;">‹</button>
@@ -3570,7 +3568,7 @@ Object.assign(window,{
     <div class="promo-dot" onclick="promoGoTo(2)"></div>
     <div class="promo-dot" onclick="promoGoTo(3)"></div>
   </div>
-</div>
+</div><!-- END promo-banner -->
       
       <div class="section-title">COMP <span>LADDER</span></div>
       <div class="section-sub">Live standings for your current competition · Overall rank shown on right</div>
