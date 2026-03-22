@@ -230,3 +230,10 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
 .promo-slide a{display:block;width:100%;}
 .promo-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.4);cursor:pointer;transition:background .3s;}
 .promo-dot.active{background:#fff;}
+
+@media(max-width:768px){
+  /* existing rules ... */
+  #promo-banner{width:100%;margin-left:0;margin-right:0;}
+  #promo-track{width:100%;}
+  .promo-slide{min-width:100%;width:100%;}
+}
