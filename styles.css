@@ -224,7 +224,7 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
   .lb-table{min-width:520px;}
   .lb-table th:nth-child(9),.lb-table td:nth-child(9){display:none;}
 }
-#promo-banner{position:relative;margin-bottom:20px;border-radius:14px;overflow:hidden;}
+#promo-banner{position:relative;overflow:hidden;margin-bottom:20px;border-radius:14px;}
 #promo-track{display:flex;overflow-x:hidden;width:100%;}
 .promo-slide{min-width:100%;flex-shrink:0;box-sizing:border-box;}
 .promo-slide img{width:100%;height:auto;display:block;}
