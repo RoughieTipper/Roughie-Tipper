@@ -224,13 +224,16 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
   .lb-table th:nth-child(9),.lb-table td:nth-child(9){display:none;}
 }
 #promo-banner{position:relative;overflow:hidden;margin-bottom:20px;border-radius:14px;}
-#promo-track{display:flex;transition:transform 0.5s ease;will-change:transform;}
-.promo-slide{min-width:100%;flex-shrink:0;box-sizing:border-box;}
-.promo-slide img{width:100%;height:auto;display:block;}
+#promo-track{display:flex;transition:transform 0.5s ease;width:100%;will-change:transform;}
+.promo-slide{min-width:100%;flex-shrink:0;box-sizing:border-box;overflow:hidden;}
+.promo-slide img{width:100%;height:auto;display:block;max-height:280px;object-fit:cover;object-position:center;}
 .promo-slide a{display:block;width:100%;}
-.promo-slide a img{width:100%;height:auto;display:block;}
+.promo-slide a img{width:100%;height:auto;display:block;max-height:280px;object-fit:cover;object-position:center;}
 .promo-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.4);cursor:pointer;transition:background .3s;}
 .promo-dot.active{background:#fff;}
+@media(max-width:768px){
+  .promo-slide img,.promo-slide a img{max-height:200px;}
+}
 </style>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -2571,12 +2574,9 @@ let promoTimer = null;
 function promoGoTo(index) {
   try {
     promoIndex = ((index % promoTotal) + promoTotal) % promoTotal;
-    const banner = document.getElementById('promo-banner');
     const track = document.getElementById('promo-track');
-    if (!track || !banner) return;
-    const slideWidth = banner.getBoundingClientRect().width;
-    document.querySelectorAll('.promo-slide').forEach(s => { s.style.minWidth = slideWidth + 'px'; });
-    track.style.transform = `translateX(-${promoIndex * slideWidth}px)`;
+    if (!track) return;
+    track.style.transform = `translateX(-${promoIndex * 100}%)`;
     document.querySelectorAll('.promo-dot').forEach((d, i) => {
       d.classList.toggle('active', i === promoIndex);
     });
@@ -2599,12 +2599,8 @@ function promoResetTimer() {
 }
 
 window.addEventListener('load', () => {
-  setTimeout(() => { promoGoTo(0); }, 100);
+  promoGoTo(0);
   promoTimer = setInterval(promoNext, 5000);
-});
-
-window.addEventListener('resize', () => {
-  promoGoTo(promoIndex);
 });
 </script>
 
