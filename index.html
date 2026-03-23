@@ -308,6 +308,54 @@ const firebaseConfig = {
 
 const SITE_ADMIN_UID = 'CdcjgZWDAKfQQybjqN6fyEH56XZ2';
 
+// ─── EMAIL OCTOPUS ───────────────────────────────────────────
+const EO_API_KEY = 'eo_79f8e6df5d30c9c1665f2148c1976372338d10dec2612b2a93ce2aca85779a38';
+const EO_LIST_ID = '837b6266-2700-11f1-96fb-019a128391e7';
+
+async function eoSubscribe(email, firstName, nickname) {
+  try {
+    await fetch(`https://emailoctopus.com/api/1.1/lists/${EO_LIST_ID}/contacts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: EO_API_KEY,
+        email_address: email,
+        fields: { FirstName: firstName || '', Nickname: nickname || '' },
+        status: 'SUBSCRIBED'
+      })
+    });
+  } catch(e) { console.log('EO subscribe error:', e); }
+}
+
+async function eoUnsubscribe(email) {
+  try {
+    // First find the contact by email to get their ID
+    const res = await fetch(`https://emailoctopus.com/api/1.1/lists/${EO_LIST_ID}/contacts?api_key=${EO_API_KEY}&email_address=${encodeURIComponent(email)}`);
+    const data = await res.json();
+    const contact = data.data?.[0];
+    if (!contact) return;
+    await fetch(`https://emailoctopus.com/api/1.1/lists/${EO_LIST_ID}/contacts/${contact.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key: EO_API_KEY, status: 'UNSUBSCRIBED' })
+    });
+  } catch(e) { console.log('EO unsubscribe error:', e); }
+}
+
+async function eoResubscribe(email) {
+  try {
+    const res = await fetch(`https://emailoctopus.com/api/1.1/lists/${EO_LIST_ID}/contacts?api_key=${EO_API_KEY}&email_address=${encodeURIComponent(email)}`);
+    const data = await res.json();
+    const contact = data.data?.[0];
+    if (!contact) return;
+    await fetch(`https://emailoctopus.com/api/1.1/lists/${EO_LIST_ID}/contacts/${contact.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key: EO_API_KEY, status: 'SUBSCRIBED' })
+    });
+  } catch(e) { console.log('EO resubscribe error:', e); }
+}
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
@@ -564,9 +612,11 @@ async function doRegister() {
     for(let i=0;i<3;i++){
       try {
         await setDoc(doc(db,'users',cred.user.uid),{
-          name, nick:nick||'', email, isAdmin, avatar:'', badgeTeam: badgeTeam||'', compIds:[], lastCompId:null, joinedAt:serverTimestamp()
+          name, nick:nick||'', email, isAdmin, avatar:'', badgeTeam: badgeTeam||'', compIds:[], lastCompId:null, joinedAt:serverTimestamp(), emailSubscribed:true
         });
         written=true;
+        // Subscribe to EmailOctopus
+        eoSubscribe(email, name, nick||'');
         try {
           const statsRef = doc(db,'public','stats');
           const statsSnap = await getDoc(statsRef);
@@ -1268,15 +1318,22 @@ function renderProfilePage(){
   el('profile-nick-input').value=userProfile.nick||'';
   renderBadgePicker('profile-badge-picker', userProfile.badgeTeam||'', null);
   updateProfileBadgePreview(userProfile.badgeTeam||'');
+  const subBox = el('profile-email-sub');
+  if (subBox) subBox.checked = userProfile.emailSubscribed !== false;
 }
 
 async function saveProfile(){
   if(!currentUser) return;
   const name=el('profile-name-input').value.trim(), nick=el('profile-nick-input').value.trim();
   const badgeTeam = el('profile-badge-hidden')?.value || '';
+  const emailSubscribed = el('profile-email-sub')?.checked !== false;
   if(!name){toast('Name cannot be empty',true);return;}
-  await updateDoc(doc(db,'users',currentUser.uid),{name,nick,badgeTeam});
-  userProfile.name=name; userProfile.nick=nick; userProfile.badgeTeam=badgeTeam;
+  await updateDoc(doc(db,'users',currentUser.uid),{name,nick,badgeTeam,emailSubscribed});
+  // Handle EmailOctopus subscription change
+  const wasSubscribed = userProfile.emailSubscribed !== false;
+  if (emailSubscribed && !wasSubscribed) { eoResubscribe(currentUser.email); }
+  else if (!emailSubscribed && wasSubscribed) { eoUnsubscribe(currentUser.email); }
+  userProfile.name=name; userProfile.nick=nick; userProfile.badgeTeam=badgeTeam; userProfile.emailSubscribed=emailSubscribed;
   userProfile.avatar='';
   window._userProfile = userProfile;
   el('user-display').textContent=nick||name;
@@ -2029,7 +2086,8 @@ Object.assign(window,{
   addHonoursEntry,deleteHonoursEntry,
   dismissCelebration,checkRoundWinnerCelebration,
   renderEditTipsMatches,adminSetTip,adminClearTip,
-  rtCupOptIn,rtCupOptOut,dismissRTCupBanner,generateRTCupBracket,autoAdvanceRTCup,renderRTCupStage
+  rtCupOptIn,rtCupOptOut,dismissRTCupBanner,generateRTCupBracket,autoAdvanceRTCup,renderRTCupStage,
+  eoSubscribe,eoUnsubscribe,eoResubscribe
 });
 </script>
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-LY7WXRQ24Q"></script>
@@ -2340,6 +2398,13 @@ Object.assign(window,{
           <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Pick your AFL or NFL team — it shows next to your name on the leaderboard</div>
           <input type="hidden" id="profile-badge-hidden" value=""/>
           <div style="max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;padding:12px;background:var(--card2);"><div id="profile-badge-picker"></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:8px;padding:14px;background:var(--card2);border-radius:10px;border:1px solid var(--border);">
+          <input type="checkbox" id="profile-email-sub" style="width:18px;height:18px;accent-color:var(--green);cursor:pointer;flex-shrink:0;"/>
+          <div>
+            <div style="font-size:14px;font-weight:600;">📧 Email announcements</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px;">Big announcements only — new competitions, end of season results. No spam.</div>
+          </div>
         </div>
         <button class="btn" onclick="saveProfile()" style="margin-top:8px;width:100%;">Save Profile ✓</button>
       </div>
