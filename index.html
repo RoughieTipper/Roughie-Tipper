@@ -525,6 +525,14 @@ async function doLogin() {
   const email = el('login-email').value.trim(), pass = el('login-pass').value;
   if(!email||!pass){toast('Fill in all fields',true);return;}
   el('login-btn').textContent = 'Logging in…';
+  // Pre-unlock audio on this synchronous user gesture before the async Firebase call
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const buf = ctx.createBuffer(1,1,22050);
+    const src = ctx.createBufferSource();
+    src.buffer = buf; src.connect(ctx.destination); src.start(0);
+    setTimeout(()=>ctx.close(), 500);
+  } catch(e) {}
   try {
     await signInWithEmailAndPassword(auth,email,pass);
     playLoginSiren();
@@ -539,6 +547,14 @@ async function doRegister() {
   if(!name||!email||!pass){toast('Fill in all required fields',true);return;}
   if(pass.length<6){toast('Password must be at least 6 characters',true);return;}
   el('reg-btn').textContent = 'Registering…';
+  // Pre-unlock audio on this synchronous user gesture
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const buf = ctx.createBuffer(1,1,22050);
+    const src = ctx.createBufferSource();
+    src.buffer = buf; src.connect(ctx.destination); src.start(0);
+    setTimeout(()=>ctx.close(), 500);
+  } catch(e) {}
   isRegistering = true;
   try {
     const cred = await createUserWithEmailAndPassword(auth,email,pass);
