@@ -224,8 +224,8 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
   .lb-table th:nth-child(9),.lb-table td:nth-child(9){display:none;}
 }
 #promo-banner{position:relative;overflow:hidden;margin-bottom:20px;border-radius:14px;}
-#promo-track{display:flex;transition:transform 0.5s ease;width:100%;will-change:transform;}
-.promo-slide{min-width:100%;flex-shrink:0;box-sizing:border-box;overflow:hidden;}
+#promo-track{display:flex;transition:transform 0.5s ease;will-change:transform;}
+.promo-slide{min-width:100%;flex-shrink:0;box-sizing:border-box;}
 .promo-slide img{width:100%;height:auto;display:block;}
 .promo-slide a{display:block;width:100%;}
 .promo-slide a img{width:100%;height:auto;display:block;}
@@ -2571,9 +2571,12 @@ let promoTimer = null;
 function promoGoTo(index) {
   try {
     promoIndex = ((index % promoTotal) + promoTotal) % promoTotal;
+    const banner = document.getElementById('promo-banner');
     const track = document.getElementById('promo-track');
-    if (!track) return;
-    track.style.transform = `translateX(-${promoIndex * 100}%)`;
+    if (!track || !banner) return;
+    const slideWidth = banner.getBoundingClientRect().width;
+    document.querySelectorAll('.promo-slide').forEach(s => { s.style.minWidth = slideWidth + 'px'; });
+    track.style.transform = `translateX(-${promoIndex * slideWidth}px)`;
     document.querySelectorAll('.promo-dot').forEach((d, i) => {
       d.classList.toggle('active', i === promoIndex);
     });
@@ -2596,8 +2599,12 @@ function promoResetTimer() {
 }
 
 window.addEventListener('load', () => {
-  promoGoTo(0);
+  setTimeout(() => { promoGoTo(0); }, 100);
   promoTimer = setInterval(promoNext, 5000);
+});
+
+window.addEventListener('resize', () => {
+  promoGoTo(promoIndex);
 });
 </script>
 
