@@ -652,34 +652,38 @@ async function doLogin() {
   const email = el('login-email').value.trim(), pass = el('login-pass').value;
   if(!email||!pass){toast('Fill in all fields',true);return;}
   el('login-btn').textContent = 'Logging in…';
-  // Unlock AudioContext AND start playing immediately on the synchronous gesture
-  // so audio survives the async Firebase call + page transition
-  let sirenAudio = null, crowdAudio = null;
+
+  // iOS Safari requires audio to be created AND played in the same
+  // synchronous call stack as the user gesture (the button tap).
+  // We create the Audio objects, call .play() synchronously here,
+  // then pause/seek immediately — this "unlocks" them.
+  // After Firebase resolves we just call .play() again which works
+  // because the element is already unlocked.
+  const sirenAudio = new Audio('aflsiren.mp3');
+  const crowdAudio = new Audio('crowdcheer.mp3');
+  sirenAudio.volume = 0.9;
+  crowdAudio.volume = 0.7;
+
+  // Unlock both audio elements synchronously on the tap
+  sirenAudio.play().then(() => {
+    // Immediately pause and reset — we'll play for real after login
+    sirenAudio.pause();
+    sirenAudio.currentTime = 0;
+  }).catch(() => {});
+  crowdAudio.play().then(() => {
+    crowdAudio.pause();
+    crowdAudio.currentTime = 0;
+  }).catch(() => {});
+
+  // Now do Firebase login
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const buf = ctx.createBuffer(1,1,22050);
-    const src = ctx.createBufferSource();
-    src.buffer = buf; src.connect(ctx.destination); src.start(0);
-    // Start siren immediately — don't wait for Firebase
-    sirenAudio = new Audio('aflsiren.mp3');
-    sirenAudio.volume = 0.9;
-    sirenAudio.onerror = ()=> console.error('Siren load failed - check file exists:', sirenAudio.error);
-    sirenAudio.play().catch(e=>{ console.error('Siren play blocked:', e.name, e.message); });
-    crowdAudio = new Audio('crowdcheer.mp3');
-    crowdAudio.volume = 0.7;
-    crowdAudio.onerror = ()=> console.error('Crowd load failed - check file exists:', crowdAudio.error);
-    setTimeout(()=>{ crowdAudio.play().catch(e=>{ console.error('Crowd play blocked:', e.name, e.message); }); }, 500);
-    setTimeout(()=>ctx.close(), 3000);
-  } catch(e) {}
-  try {
-    await signInWithEmailAndPassword(auth,email,pass);
-  }
-  catch(e){
-    // Stop audio if login failed
-    try { if(sirenAudio){ sirenAudio.pause(); sirenAudio.currentTime=0; } } catch(e2){}
-    try { if(crowdAudio){ crowdAudio.pause(); crowdAudio.currentTime=0; } } catch(e2){}
-    toast('Invalid email or password',true);
-    el('login-btn').textContent='Log In';
+    await signInWithEmailAndPassword(auth, email, pass);
+    // Both audio elements are now unlocked — play them for real
+    sirenAudio.play().catch(() => {});
+    setTimeout(() => { crowdAudio.play().catch(() => {}); }, 500);
+  } catch(e) {
+    toast('Invalid email or password', true);
+    el('login-btn').textContent = 'Log In';
   }
 }
 
