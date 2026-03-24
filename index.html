@@ -661,11 +661,11 @@ async function doLogin() {
     const src = ctx.createBufferSource();
     src.buffer = buf; src.connect(ctx.destination); src.start(0);
     // Start siren immediately — don't wait for Firebase
-    sirenAudio = new Audio('AFL-Siren.mp3');
+    sirenAudio = new Audio('aflsiren.mp3');
     sirenAudio.volume = 0.9;
     sirenAudio.onerror = ()=> console.error('Siren load failed - check file exists:', sirenAudio.error);
     sirenAudio.play().catch(e=>{ console.error('Siren play blocked:', e.name, e.message); });
-    crowdAudio = new Audio('Crowd-Cheer.mp3');
+    crowdAudio = new Audio('crowdcheer.mp3');
     crowdAudio.volume = 0.7;
     crowdAudio.onerror = ()=> console.error('Crowd load failed - check file exists:', crowdAudio.error);
     setTimeout(()=>{ crowdAudio.play().catch(e=>{ console.error('Crowd play blocked:', e.name, e.message); }); }, 500);
@@ -1984,8 +1984,8 @@ function showNewUrlBanner() {
 // ─── LOGIN SIREN ──────────────────────────────────────────────
 function playLoginSiren() {
   try {
-    const siren = new Audio('AFL-Siren.mp3'); siren.volume = 0.9; siren.play().catch(() => {});
-    setTimeout(() => { const crowd = new Audio('Crowd-Cheer.mp3'); crowd.volume = 0.7; crowd.play().catch(() => {}); }, 500);
+    const siren = new Audio('aflsiren.mp3'); siren.volume = 0.9; siren.play().catch(() => {});
+    setTimeout(() => { const crowd = new Audio('crowdcheer.mp3'); crowd.volume = 0.7; crowd.play().catch(() => {}); }, 500);
   } catch(e) {}
 }
 
