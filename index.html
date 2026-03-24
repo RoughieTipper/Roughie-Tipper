@@ -294,7 +294,7 @@ import { getFirestore, doc, getDoc, setDoc, collection, getDocs, onSnapshot,
          updateDoc, deleteDoc, deleteField, serverTimestamp, addDoc, query, orderBy, limit, where }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
-         signOut, onAuthStateChanged, sendPasswordResetEmail }
+         signOut, onAuthStateChanged, sendPasswordResetEmail, sendEmailVerification }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -496,6 +496,16 @@ let isRegistering = false;
 // ─── AUTH ────────────────────────────────────────────────────
 onAuthStateChanged(auth, async user => {
   if (user) {
+    // Check email is verified before allowing access
+    if (!user.emailVerified) {
+      // Show verify screen if not already showing
+      if (el('verify-email-screen') && el('verify-email-screen').style.display !== 'flex') {
+        el('auth-screen').style.display = 'none';
+        el('verify-email-screen').style.display = 'flex';
+        if (el('verify-email-address')) el('verify-email-address').textContent = user.email;
+      }
+      return;
+    }
     currentUser = user;
     window._currentUser = currentUser;
     try {
@@ -555,6 +565,68 @@ onAuthStateChanged(auth, async user => {
   }
 });
 
+async function resendVerificationEmail() {
+  const btn = el('resend-verify-btn');
+  if (btn) btn.textContent = 'Sending…';
+  try {
+    const user = auth.currentUser;
+    if (user) {
+      await sendEmailVerification(user);
+      toast('Verification email resent — check your inbox 📧');
+    }
+  } catch(e) {
+    toast('Could not resend — try again in a moment', true);
+  }
+  if (btn) { btn.textContent = 'Resend Email'; }
+}
+
+async function checkEmailVerified() {
+  const btn = el('check-verified-btn');
+  if (btn) btn.textContent = 'Checking…';
+  try {
+    const user = auth.currentUser;
+    if (user) {
+      await user.reload();
+      if (user.emailVerified) {
+        el('verify-email-screen').style.display = 'none';
+        // Trigger auth state change to load app
+        toast('Email verified! Welcome to Roughie Tips 🏉');
+        playLoginSiren();
+        // Re-run auth flow
+        const snap = await getDoc(doc(db,'users',user.uid));
+        if (snap.exists()) {
+          currentUser = user;
+          window._currentUser = currentUser;
+          userProfile = snap.data();
+          window._userProfile = userProfile;
+          el('auth-screen').style.display = 'none';
+          el('app-shell').style.display = 'block';
+          el('user-display').textContent = userProfile.nick || userProfile.name;
+          updateHeaderAvatar(userProfile);
+          const isSiteAdmin = user.uid === SITE_ADMIN_UID || userProfile.isAdmin;
+          el('nav-admin').style.display = isSiteAdmin ? 'inline-flex' : 'none';
+          subscribeGlobal();
+          setTimeout(checkRoundWinnerCelebration, 3000);
+          setTimeout(showNewUrlBanner, 2000);
+          const lastComp = userProfile.lastCompId;
+          if (lastComp) { loadComp(lastComp); }
+          else if (userProfile.compIds && userProfile.compIds.length > 0) { loadComp(userProfile.compIds[0]); }
+          else { showPage('mycomps'); }
+        }
+      } else {
+        toast('Not verified yet — check your inbox and spam folder', true);
+      }
+    }
+  } catch(e) { toast('Error checking — please try again', true); }
+  if (btn) btn.textContent = "I've Verified My Email";
+}
+
+async function cancelVerification() {
+  await signOut(auth);
+  el('verify-email-screen').style.display = 'none';
+  el('auth-screen').style.display = 'flex';
+}
+
 async function doForgotPassword() {
   const email = el('login-email').value.trim();
   if (!email) { toast('Enter your email address first', true); return; }
@@ -603,6 +675,8 @@ async function doRegister() {
   isRegistering = true;
   try {
     const cred = await createUserWithEmailAndPassword(auth,email,pass);
+    // Send verification email immediately
+    try { await sendEmailVerification(cred.user); } catch(e) { console.log('Verification email error:', e); }
     let isAdmin = false;
     try { const s=await getDocs(collection(db,'users')); isAdmin=s.empty; } catch(e){}
     let written = false;
@@ -625,7 +699,12 @@ async function doRegister() {
     }
     isRegistering = false;
     if(!written) toast('Account created — please log in',true);
-    else { playLoginSiren(); toast('Welcome to Roughie Tips! 🏉'); }
+    else {
+      // Show email verification screen instead of entering app
+      el('auth-screen').style.display = 'none';
+      el('verify-email-screen').style.display = 'flex';
+      el('verify-email-address').textContent = email;
+    }
   } catch(e){
     isRegistering = false;
     if(e.code==='auth/email-already-in-use') toast('Email already registered — try logging in',true);
@@ -2314,6 +2393,7 @@ Object.assign(window,{
   dismissCelebration,checkRoundWinnerCelebration,
   renderEditTipsMatches,adminSetTip,adminClearTip,
   eoSubscribe,eoUnsubscribe,eoResubscribe,
+  resendVerificationEmail,checkEmailVerified,cancelVerification,
   showReportCard,dismissReportCard,shareReportCard
 });
 </script>
@@ -2396,6 +2476,22 @@ Object.assign(window,{
         <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--card2);border-radius:10px;"><span style="font-size:18px;flex-shrink:0;">🤑</span><div style="font-size:13px;color:var(--muted);line-height:1.65;"><span style="color:var(--text);font-weight:700;">Challenge mates to side bets</span> — a slab, bragging rights, whatever. Zero impact on standings — pure banter.</div></div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- VERIFY EMAIL SCREEN -->
+<div id="verify-email-screen" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:32px 24px;">
+  <div class="auth-box" style="text-align:center;">
+    <div style="font-size:56px;margin-bottom:16px;">📧</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;color:var(--green);margin-bottom:8px;">CHECK YOUR EMAIL</div>
+    <div style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:6px;">We've sent a verification link to:</div>
+    <div id="verify-email-address" style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:20px;word-break:break-all;"></div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:24px;background:var(--card2);border-radius:10px;padding:14px;">
+      Click the link in the email to verify your address, then come back here and tap the button below. Check your spam folder if you don't see it within a minute.
+    </div>
+    <button id="check-verified-btn" class="btn btn-full" onclick="checkEmailVerified()" style="margin-bottom:12px;">✅ I've Verified My Email</button>
+    <button id="resend-verify-btn" class="btn btn-full btn-outline" onclick="resendVerificationEmail()" style="margin-bottom:12px;">Resend Email</button>
+    <button onclick="cancelVerification()" style="background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;text-decoration:underline;font-family:'DM Sans',sans-serif;padding:4px;">Use a different email address</button>
   </div>
 </div>
 
