@@ -496,15 +496,25 @@ let isRegistering = false;
 // ─── AUTH ────────────────────────────────────────────────────
 onAuthStateChanged(auth, async user => {
   if (user) {
-    // Check email is verified before allowing access
+    // Check email is verified — but only block NEW users (no existing Firestore doc)
     if (!user.emailVerified) {
-      // Show verify screen if not already showing
-      if (el('verify-email-screen') && el('verify-email-screen').style.display !== 'flex') {
-        el('auth-screen').style.display = 'none';
-        el('verify-email-screen').style.display = 'flex';
-        if (el('verify-email-address')) el('verify-email-address').textContent = user.email;
+      // Check if they already have a user document (existing tipper)
+      try {
+        const existingSnap = await getDoc(doc(db,'users',user.uid));
+        if (existingSnap.exists()) {
+          // Existing user — let them through without verification
+        } else {
+          // New user — show verify screen
+          if (el('verify-email-screen') && el('verify-email-screen').style.display !== 'flex') {
+            el('auth-screen').style.display = 'none';
+            el('verify-email-screen').style.display = 'flex';
+            if (el('verify-email-address')) el('verify-email-address').textContent = user.email;
+          }
+          return;
+        }
+      } catch(e) {
+        // On error let them through to avoid locking people out
       }
-      return;
     }
     currentUser = user;
     window._currentUser = currentUser;
