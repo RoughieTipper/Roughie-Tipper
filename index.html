@@ -267,7 +267,7 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
   OneSignalDeferred.push(async function(OneSignal) {
     await OneSignal.init({
       appId: "cf85e22d-4ba2-41a2-979e-84dedc9f354e",
-      safari_web_id: "web.onesignal.auto.cf85e22d-4ba2-41a2-979e-84dedc9f354e",
+      safari_web_id: "web.onesignal.auto.66c7fbb6-f0f6-47ab-9f8e-1bd725d1f3d2",
       notifyButton: { enable: false },
       promptOptions: {
         slidedown: {
@@ -279,11 +279,21 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
               acceptButton: "Yes please!",
               cancelButton: "Maybe later"
             },
-            delay: { pageViews: 2, timeDelay: 10 }
+            delay: { pageViews: 1, timeDelay: 5 }
           }]
         }
       }
     });
+    // Show prompt manually after a short delay if not already subscribed
+    setTimeout(async () => {
+      try {
+        const permission = await OneSignal.getNotificationPermission();
+        const isSubscribed = await OneSignal.isPushNotificationsEnabled();
+        if (permission === 'default' && !isSubscribed) {
+          OneSignal.showSlidedownPrompt();
+        }
+      } catch(e) {}
+    }, 8000);
   });
 </script>
 <script src="badges.js"></script>
@@ -536,6 +546,7 @@ onAuthStateChanged(auth, async user => {
         el('nav-admin').style.display = isSiteAdmin ? 'inline-flex' : 'none';
         subscribeGlobal();
         setTimeout(checkRoundWinnerCelebration, 3000);
+        setTimeout(showNotifResetBanner, 5000);
         setTimeout(showNewUrlBanner, 2000);
         const storedJoin = sessionStorage.getItem('pendingJoin');
         if (storedJoin) {
@@ -617,6 +628,7 @@ async function checkEmailVerified() {
           el('nav-admin').style.display = isSiteAdmin ? 'inline-flex' : 'none';
           subscribeGlobal();
           setTimeout(checkRoundWinnerCelebration, 3000);
+        setTimeout(showNotifResetBanner, 5000);
           setTimeout(showNewUrlBanner, 2000);
           const lastComp = userProfile.lastCompId;
           if (lastComp) { loadComp(lastComp); }
@@ -1424,6 +1436,7 @@ function renderProfilePage(){
   updateProfileBadgePreview(userProfile.badgeTeam||'');
   const subBox = el('profile-email-sub');
   if (subBox) subBox.checked = userProfile.emailSubscribed !== false;
+  updateNotifStatus();
 }
 
 async function saveProfile(){
@@ -2405,6 +2418,98 @@ function shareReportCard(roundName, grade, correct, total, roundPts, rank, compT
   else { navigator.clipboard.writeText(text).then(()=>toast('Report card copied! 📋')).catch(()=>{}); }
 }
 
+
+// ─── PUSH NOTIFICATIONS ──────────────────────────────────────
+function showNotifResetBanner() {
+  const key = 'notif_reset_v2';
+  if (localStorage.getItem(key)) return;
+  // Only show if they haven't already subscribed
+  setTimeout(async () => {
+    try {
+      const isSubscribed = await OneSignal.isPushNotificationsEnabled();
+      if (isSubscribed) { localStorage.setItem(key, '1'); return; }
+    } catch(e) {}
+    const banner = document.createElement('div');
+    banner.id = 'notif-reset-banner';
+    banner.style.cssText = `position:fixed;bottom:0;left:0;right:0;z-index:9000;background:linear-gradient(135deg,rgba(0,200,83,0.97),rgba(0,180,75,0.97));padding:16px 20px;box-shadow:0 -4px 24px rgba(0,0,0,0.4);animation:slideInPage .3s ease;`;
+    banner.innerHTML = `
+      <div style="max-width:600px;margin:0 auto;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:#0a1628;letter-spacing:1px;margin-bottom:4px;">🔔 NOTIFICATIONS NEED A RESET</div>
+        <div style="font-size:13px;color:#0a1628;opacity:0.85;margin-bottom:12px;line-height:1.5;">We moved to a new domain (roughietips.com.au) so push notifications need to be set up again. Takes 2 seconds — tap below!</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button onclick="resubscribeNotifications()" style="background:#0a1628;color:#00c853;border:none;font-family:'DM Sans',sans-serif;font-weight:700;font-size:13px;padding:10px 20px;border-radius:8px;cursor:pointer;flex:1;min-width:140px;">🔔 Enable Notifications</button>
+          <button onclick="dismissNotifBanner()" style="background:rgba(0,0,0,0.15);color:#0a1628;border:none;font-family:'DM Sans',sans-serif;font-size:13px;padding:10px 16px;border-radius:8px;cursor:pointer;">Maybe later</button>
+        </div>
+      </div>`;
+    document.body.appendChild(banner);
+  }, 4000);
+}
+
+async function resubscribeNotifications() {
+  const key = 'notif_reset_v2';
+  try {
+    await OneSignal.showSlidedownPrompt({ force: true });
+    localStorage.setItem(key, '1');
+    dismissNotifBanner();
+    toast('Notifications enabled! 🔔');
+  } catch(e) {
+    toast('Could not enable — check your browser settings', true);
+  }
+}
+
+function dismissNotifBanner() {
+  localStorage.setItem('notif_reset_v2', '1');
+  const b = document.getElementById('notif-reset-banner');
+  if (b) b.remove();
+}
+
+async function enablePushNotifications() {
+  const statusEl = el('notif-status');
+  try {
+    const permission = await OneSignal.getNotificationPermission();
+    if (permission === 'denied') {
+      if (statusEl) statusEl.textContent = '⚠️ Notifications blocked — enable them in your device settings';
+      toast('Notifications are blocked — check your browser/device settings', true);
+      return;
+    }
+    const isSubscribed = await OneSignal.isPushNotificationsEnabled();
+    if (isSubscribed) {
+      if (statusEl) statusEl.innerHTML = '<span style="color:var(--green);">✓ You are already subscribed!</span>';
+      toast('Notifications already enabled ✓');
+      return;
+    }
+    await OneSignal.showSlidedownPrompt({ force: true });
+    // Check again after a short delay
+    setTimeout(async () => {
+      try {
+        const subscribed = await OneSignal.isPushNotificationsEnabled();
+        if (statusEl) statusEl.innerHTML = subscribed
+          ? '<span style="color:var(--green);">✓ Notifications enabled!</span>'
+          : '<span style="color:var(--muted);">Not enabled yet — tap Allow when prompted</span>';
+      } catch(e) {}
+    }, 3000);
+  } catch(e) {
+    toast('Could not enable notifications — try again', true);
+    console.error('Push notification error:', e);
+  }
+}
+
+async function updateNotifStatus() {
+  const statusEl = el('notif-status');
+  if (!statusEl) return;
+  try {
+    const isSubscribed = await OneSignal.isPushNotificationsEnabled();
+    const permission = await OneSignal.getNotificationPermission();
+    if (isSubscribed) {
+      statusEl.innerHTML = '<span style="color:var(--green);">✓ Notifications are enabled</span>';
+    } else if (permission === 'denied') {
+      statusEl.innerHTML = '<span style="color:var(--red);">✗ Blocked in device settings</span>';
+    } else {
+      statusEl.innerHTML = '<span style="color:var(--muted);">Not yet enabled</span>';
+    }
+  } catch(e) {}
+}
+
 Object.assign(window,{
   doLogin,doRegister,doLogout,doForgotPassword,showPage,showRound,showAdminTab,
   pickTip,saveTips,addRound,addMatch,removeMatch,removeUser,
@@ -2423,6 +2528,8 @@ Object.assign(window,{
   dismissCelebration,checkRoundWinnerCelebration,
   renderEditTipsMatches,adminSetTip,adminClearTip,
   eoSubscribe,eoUnsubscribe,eoResubscribe,
+  enablePushNotifications,updateNotifStatus,
+  resubscribeNotifications,dismissNotifBanner,showNotifResetBanner,
   resendVerificationEmail,checkEmailVerified,cancelVerification,
   showReportCard,dismissReportCard,shareReportCard
 });
@@ -2747,6 +2854,12 @@ Object.assign(window,{
           </div>
         </div>
         <button class="btn" onclick="saveProfile()" style="margin-top:8px;width:100%;">Save Profile ✓</button>
+      </div>
+      <div class="card" style="max-width:500px;margin-top:16px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:8px;">🔔 Push Notifications</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6;">Get notified when tips are about to close and when round results are in. Never miss a round again.</p>
+        <button class="btn" style="width:100%;font-size:14px;margin-bottom:10px;" onclick="enablePushNotifications()">🔔 Enable Notifications</button>
+        <div id="notif-status" style="font-size:12px;color:var(--muted);text-align:center;"></div>
       </div>
       <div class="card" style="max-width:500px;margin-top:16px;">
         <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:8px;">📅 Tips Reminder</div>
