@@ -2446,19 +2446,19 @@ Object.assign(window,{
       <button class="auth-tab active" onclick="switchAuthTab('login',this)">Log In</button>
       <button class="auth-tab" onclick="switchAuthTab('register',this)">Register</button>
     </div>
-    <div class="auth-panel active" id="auth-login">
-      <div class="form-group"><label>Email</label><input type="email" id="login-email" placeholder="you@email.com" onkeydown="if(event.key==='Enter')doLogin()"/></div>
-      <div class="form-group"><label>Password</label><input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+    <div class="auth-panel active" id="auth-login"><form onsubmit="doLogin();return false;" style="margin:0;">
+      <div class="form-group"><label>Email</label><input type="email" id="login-email" placeholder="you@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+      <div class="form-group"><label>Password</label><input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/></div>
       <button class="btn btn-full" id="login-btn" onclick="doLogin()">Log In →</button>
       <div style="text-align:center;margin-top:12px;">
         <button onclick="doForgotPassword()" style="background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;text-decoration:underline;font-family:'DM Sans',sans-serif;padding:0;">Forgot your password?</button>
       </div>
-    </div>
-    <div class="auth-panel" id="auth-register">
-      <div class="form-group"><label>Full Name *</label><input type="text" id="reg-name" placeholder="e.g. Jake Smith"/></div>
-      <div class="form-group"><label>Nickname (optional)</label><input type="text" id="reg-nick" placeholder="e.g. Jakeo"/></div>
-      <div class="form-group"><label>Email *</label><input type="email" id="reg-email" placeholder="you@email.com"/></div>
-      <div class="form-group"><label>Password *</label><input type="password" id="reg-pass" placeholder="Min 6 characters"/></div>
+    </form></div>
+    <div class="auth-panel" id="auth-register"><form onsubmit="doRegister();return false;" style="margin:0;">
+      <div class="form-group"><label>Full Name *</label><input type="text" id="reg-name" placeholder="e.g. Jake Smith" autocomplete="name"/></div>
+      <div class="form-group"><label>Nickname (optional)</label><input type="text" id="reg-nick" placeholder="e.g. Jakeo" autocomplete="nickname"/></div>
+      <div class="form-group"><label>Email *</label><input type="email" id="reg-email" placeholder="you@email.com" autocomplete="email"/></div>
+      <div class="form-group"><label>Password *</label><input type="password" id="reg-pass" placeholder="Min 6 characters" autocomplete="new-password"/></div>
       <div class="form-group">
         <label>Your Club Badge <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
         <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Pick your AFL or NFL team — shows next to your name on the leaderboard</div>
@@ -2469,7 +2469,7 @@ Object.assign(window,{
         </div>
       </div>
       <button class="btn btn-full" id="reg-btn" onclick="doRegister()">Create Account →</button>
-    </div>
+    </form></div>
   </div>
   <div style="width:100%;max-width:420px;margin-top:24px;padding-bottom:40px;">
     <div style="text-align:center;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;color:var(--muted);margin-bottom:14px;">📖 HOW IT WORKS</div>
