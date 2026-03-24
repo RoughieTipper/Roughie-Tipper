@@ -663,10 +663,12 @@ async function doLogin() {
     // Start siren immediately — don't wait for Firebase
     sirenAudio = new Audio('AFL-Siren.mp3');
     sirenAudio.volume = 0.9;
-    sirenAudio.play().catch(()=>{});
+    sirenAudio.onerror = ()=> console.error('Siren load failed - check file exists:', sirenAudio.error);
+    sirenAudio.play().catch(e=>{ console.error('Siren play blocked:', e.name, e.message); });
     crowdAudio = new Audio('Crowd-Cheer.mp3');
     crowdAudio.volume = 0.7;
-    setTimeout(()=>{ crowdAudio.play().catch(()=>{}); }, 500);
+    crowdAudio.onerror = ()=> console.error('Crowd load failed - check file exists:', crowdAudio.error);
+    setTimeout(()=>{ crowdAudio.play().catch(e=>{ console.error('Crowd play blocked:', e.name, e.message); }); }, 500);
     setTimeout(()=>ctx.close(), 3000);
   } catch(e) {}
   try {
