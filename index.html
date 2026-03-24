@@ -1981,7 +1981,11 @@ function checkRoundWinnerCelebration() {
   startConfetti();
 }
 
-function dismissCelebration() { document.getElementById('celebration-overlay').style.display = 'none'; stopConfetti(); }
+function dismissCelebration() {
+  document.getElementById('celebration-overlay').style.display = 'none';
+  stopConfetti();
+  showReportCard();
+}
 
 function startConfetti() {
   const canvas = document.getElementById('confetti-canvas'), ctx = canvas.getContext('2d');
@@ -2064,6 +2068,234 @@ function sendContactMessage() {
   if(result){result.style.display='block';result.style.color='var(--green)';result.textContent='Opening your mail app… Thanks for getting in touch! 🏉';}
 }
 
+
+// ─── ROUND REPORT CARD ───────────────────────────────────────
+function getGrade(pct) {
+  if (pct >= 1.00) return {grade:'A++', color:'#00c853'};
+  if (pct >= 0.90) return {grade:'A+',  color:'#00c853'};
+  if (pct >= 0.80) return {grade:'A',   color:'#00c853'};
+  if (pct >= 0.70) return {grade:'B+',  color:'#4CAF50'};
+  if (pct >= 0.60) return {grade:'B',   color:'#8BC34A'};
+  if (pct >= 0.50) return {grade:'C+',  color:'#FFC107'};
+  if (pct >= 0.40) return {grade:'C',   color:'#FF9800'};
+  return {grade:'D', color:'#ff3d3d'};
+}
+
+function getTeacherComment(overallGrade, moved, movedName, rank, total) {
+  const comments = {
+    'A++': ["A perfect round. Absolutely flawless. The committee is impressed.", "100% correct. We're not sure whether to be proud or suspicious.", "Perfection. Frame this report card."],
+    'A+':  ["An outstanding effort. Your rivals are nervous.", "Nearly flawless. One more like this and you're untouchable.", "Exceptional work. The leaderboard is taking notice."],
+    'A':   ["A strong round. Keep backing your instincts.", "Solid performance. The roughies are paying off.", "Very good. You clearly watch too much footy — keep it up."],
+    'B+':  ["A decent round. Room to improve but heading in the right direction.", "Not bad at all. A couple of better picks and this is an A.", "Good effort. The season is still very much alive."],
+    'B':   ["Acceptable. Could try harder.", "A middling round. The footy gods were not fully on your side.", "Some good, some not so good. Story of the season really."],
+    'C+':  ["Must try harder. Potential not being met.", "A disappointing round. We expect more from you.", "The selections this round raised some eyebrows in the staffroom."],
+    'C':   ["This is a concern. Please see the admin after class.", "Below average. We suggest watching more footy.", "A rough round. Better luck next week."],
+    'D':   ["See me after class.", "We are deeply concerned about your tipping ability.", "This round has been noted in your permanent record."]
+  };
+  const pool = comments[overallGrade] || comments['C'];
+  let comment = pool[Math.floor(Math.random() * pool.length)];
+
+  if (moved > 0 && movedName) {
+    comment += ` Moved past ${movedName} — they won't be happy about that.`;
+  } else if (moved > 1) {
+    comment += ` Jumped ${moved} spots up the table.`;
+  } else if (moved < -1) {
+    comment += ` Slipped ${Math.abs(moved)} places — time to lift.`;
+  } else if (moved === -1 && movedName) {
+    comment += ` ${movedName} snuck past you this round — watch your back.`;
+  }
+  return comment;
+}
+
+function showReportCard() {
+  if (!currentUser || !currentCompId) return;
+  const celebKey = `rc_${currentUser.uid}_`;
+  const completedRounds = rounds.filter(r => (r.matches||[]).length > 0 && (r.matches||[]).every(m => m.winner));
+  if (!completedRounds.length) return;
+  const lastRound = completedRounds[completedRounds.length - 1];
+
+  // Don't show twice for same round
+  const seenKey = `rc_seen_${currentUser.uid}_${currentCompId}_${lastRound.id}`;
+  if (localStorage.getItem(seenKey)) return;
+  localStorage.setItem(seenKey, '1');
+
+  const memberIds = Object.entries(allUsers).filter(([uid,u]) => (u.compIds||[]).includes(currentCompId)).map(([uid]) => uid);
+  const scores = calcScoresForUsers(memberIds);
+  const myScore = scores.find(s => s.uid === currentUser.uid);
+  if (!myScore) return;
+
+  const myRank = scores.findIndex(s => s.uid === currentUser.uid) + 1;
+  const total = scores.length;
+
+  // Calc previous rank (before this round)
+  const prevScores = memberIds.map(uid => {
+    const s = scores.find(x => x.uid === uid); if (!s) return null;
+    return { uid, pts: s.totalPts - (s.roundPts[lastRound.id] || 0), nick: allUsers[uid]?.nick || allUsers[uid]?.name };
+  }).filter(Boolean).sort((a,b) => b.pts - a.pts);
+  const prevRank = prevScores.findIndex(s => s.uid === currentUser.uid) + 1;
+  const moved = prevRank - myRank; // positive = moved up
+
+  // Who did we pass or who passed us?
+  let movedName = null;
+  if (moved === 1) {
+    // We passed one person — who is now just below us?
+    const justBelow = scores[myRank]; // index myRank (0-based) = rank myRank+1
+    movedName = justBelow ? (allUsers[justBelow.uid]?.nick || allUsers[justBelow.uid]?.name) : null;
+  } else if (moved === -1) {
+    // One person passed us — who is now just above?
+    const justAbove = scores[myRank - 2];
+    movedName = justAbove ? (allUsers[justAbove.uid]?.nick || allUsers[justAbove.uid]?.name) : null;
+  }
+
+  // Round stats
+  const roundMatches = lastRound.matches || [];
+  const finishedMatches = roundMatches.filter(m => m.winner);
+  const myTips = allTips[currentUser.uid] || {};
+  let correct = 0;
+  finishedMatches.forEach(m => {
+    const pick = myTips[m.id] || m.away;
+    if (m.winner === 'Draw' || pick === m.winner) correct++;
+  });
+  const accuracy = finishedMatches.length > 0 ? correct / finishedMatches.length : 0;
+  const roundPts = myScore.roundPts[lastRound.id] || 0;
+
+  // Max possible pts this round
+  const maxPossible = finishedMatches.reduce((sum, m) => {
+    return sum + Math.max(pts(m.homeOdds), pts(m.awayOdds));
+  }, 0);
+  const scorePct = maxPossible > 0 ? roundPts / maxPossible : 0;
+
+  // Roughie performance
+  const roughiePicks = finishedMatches.filter(m => {
+    const pick = myTips[m.id] || m.away;
+    const pickOdds = pick === m.home ? m.homeOdds : m.awayOdds;
+    return pickOdds >= 2.0;
+  }).length;
+  const roughieHits = finishedMatches.filter(m => {
+    const pick = myTips[m.id] || m.away;
+    const pickOdds = pick === m.home ? m.homeOdds : m.awayOdds;
+    return pickOdds >= 2.0 && pick === m.winner;
+  }).length;
+  const roughiePct = roughiePicks > 0 ? roughieHits / roughiePicks : accuracy;
+
+  // Margin
+  const myMargins = allMargins[currentUser.uid] || {};
+  const firstMatch = roundMatches[0];
+  let marginGrade = null, marginText = null;
+  if (firstMatch && firstMatch.winner && firstMatch.actualMargin) {
+    const guessedMargin = myMargins[firstMatch.id] ? parseInt(myMargins[firstMatch.id]) : 1;
+    const tippedWinner = (myTips[firstMatch.id] || firstMatch.away) === firstMatch.winner;
+    const diff = tippedWinner ? Math.abs(firstMatch.actualMargin - guessedMargin) : firstMatch.actualMargin + guessedMargin;
+    const marginPct = diff === 0 ? 1 : diff <= 3 ? 0.92 : diff <= 8 ? 0.82 : diff <= 15 ? 0.72 : diff <= 25 ? 0.62 : diff <= 40 ? 0.50 : 0.35;
+    marginGrade = getGrade(marginPct);
+    marginText = tippedWinner ? `Off by ${diff} pts` : `Wrong winner`;
+  }
+
+  // Rank grade
+  const rankPct = total > 1 ? 1 - ((myRank - 1) / (total - 1)) : 1;
+  const rankGrade = getGrade(rankPct * 0.9 + 0.05); // compress so rank 1 = A+ not A++
+
+  const accuracyGrade = getGrade(accuracy);
+  const scoreGrade = getGrade(scorePct);
+  const roughieGrade = getGrade(roughiePct);
+
+  // Overall grade — weighted average
+  const overallPct = (accuracy * 0.4) + (scorePct * 0.4) + (rankPct * 0.2);
+  const overallG = getGrade(overallPct);
+
+  const teacherComment = getTeacherComment(overallG.grade, moved, movedName, myRank, total);
+
+  const moveText = moved > 0
+    ? `<span style="color:#00c853;font-weight:700;">▲ Up ${moved} spot${moved>1?'s':''}</span>${movedName && moved===1 ? ` <span style="color:var(--muted);font-size:11px;">past ${escHtml(movedName)}</span>` : ''}`
+    : moved < 0
+    ? `<span style="color:#ff3d3d;font-weight:700;">▼ Down ${Math.abs(moved)} spot${Math.abs(moved)>1?'s':''}</span>${movedName && moved===-1 ? ` <span style="color:var(--muted);font-size:11px;">${escHtml(movedName)} passed you</span>` : ''}`
+    : `<span style="color:var(--muted);">Held position</span>`;
+
+  const rows = [
+    { subject: 'Tipping Accuracy', result: `${correct}/${finishedMatches.length} correct`, grade: accuracyGrade },
+    { subject: 'Round Score',      result: `${roundPts} pts`,                              grade: scoreGrade },
+    { subject: 'Roughie Picks',    result: roughiePicks > 0 ? `${roughieHits}/${roughiePicks} hit` : 'None backed', grade: roughieGrade },
+    { subject: 'Season Rank',      result: `#${myRank} of ${total}`,                       grade: rankGrade },
+  ];
+  if (marginGrade) rows.push({ subject: 'Margin Guess', result: marginText, grade: marginGrade });
+
+  const html = `
+  <div id="report-card-overlay" style="position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:20px;animation:slideInPage .4s ease;" onclick="dismissReportCard()">
+    <div onclick="event.stopPropagation()" style="background:#f5f0e8;border-radius:4px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.6);font-family:'DM Sans',sans-serif;overflow:hidden;position:relative;">
+
+      <!-- Red top stripe -->
+      <div style="background:#cc0000;height:8px;width:100%;"></div>
+
+      <!-- Header -->
+      <div style="padding:20px 24px 12px;border-bottom:2px solid #c8b89a;text-align:center;background:#f5f0e8;">
+        <div style="font-size:10px;letter-spacing:3px;color:#666;text-transform:uppercase;margin-bottom:4px;">Academic Report</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;color:#1a1a1a;letter-spacing:2px;">ROUGHIE TIPS</div>
+        <div style="font-size:12px;color:#444;margin-top:2px;">${escHtml(lastRound.name)} · ${new Date().getFullYear()} Season</div>
+        <div style="font-size:13px;font-weight:700;color:#1a1a1a;margin-top:6px;">${escHtml(userProfile?.nick || userProfile?.name || '')}</div>
+      </div>
+
+      <!-- Overall grade badge -->
+      <div style="background:#f5f0e8;padding:12px 24px 0;display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:1px;">Overall Grade</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:48px;color:${overallG.color};line-height:1;">${overallG.grade}</div>
+      </div>
+
+      <!-- Subject rows -->
+      <div style="padding:8px 24px 0;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="border-bottom:1px solid #c8b89a;">
+              <th style="text-align:left;font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;padding:4px 0;font-weight:600;">Subject</th>
+              <th style="text-align:center;font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;padding:4px 0;font-weight:600;">Result</th>
+              <th style="text-align:right;font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;padding:4px 0;font-weight:600;">Grade</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(r => `
+            <tr style="border-bottom:1px solid #e8e0d0;">
+              <td style="font-size:13px;color:#333;padding:8px 0;font-weight:600;">${r.subject}</td>
+              <td style="font-size:12px;color:#555;text-align:center;padding:8px 4px;">${r.result}</td>
+              <td style="text-align:right;padding:8px 0;"><span style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:${r.grade.color};">${r.grade.grade}</span></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Position movement -->
+      <div style="margin:10px 24px;padding:8px 12px;background:#ede8dc;border-radius:4px;display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:12px;color:#555;">Leaderboard</span>
+        <div style="font-size:13px;">${moveText}</div>
+      </div>
+
+      <!-- Teacher comment -->
+      <div style="margin:0 24px 16px;padding:10px 12px;background:#fff9f0;border-left:3px solid #cc0000;border-radius:0 4px 4px 0;">
+        <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Teacher's Comment</div>
+        <div style="font-size:12px;color:#333;font-style:italic;line-height:1.5;">"${teacherComment}"</div>
+      </div>
+
+      <!-- Footer -->
+      <div style="background:#ede8dc;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #c8b89a;">
+        <button onclick="dismissReportCard()" style="background:none;border:1px solid #999;color:#555;font-family:'DM Sans',sans-serif;font-size:12px;padding:6px 14px;border-radius:4px;cursor:pointer;">Dismiss</button>
+        <button onclick="shareReportCard('${escHtml(lastRound.name)}','${overallG.grade}',${correct},${finishedMatches.length},${roundPts},${myRank},${total})" style="background:#cc0000;border:none;color:#fff;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;padding:6px 16px;border-radius:4px;cursor:pointer;">📤 Share</button>
+      </div>
+
+    </div>
+  </div>`;
+
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function dismissReportCard() {
+  const el = document.getElementById('report-card-overlay');
+  if (el) el.remove();
+}
+
+function shareReportCard(roundName, grade, correct, total, roundPts, rank, compTotal) {
+  const text = `🏉 Roughie Tips — ${roundName}\n\nReport Card: ${grade}\n${correct}/${total} correct · ${roundPts} pts · #${rank} of ${compTotal}\n\nroughietips.com.au`;
+  if (navigator.share) { navigator.share({ text }).catch(()=>{}); }
+  else { navigator.clipboard.writeText(text).then(()=>toast('Report card copied! 📋')).catch(()=>{}); }
+}
+
 Object.assign(window,{
   doLogin,doRegister,doLogout,doForgotPassword,showPage,showRound,showAdminTab,
   pickTip,saveTips,addRound,addMatch,removeMatch,removeUser,
@@ -2081,7 +2313,8 @@ Object.assign(window,{
   addHonoursEntry,deleteHonoursEntry,
   dismissCelebration,checkRoundWinnerCelebration,
   renderEditTipsMatches,adminSetTip,adminClearTip,
-  eoSubscribe,eoUnsubscribe,eoResubscribe
+  eoSubscribe,eoUnsubscribe,eoResubscribe,
+  showReportCard,dismissReportCard,shareReportCard
 });
 </script>
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-LY7WXRQ24Q"></script>
@@ -2656,5 +2889,7 @@ window.addEventListener('load', () => {
   </div>
 </div>
 
+
+<!-- REPORT CARD - generated dynamically via JS -->
 </body>
 </html>
