@@ -284,13 +284,11 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
         }
       }
     });
-    // Show prompt manually after a short delay if not already subscribed
+    // Show prompt after a short delay if not already subscribed
     setTimeout(async () => {
       try {
-        const permission = await OneSignal.getNotificationPermission();
-        const isSubscribed = await OneSignal.isPushNotificationsEnabled();
-        if (permission === 'default' && !isSubscribed) {
-          OneSignal.showSlidedownPrompt();
+        if (Notification.permission === 'default') {
+          OneSignal.Slidedown.promptPush();
         }
       } catch(e) {}
     }, 8000);
@@ -2448,12 +2446,31 @@ function showNotifResetBanner() {
 async function resubscribeNotifications() {
   const key = 'notif_reset_v2';
   try {
-    await OneSignal.showSlidedownPrompt({ force: true });
+    const permission = Notification.permission;
+    if (permission === 'denied') {
+      toast('Notifications are blocked — please enable them in your browser/device settings', true);
+      dismissNotifBanner();
+      return;
+    }
+    // v16 API — request permission directly
+    await OneSignal.Notifications.requestPermission();
     localStorage.setItem(key, '1');
     dismissNotifBanner();
-    toast('Notifications enabled! 🔔');
+    const granted = Notification.permission === 'granted';
+    toast(granted ? 'Notifications enabled! 🔔' : 'Notifications not enabled — you can try again from your Profile page', granted ? false : true);
   } catch(e) {
-    toast('Could not enable — check your browser settings', true);
+    console.error('Push error:', e);
+    // Fallback to native browser permission request
+    try {
+      const result = await Notification.requestPermission();
+      if (result === 'granted') {
+        localStorage.setItem(key, '1');
+        dismissNotifBanner();
+        toast('Notifications enabled! 🔔');
+      }
+    } catch(e2) {
+      toast('Could not enable notifications — try from your Profile page', true);
+    }
   }
 }
 
@@ -2466,31 +2483,28 @@ function dismissNotifBanner() {
 async function enablePushNotifications() {
   const statusEl = el('notif-status');
   try {
-    const permission = await OneSignal.getNotificationPermission();
+    const permission = Notification.permission;
     if (permission === 'denied') {
-      if (statusEl) statusEl.textContent = '⚠️ Notifications blocked — enable them in your device settings';
+      if (statusEl) statusEl.innerHTML = '<span style="color:var(--red);">⚠️ Blocked — enable in device settings</span>';
       toast('Notifications are blocked — check your browser/device settings', true);
       return;
     }
-    const isSubscribed = await OneSignal.isPushNotificationsEnabled();
-    if (isSubscribed) {
-      if (statusEl) statusEl.innerHTML = '<span style="color:var(--green);">✓ You are already subscribed!</span>';
+    if (permission === 'granted') {
+      if (statusEl) statusEl.innerHTML = '<span style="color:var(--green);">✓ Already enabled!</span>';
       toast('Notifications already enabled ✓');
       return;
     }
-    await OneSignal.showSlidedownPrompt({ force: true });
-    // Check again after a short delay
-    setTimeout(async () => {
-      try {
-        const subscribed = await OneSignal.isPushNotificationsEnabled();
-        if (statusEl) statusEl.innerHTML = subscribed
-          ? '<span style="color:var(--green);">✓ Notifications enabled!</span>'
-          : '<span style="color:var(--muted);">Not enabled yet — tap Allow when prompted</span>';
-      } catch(e) {}
-    }, 3000);
+    // Request permission using v16 API
+    await OneSignal.Notifications.requestPermission();
+    setTimeout(() => updateNotifStatus(), 1500);
   } catch(e) {
-    toast('Could not enable notifications — try again', true);
-    console.error('Push notification error:', e);
+    // Fallback to native
+    try {
+      await Notification.requestPermission();
+      setTimeout(() => updateNotifStatus(), 1500);
+    } catch(e2) {
+      toast('Could not enable notifications', true);
+    }
   }
 }
 
@@ -2498,14 +2512,14 @@ async function updateNotifStatus() {
   const statusEl = el('notif-status');
   if (!statusEl) return;
   try {
-    const isSubscribed = await OneSignal.isPushNotificationsEnabled();
-    const permission = await OneSignal.getNotificationPermission();
-    if (isSubscribed) {
+    const permission = Notification.permission;
+    const optedIn = OneSignal?.User?.PushSubscription?.optedIn;
+    if (permission === 'granted' || optedIn) {
       statusEl.innerHTML = '<span style="color:var(--green);">✓ Notifications are enabled</span>';
     } else if (permission === 'denied') {
-      statusEl.innerHTML = '<span style="color:var(--red);">✗ Blocked in device settings</span>';
+      statusEl.innerHTML = '<span style="color:var(--red);">✗ Blocked — enable in device settings</span>';
     } else {
-      statusEl.innerHTML = '<span style="color:var(--muted);">Not yet enabled</span>';
+      statusEl.innerHTML = '<span style="color:var(--muted);">Not yet enabled — tap the button above</span>';
     }
   } catch(e) {}
 }
