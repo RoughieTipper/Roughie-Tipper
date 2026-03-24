@@ -652,19 +652,33 @@ async function doLogin() {
   const email = el('login-email').value.trim(), pass = el('login-pass').value;
   if(!email||!pass){toast('Fill in all fields',true);return;}
   el('login-btn').textContent = 'Logging in…';
-  // Pre-unlock audio on this synchronous user gesture before the async Firebase call
+  // Unlock AudioContext AND start playing immediately on the synchronous gesture
+  // so audio survives the async Firebase call + page transition
+  let sirenAudio = null, crowdAudio = null;
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const buf = ctx.createBuffer(1,1,22050);
     const src = ctx.createBufferSource();
     src.buffer = buf; src.connect(ctx.destination); src.start(0);
-    setTimeout(()=>ctx.close(), 500);
+    // Start siren immediately — don't wait for Firebase
+    sirenAudio = new Audio('AFL-Siren.mp3');
+    sirenAudio.volume = 0.9;
+    sirenAudio.play().catch(()=>{});
+    crowdAudio = new Audio('Crowd-Cheer.mp3');
+    crowdAudio.volume = 0.7;
+    setTimeout(()=>{ crowdAudio.play().catch(()=>{}); }, 500);
+    setTimeout(()=>ctx.close(), 3000);
   } catch(e) {}
   try {
     await signInWithEmailAndPassword(auth,email,pass);
-    playLoginSiren();
   }
-  catch(e){ toast('Invalid email or password',true); el('login-btn').textContent='Log In'; }
+  catch(e){
+    // Stop audio if login failed
+    try { if(sirenAudio){ sirenAudio.pause(); sirenAudio.currentTime=0; } } catch(e2){}
+    try { if(crowdAudio){ crowdAudio.pause(); crowdAudio.currentTime=0; } } catch(e2){}
+    toast('Invalid email or password',true);
+    el('login-btn').textContent='Log In';
+  }
 }
 
 async function doRegister() {
