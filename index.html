@@ -54,12 +54,16 @@ header{display:flex;flex-direction:column;background:rgba(10,22,40,.96);padding:
 .logo-center{flex-shrink:0;}
 .main-logo{width:330px;max-width:35vw;height:auto;max-height:80px;object-fit:contain;display:block;filter:drop-shadow(0 0 12px rgba(0,200,83,0.5));}
 .season-badge{display:none;}
-nav{flex:1;display:flex;gap:3px;flex-wrap:wrap;justify-content:center;}
-nav button{background:none;border:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;padding:7px 12px;border-radius:8px;cursor:pointer;transition:all var(--transition-fast);display:inline-flex;position:relative;}
-nav button::after{content:'';position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:0;height:2px;background:var(--green);border-radius:99px;transition:width var(--transition-med);}
-nav button.active,nav button:hover{background:var(--card2);color:var(--text);}
-nav button.active{color:var(--green);}
-nav button.active::after{width:60%;}
+nav{flex:1;display:flex;gap:3px;padding:3px;background:rgba(255,255,255,0.04);border-radius:9px;}
+nav button{flex:1;background:none;border:none;color:rgba(232,237,245,0.45);font-family:'DM Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.7px;text-transform:uppercase;padding:7px 4px;border-radius:7px;cursor:pointer;transition:all var(--transition-fast);white-space:nowrap;}
+nav button:hover{color:var(--text);background:rgba(255,255,255,0.06);}
+nav button.active{background:var(--green);color:var(--navy);}
+nav button.active:hover{background:var(--green2);}
+.nav-more-menu{display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:6px;min-width:160px;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,0.4);}
+.nav-more-menu.open{display:block;}
+.nav-more-menu button{display:block;width:100%;background:none;border:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;padding:9px 14px;border-radius:8px;cursor:pointer;text-align:left;transition:background var(--transition-fast);}
+.nav-more-menu button:hover{background:var(--card2);}
+.nav-more-menu button.active{color:var(--green);}
 #comp-banner{display:none;background:rgba(0,200,83,0.08);border-bottom:1px solid var(--border);padding:8px 28px;align-items:center;gap:10px;font-size:13px;}
 #comp-banner .comp-label{color:var(--muted);}
 #comp-name-display{font-weight:700;color:var(--green);}
@@ -213,7 +217,7 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
   header{padding:4px 10px 4px;}
   .main-logo{width:160px;max-width:40vw;max-height:48px;}
   .header-nav-row{gap:4px;}
-  nav button{padding:6px 8px;font-size:11px;}
+  nav button{padding:6px 3px;font-size:9px;}
   main{padding:16px 12px;}
   .stats-row{grid-template-columns:1fr 1fr;}
   .team-btn{width:100%;}
@@ -473,6 +477,11 @@ function showPage(id) {
   document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
   const pg = el('page-'+id); if(pg) pg.classList.add('active');
   const bn = el('nav-'+id); if(bn) bn.classList.add('active');
+  // Highlight MORE button if active page is in the more menu
+  const morePages = ['contact','honours','rules','admin'];
+  const moreBtn = el('nav-more-btn');
+  if (moreBtn) moreBtn.classList.toggle('active', morePages.includes(id));
+  closeMoreMenu();
   if(id==='leaderboard') { renderLeaderboard(); track('view_leaderboard'); }
   if(id==='global') renderGlobalLeaderboard();
   if(id==='tips') { renderTipsPage(); track('view_tips'); }
@@ -2649,6 +2658,7 @@ Object.assign(window,{
   enablePushNotifications,updateNotifStatus,
   resubscribeNotifications,dismissNotifBanner,showNotifResetBanner,
   resendVerificationEmail,checkEmailVerified,cancelVerification,
+  toggleMoreMenu,closeMoreMenu,
   showReportCard,dismissReportCard,shareReportCard
 });
 </script>
@@ -2768,17 +2778,21 @@ function track(event, params={}) {
       <span class="season-badge">AFL 2026</span>
     </div>
     <nav>
-      <button id="nav-leaderboard" onclick="showPage('leaderboard')">🏆 My Comp</button>
-
-      <button id="nav-tips" onclick="showPage('tips')">✏️ My Tips</button>
-      <button id="nav-rounds" onclick="showPage('rounds')">📋 Live Round</button>
-      <button id="nav-mycomps" onclick="showPage('mycomps')">🏟️ Comps</button>
-      <button id="nav-global" onclick="showPage('global')">📊 Overall</button>
-      <button id="nav-profile" onclick="showPage('profile')">👤 Profile</button>
-      <button id="nav-contact" onclick="showPage('contact')">✉️ Contact</button>
-      <button id="nav-honours" onclick="showPage('honours')">🏅 Honours</button>
-      <button id="nav-rules" onclick="showPage('rules')">📖 Rules</button>
-      <button id="nav-admin" onclick="showPage('admin')" style="display:none;">⚙️ Admin</button>
+      <button id="nav-leaderboard" onclick="showPage('leaderboard')">LADDER</button>
+      <button id="nav-tips" onclick="showPage('tips')">MY TIPS</button>
+      <button id="nav-rounds" onclick="showPage('rounds')">RESULTS</button>
+      <button id="nav-mycomps" onclick="showPage('mycomps')">COMPS</button>
+      <button id="nav-global" onclick="showPage('global')">OVERALL</button>
+      <button id="nav-profile" onclick="showPage('profile')">PROFILE</button>
+      <div style="position:relative;flex:1;display:flex;">
+        <button id="nav-more-btn" onclick="toggleMoreMenu()" style="width:100%;">MORE</button>
+        <div class="nav-more-menu" id="nav-more-menu">
+          <button id="nav-contact" onclick="showPage('contact');closeMoreMenu()">CONTACT</button>
+          <button id="nav-honours" onclick="showPage('honours');closeMoreMenu()">HONOURS</button>
+          <button id="nav-rules" onclick="showPage('rules');closeMoreMenu()">RULES</button>
+          <button id="nav-admin" onclick="showPage('admin');closeMoreMenu()" style="display:none;">ADMIN</button>
+        </div>
+      </div>
     </nav>
   </header>
 
@@ -3186,6 +3200,27 @@ function track(event, params={}) {
 </div>
 
 <script>
+function toggleMoreMenu() {
+  const menu = document.getElementById('nav-more-menu');
+  const btn = document.getElementById('nav-more-btn');
+  if (!menu) return;
+  menu.classList.toggle('open');
+  btn.classList.toggle('active', menu.classList.contains('open'));
+}
+function closeMoreMenu() {
+  const menu = document.getElementById('nav-more-menu');
+  const btn = document.getElementById('nav-more-btn');
+  if (menu) menu.classList.remove('open');
+  if (btn) btn.classList.remove('active');
+}
+// Close more menu when clicking outside
+document.addEventListener('click', function(e) {
+  const menu = document.getElementById('nav-more-menu');
+  const btn = document.getElementById('nav-more-btn');
+  if (menu && menu.classList.contains('open') && !menu.contains(e.target) && e.target !== btn) {
+    closeMoreMenu();
+  }
+});
 function switchAuthTab(tab,btn){
   document.querySelectorAll('.auth-tab').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.auth-panel').forEach(p=>p.classList.remove('active'));
