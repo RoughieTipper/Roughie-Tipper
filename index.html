@@ -2421,11 +2421,10 @@ function shareReportCard(roundName, grade, correct, total, roundPts, rank, compT
 function showNotifResetBanner() {
   const key = 'notif_reset_v3';
   if (localStorage.getItem(key)) return;
-  // Only show if they haven't already subscribed
+  // Only show if not already granted
   setTimeout(async () => {
     try {
-      const isSubscribed = await OneSignal.isPushNotificationsEnabled();
-      if (isSubscribed) { localStorage.setItem(key, '1'); return; }
+      if (Notification.permission === 'granted') { localStorage.setItem(key, '1'); return; }
     } catch(e) {}
     const banner = document.createElement('div');
     banner.id = 'notif-reset-banner';
