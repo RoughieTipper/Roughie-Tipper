@@ -2419,7 +2419,7 @@ function shareReportCard(roundName, grade, correct, total, roundPts, rank, compT
 
 // ─── PUSH NOTIFICATIONS ──────────────────────────────────────
 function showNotifResetBanner() {
-  const key = 'notif_reset_v2';
+  const key = 'notif_reset_v3';
   if (localStorage.getItem(key)) return;
   // Only show if they haven't already subscribed
   setTimeout(async () => {
@@ -2444,7 +2444,7 @@ function showNotifResetBanner() {
 }
 
 async function resubscribeNotifications() {
-  const key = 'notif_reset_v2';
+  const key = 'notif_reset_v3';
   toast('Checking notifications support...', false);
   try {
     // Check if Notification API exists
@@ -2481,18 +2481,23 @@ async function resubscribeNotifications() {
 }
 
 function dismissNotifBanner() {
-  localStorage.setItem('notif_reset_v2', '1');
+  localStorage.setItem('notif_reset_v3', '1');
   const b = document.getElementById('notif-reset-banner');
   if (b) b.remove();
 }
 
 async function enablePushNotifications() {
   const statusEl = el('notif-status');
+  toast('Checking notifications support...', false);
   try {
+    if (typeof Notification === 'undefined') {
+      toast('Notifications not supported on this device/browser', true); return;
+    }
     const permission = Notification.permission;
+    toast('Permission status: ' + permission, false);
     if (permission === 'denied') {
-      if (statusEl) statusEl.innerHTML = '<span style="color:var(--red);">⚠️ Blocked — enable in device settings</span>';
-      toast('Notifications are blocked — check your browser/device settings', true);
+      if (statusEl) statusEl.innerHTML = '<span style="color:var(--red);">⚠️ Blocked — enable in Settings</span>';
+      toast('Blocked — go to Settings > Apps > roughietips.com.au > Notifications', true);
       return;
     }
     if (permission === 'granted') {
@@ -2500,17 +2505,22 @@ async function enablePushNotifications() {
       toast('Notifications already enabled ✓');
       return;
     }
-    // Request permission using v16 API
-    await OneSignal.Notifications.requestPermission();
-    setTimeout(() => updateNotifStatus(), 1500);
-  } catch(e) {
-    // Fallback to native
-    try {
-      await Notification.requestPermission();
-      setTimeout(() => updateNotifStatus(), 1500);
-    } catch(e2) {
-      toast('Could not enable notifications', true);
+    if (typeof OneSignal === 'undefined') {
+      toast('OneSignal not loaded — try refreshing', true); return;
     }
+    toast('Requesting permission...', false);
+    if (OneSignal.Notifications && OneSignal.Notifications.requestPermission) {
+      await OneSignal.Notifications.requestPermission();
+    } else if (OneSignal.registerForPushNotifications) {
+      await OneSignal.registerForPushNotifications();
+    } else {
+      await Notification.requestPermission();
+    }
+    setTimeout(() => updateNotifStatus(), 1500);
+    const granted = Notification.permission === 'granted';
+    toast(granted ? 'Notifications enabled! 🔔' : 'Not enabled — tap Allow if prompted', granted ? false : true);
+  } catch(e) {
+    toast('Error: ' + e.message, true);
   }
 }
 
