@@ -2460,19 +2460,31 @@ async function enablePushNotifications() {
       toast('Push notifications not supported on this browser', true); return;
     }
     if (Notification.permission === 'granted') {
-      toast('Notifications already enabled \u2713');
-      if (statusEl) statusEl.innerHTML = '<span style="color:var(--green);">\u2713 Already enabled!</span>';
+      toast('Notifications already enabled!');
+      if (statusEl) statusEl.innerHTML = '<span style="color:var(--green);">Notifications enabled</span>';
       return;
     }
     if (Notification.permission === 'denied') {
-      toast('Notifications blocked — go to device Settings to enable', true);
+      toast('Notifications blocked - go to device Settings to enable', true);
       if (statusEl) statusEl.innerHTML = '<span style="color:var(--red);">Blocked in settings</span>';
       return;
     }
     toast('Requesting permission...', false);
     const result = await Notification.requestPermission();
-    toast('Result: ' + result, result !== 'granted');
-    if (statusEl) updateNotifStatus();
+    if (result === 'granted') {
+      // Also register with OneSignal so it shows in your dashboard
+      try {
+        if (window.OneSignalDeferred) {
+          window.OneSignalDeferred.push(async function(OS) {
+            try { await OS.Notifications.requestPermission(); } catch(e) {}
+          });
+        }
+      } catch(e) {}
+      toast('Notifications enabled!');
+      if (statusEl) statusEl.innerHTML = '<span style="color:var(--green);">Notifications enabled</span>';
+    } else {
+      toast('Notifications not enabled', true);
+    }
   } catch(e) {
     toast('Error: ' + e.message, true);
   }
