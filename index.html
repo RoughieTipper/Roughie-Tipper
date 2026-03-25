@@ -1523,7 +1523,9 @@ async function addRound(){
 function populateAdminRoundSelects(){
   ['admin-match-round','admin-view-round','admin-results-round'].forEach(id=>{
     const e=el(id); if(!e) return;
+    const current=e.value;
     e.innerHTML=rounds.map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
+    if(current && rounds.find(r=>r.id===current)) e.value=current;
   });
 }
 async function addMatch(){
@@ -1546,7 +1548,8 @@ async function addMatch(){
   toast('Match added!');
 }
 function renderAdminMatchesList(){
-  const roundId=el('admin-view-round')?.value, round=rounds.find(r=>r.id===roundId);
+  const saved=el('admin-view-round')?.value;
+  const roundId=saved||el('admin-view-round')?.value, round=rounds.find(r=>r.id===roundId);
   const container=el('admin-matches-list'); if(!container) return;
   if(!round||!(round.matches||[]).length){container.innerHTML='<div style="color:var(--muted);padding:10px 0;">No matches yet.</div>';return;}
   container.innerHTML=round.matches.map(m=>`
@@ -1596,8 +1599,18 @@ async function saveMatchEdit(roundId, matchId) {
   const time = el('edit-time-'+matchId)?.value||'19:30';
   const venue = el('edit-venue-'+matchId)?.value.trim()||'';
   if(isNaN(homeOdds)||isNaN(awayOdds)){toast('Please enter valid odds',true);return;}
+  // Save selected round before update triggers re-render
+  const viewRound = el('admin-view-round');
+  const savedViewRound = viewRound?.value;
   const matches = round.matches.map(m=>m.id===matchId?{...m,homeOdds,awayOdds,date,time,venue}:m);
   await updateDoc(doc(db,'rounds',roundId),{matches});
+  // Restore dropdown selection after re-render
+  setTimeout(()=>{
+    if(savedViewRound && el('admin-view-round')) {
+      el('admin-view-round').value = savedViewRound;
+      renderAdminMatchesList();
+    }
+  }, 300);
   toast('Match updated! ✓');
 }
 async function removeMatch(roundId,matchId){
@@ -1636,6 +1649,7 @@ function renderAdminResults(){
 async function saveResult(roundId,matchId,isMarginGame=false){
   const winner=el('result-'+matchId)?.value||null;
   const round=rounds.find(r=>r.id===roundId); if(!round) return;
+  const savedResultsRound = el('admin-results-round')?.value;
   const matches = (round.matches||[]).map(m=>{
     if(m.id!==matchId) return m;
     const updated = {...m,winner};
@@ -1643,6 +1657,12 @@ async function saveResult(roundId,matchId,isMarginGame=false){
     return updated;
   });
   await updateDoc(doc(db,'rounds',roundId),{matches});
+  setTimeout(()=>{
+    if(savedResultsRound && el('admin-results-round')) {
+      el('admin-results-round').value = savedResultsRound;
+      renderAdminResults();
+    }
+  }, 300);
   toast(winner==='Draw'?'Result saved: Draw! 🤝 Everyone gets 1pt':winner?`Result saved: ${winner} wins! 🎉`:'Result cleared');
 }
 
