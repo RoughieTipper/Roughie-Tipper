@@ -2468,17 +2468,8 @@ async function enablePushNotifications() {
       const result = await Notification.requestPermission();
       if (result !== 'granted') { toast('Notifications not enabled', true); return; }
     }
-    // Log what's available on OneSignal object
-    if (typeof OneSignal !== 'undefined') {
-      const keys = Object.keys(OneSignal).join(', ');
-      toast('OneSignal keys: ' + keys.substring(0, 80));
-      console.log('OneSignal object:', OneSignal);
-      console.log('OneSignal.User:', OneSignal.User);
-      console.log('OneSignal.Notifications:', OneSignal.Notifications);
-    } else {
-      toast('OneSignal is undefined!', true);
-    }
-    if (statusEl) statusEl.innerHTML = '<span style="color:var(--green);">Permission granted</span>';
+    toast('Notifications enabled!');
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--green);">Notifications enabled</span>';
   } catch(e) {
     toast('Error: ' + e.message, true);
   }
