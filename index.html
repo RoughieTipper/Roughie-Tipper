@@ -2445,32 +2445,38 @@ function showNotifResetBanner() {
 
 async function resubscribeNotifications() {
   const key = 'notif_reset_v2';
+  toast('Checking notifications support...', false);
   try {
-    const permission = Notification.permission;
-    if (permission === 'denied') {
-      toast('Notifications are blocked — please enable them in your browser/device settings', true);
-      dismissNotifBanner();
-      return;
+    // Check if Notification API exists
+    if (typeof Notification === 'undefined') {
+      toast('Notifications not supported on this device/browser', true); return;
     }
-    // v16 API — request permission directly
-    await OneSignal.Notifications.requestPermission();
+    const permission = Notification.permission;
+    toast('Permission status: ' + permission, false);
+    if (permission === 'denied') {
+      toast('Blocked — enable in Settings > Safari > roughietips.com.au', true);
+      dismissNotifBanner(); return;
+    }
+    // Check OneSignal is loaded
+    if (typeof OneSignal === 'undefined') {
+      toast('OneSignal not loaded — try refreshing', true); return;
+    }
+    toast('Requesting permission...', false);
+    if (OneSignal.Notifications && OneSignal.Notifications.requestPermission) {
+      await OneSignal.Notifications.requestPermission();
+    } else if (OneSignal.registerForPushNotifications) {
+      await OneSignal.registerForPushNotifications();
+    } else {
+      const result = await Notification.requestPermission();
+      toast('Native result: ' + result, result === 'granted' ? false : true);
+    }
+    const granted = Notification.permission === 'granted';
     localStorage.setItem(key, '1');
     dismissNotifBanner();
-    const granted = Notification.permission === 'granted';
-    toast(granted ? 'Notifications enabled! 🔔' : 'Notifications not enabled — you can try again from your Profile page', granted ? false : true);
+    toast(granted ? 'Notifications enabled! 🔔' : 'Not enabled yet', granted ? false : true);
   } catch(e) {
+    toast('Error: ' + e.message, true);
     console.error('Push error:', e);
-    // Fallback to native browser permission request
-    try {
-      const result = await Notification.requestPermission();
-      if (result === 'granted') {
-        localStorage.setItem(key, '1');
-        dismissNotifBanner();
-        toast('Notifications enabled! 🔔');
-      }
-    } catch(e2) {
-      toast('Could not enable notifications — try from your Profile page', true);
-    }
   }
 }
 
