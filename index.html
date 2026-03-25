@@ -2460,16 +2460,27 @@ async function enablePushNotifications() {
       toast('Push notifications not supported on this browser', true); return;
     }
     if (Notification.permission === 'denied') {
-      toast('Notifications blocked - go to device Settings to enable', true);
-      if (statusEl) statusEl.innerHTML = '<span style="color:var(--red);">Blocked in settings</span>';
+      toast('Notifications blocked — enable in your browser settings', true);
+      if (statusEl) statusEl.innerHTML = '<span style="color:var(--red);">Blocked — enable in browser settings</span>';
       return;
     }
-    if (Notification.permission !== 'granted') {
-      const result = await Notification.requestPermission();
-      if (result !== 'granted') { toast('Notifications not enabled', true); return; }
+    if (Notification.permission === 'granted') {
+      toast('Notifications already enabled!');
+      if (statusEl) statusEl.innerHTML = '<span style="color:var(--green);">Notifications enabled</span>';
+      return;
     }
-    toast('Notifications enabled!');
-    if (statusEl) statusEl.innerHTML = '<span style="color:var(--green);">Notifications enabled</span>';
+    // permission is 'default' — request it
+    const result = await Notification.requestPermission();
+    if (result === 'granted') {
+      toast('Notifications enabled!');
+      if (statusEl) statusEl.innerHTML = '<span style="color:var(--green);">Notifications enabled</span>';
+    } else if (result === 'denied') {
+      toast('Notifications blocked — enable in your browser settings', true);
+      if (statusEl) statusEl.innerHTML = '<span style="color:var(--red);">Blocked — enable in browser settings</span>';
+    } else {
+      toast('Notifications not enabled — please tap Allow when prompted', true);
+      if (statusEl) statusEl.innerHTML = '<span style="color:var(--muted);">Not enabled yet</span>';
+    }
   } catch(e) {
     toast('Error: ' + e.message, true);
   }
