@@ -2443,40 +2443,8 @@ function showNotifResetBanner() {
 }
 
 async function resubscribeNotifications() {
-  const key = 'notif_reset_v3';
-  toast('Checking notifications support...', false);
-  try {
-    // Check if Notification API exists
-    if (typeof Notification === 'undefined') {
-      toast('Notifications not supported on this device/browser', true); return;
-    }
-    const permission = Notification.permission;
-    toast('Permission status: ' + permission, false);
-    if (permission === 'denied') {
-      toast('Blocked — enable in Settings > Safari > roughietips.com.au', true);
-      dismissNotifBanner(); return;
-    }
-    // Check OneSignal is loaded
-    if (typeof OneSignal === 'undefined') {
-      toast('OneSignal not loaded — try refreshing', true); return;
-    }
-    toast('Requesting permission...', false);
-    if (OneSignal.Notifications && OneSignal.Notifications.requestPermission) {
-      await OneSignal.Notifications.requestPermission();
-    } else if (OneSignal.registerForPushNotifications) {
-      await OneSignal.registerForPushNotifications();
-    } else {
-      const result = await Notification.requestPermission();
-      toast('Native result: ' + result, result === 'granted' ? false : true);
-    }
-    const granted = Notification.permission === 'granted';
-    localStorage.setItem(key, '1');
-    dismissNotifBanner();
-    toast(granted ? 'Notifications enabled! 🔔' : 'Not enabled yet', granted ? false : true);
-  } catch(e) {
-    toast('Error: ' + e.message, true);
-    console.error('Push error:', e);
-  }
+  dismissNotifBanner();
+  window.enablePushNotifications();
 }
 
 function dismissNotifBanner() {
@@ -2487,37 +2455,24 @@ function dismissNotifBanner() {
 
 async function enablePushNotifications() {
   const statusEl = el('notif-status');
-  toast('Checking notifications support...', false);
   try {
     if (typeof Notification === 'undefined') {
-      toast('Notifications not supported on this device/browser', true); return;
+      toast('Push notifications not supported on this browser', true); return;
     }
-    const permission = Notification.permission;
-    toast('Permission status: ' + permission, false);
-    if (permission === 'denied') {
-      if (statusEl) statusEl.innerHTML = '<span style="color:var(--red);">⚠️ Blocked — enable in Settings</span>';
-      toast('Blocked — go to Settings > Apps > roughietips.com.au > Notifications', true);
+    if (Notification.permission === 'granted') {
+      toast('Notifications already enabled \u2713');
+      if (statusEl) statusEl.innerHTML = '<span style="color:var(--green);">\u2713 Already enabled!</span>';
       return;
     }
-    if (permission === 'granted') {
-      if (statusEl) statusEl.innerHTML = '<span style="color:var(--green);">✓ Already enabled!</span>';
-      toast('Notifications already enabled ✓');
+    if (Notification.permission === 'denied') {
+      toast('Notifications blocked — go to device Settings to enable', true);
+      if (statusEl) statusEl.innerHTML = '<span style="color:var(--red);">Blocked in settings</span>';
       return;
-    }
-    if (typeof OneSignal === 'undefined') {
-      toast('OneSignal not loaded — try refreshing', true); return;
     }
     toast('Requesting permission...', false);
-    if (OneSignal.Notifications && OneSignal.Notifications.requestPermission) {
-      await OneSignal.Notifications.requestPermission();
-    } else if (OneSignal.registerForPushNotifications) {
-      await OneSignal.registerForPushNotifications();
-    } else {
-      await Notification.requestPermission();
-    }
-    setTimeout(() => updateNotifStatus(), 1500);
-    const granted = Notification.permission === 'granted';
-    toast(granted ? 'Notifications enabled! 🔔' : 'Not enabled — tap Allow if prompted', granted ? false : true);
+    const result = await Notification.requestPermission();
+    toast('Result: ' + result, result !== 'granted');
+    if (statusEl) updateNotifStatus();
   } catch(e) {
     toast('Error: ' + e.message, true);
   }
