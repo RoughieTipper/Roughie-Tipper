@@ -2464,25 +2464,21 @@ async function enablePushNotifications() {
       if (statusEl) statusEl.innerHTML = '<span style="color:var(--red);">Blocked in settings</span>';
       return;
     }
-    toast('Setting up notifications...', false);
     if (Notification.permission !== 'granted') {
       const result = await Notification.requestPermission();
       if (result !== 'granted') { toast('Notifications not enabled', true); return; }
     }
-    // Try to opt in via OneSignal User PushSubscription directly
-    // This is the correct v16 way without triggering a prompt
-    try {
-      if (typeof OneSignal !== 'undefined' && OneSignal.User && OneSignal.User.PushSubscription) {
-        await OneSignal.User.PushSubscription.optIn();
-        toast('Notifications enabled! Check OneSignal dashboard.');
-      } else {
-        toast('Notifications enabled!');
-      }
-    } catch(e) {
-      console.log('OneSignal optIn error:', e.message);
-      toast('Notifications enabled! (' + e.message + ')');
+    // Log what's available on OneSignal object
+    if (typeof OneSignal !== 'undefined') {
+      const keys = Object.keys(OneSignal).join(', ');
+      toast('OneSignal keys: ' + keys.substring(0, 80));
+      console.log('OneSignal object:', OneSignal);
+      console.log('OneSignal.User:', OneSignal.User);
+      console.log('OneSignal.Notifications:', OneSignal.Notifications);
+    } else {
+      toast('OneSignal is undefined!', true);
     }
-    if (statusEl) statusEl.innerHTML = '<span style="color:var(--green);">Notifications enabled</span>';
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--green);">Permission granted</span>';
   } catch(e) {
     toast('Error: ' + e.message, true);
   }
