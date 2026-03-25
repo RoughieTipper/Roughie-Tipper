@@ -473,10 +473,10 @@ function showPage(id) {
   document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
   const pg = el('page-'+id); if(pg) pg.classList.add('active');
   const bn = el('nav-'+id); if(bn) bn.classList.add('active');
-  if(id==='leaderboard') renderLeaderboard();
+  if(id==='leaderboard') { renderLeaderboard(); track('view_leaderboard'); }
   if(id==='global') renderGlobalLeaderboard();
-  if(id==='tips') renderTipsPage();
-  if(id==='rounds') renderRoundsPage();
+  if(id==='tips') { renderTipsPage(); track('view_tips'); }
+  if(id==='rounds') { renderRoundsPage(); track('view_rounds'); }
   if(id==='admin') renderAdmin();
   if(id==='profile') { renderProfilePage(); }
   if(id==='mycomps') renderMyComps();
@@ -688,10 +688,12 @@ async function doLogin() {
   // Now do Firebase login
   try {
     await signInWithEmailAndPassword(auth, email, pass);
+    track('login', { method: 'email' });
     // Both audio elements are now unlocked — play them for real
     sirenAudio.play().catch(() => {});
     setTimeout(() => { crowdAudio.play().catch(() => {}); }, 500);
   } catch(e) {
+    track('login_failed');
     toast('Invalid email or password', true);
     el('login-btn').textContent = 'Log In';
   }
@@ -740,6 +742,7 @@ async function doRegister() {
     isRegistering = false;
     if(!written) toast('Account created — please log in',true);
     else {
+      track('sign_up', { method: 'email' });
       // Show email verification screen instead of entering app
       el('auth-screen').style.display = 'none';
       el('verify-email-screen').style.display = 'flex';
@@ -908,6 +911,7 @@ async function joinComp(compId) {
   if (!compIds.includes(compId)) compIds.push(compId);
   await updateDoc(doc(db,'users',currentUser.uid),{compIds});
   userProfile.compIds = compIds;
+  track('join_comp', { comp_id: compId });
   toast('Joined '+comp.name+'! 🏉');
   await loadComp(compId);
 }
@@ -924,6 +928,7 @@ async function createComp() {
     await updateDoc(doc(db,'users',currentUser.uid),{compIds, lastCompId:compId});
     userProfile.compIds = compIds;
     el('new-comp-name').value=''; el('new-comp-code').value='';
+    track('create_comp');
     toast('Competition created! 🏉');
     await loadComp(compId);
   } catch(e){ toast('Error: '+e.message,true); }
@@ -1332,6 +1337,7 @@ async function saveTips(){
   pendingTips={};
   el('save-tips-btn').style.display='none';
   el('save-tips-btn').textContent='💾 Save My Tips';
+  track('tips_saved', { round_id: el('tip-round-select')?.value });
   toast('Tips saved! 🏉');
 }
 
@@ -1479,6 +1485,7 @@ function showAdminTab(tab,btn){
   if(tab==='results'){populateAdminRoundSelects();renderAdminResults();}
   if(tab==='settings') renderAdminSettings();
   if(tab==='comps') renderAdminComps();
+  if(tab==='activity') renderAdminActivity();
 }
 function renderAdminUsers(){
   el('admin-users-list').innerHTML=Object.entries(allUsers).map(([uid,u])=>`
@@ -1668,6 +1675,7 @@ async function saveResult(roundId,matchId,isMarginGame=false){
 
 function shareRoundResult() {
   if (!currentCompId || !currentUser) return;
+  track('share_result');
   const completedRounds = rounds.filter(r=>(r.matches||[]).length>0&&(r.matches||[]).every(m=>m.winner));
   if (!completedRounds.length) { toast('No completed rounds yet!', true); return; }
   const latestRound = completedRounds[completedRounds.length-1];
@@ -1700,6 +1708,7 @@ function ordinal(n) { const s=['th','st','nd','rd'], v=n%100; return n+(s[(v-20)
 
 function copyInviteLink() {
   if (!currentComp) return;
+  track('share_invite');
   const compName = currentComp.name || 'our AFL tipping comp';
   const code = currentComp.joinCode || '';
   const siteUrl = 'https://roughietips.com.au';
@@ -1762,6 +1771,97 @@ async function removeRound(roundId){
   await deleteDoc(doc(db,'rounds',roundId));
   toast('Round deleted');
 }
+function renderAdminActivity() {
+  const container = el('activity-content');
+  if (!container) return;
+
+  // Find the current open round (has matches, not all locked)
+  const openRound = rounds.find(r => (r.matches||[]).length > 0 && (r.matches||[]).some(m => !isLocked(m.date, m.time)));
+  const nextRound = rounds.find(r => (r.matches||[]).length > 0 && !(r.matches||[]).every(m => m.winner));
+  const activeRound = openRound || nextRound;
+
+  if (!activeRound) {
+    container.innerHTML = '<div style="color:var(--muted);padding:20px 0;text-align:center;">No open rounds right now</div>';
+    return;
+  }
+
+  const allUids = Object.keys(allUsers);
+  const firstMatch = (activeRound.matches||[])[0];
+  const roundLocked = firstMatch && isLocked(firstMatch.date, firstMatch.time);
+
+  // Count tips per user for this round
+  const tipped = [], notTipped = [];
+  allUids.forEach(uid => {
+    const u = allUsers[uid]; if (!u) return;
+    const myTips = allTips[uid] || {};
+    const roundMatches = activeRound.matches || [];
+    const tippedCount = roundMatches.filter(m => myTips[m.id]).length;
+    const total = roundMatches.length;
+    const hasTipped = tippedCount > 0;
+    const entry = { uid, name: u.nick || u.name, fullName: u.name, tippedCount, total, avatar: renderUserAvatar(u, 28) };
+    if (hasTipped) tipped.push(entry);
+    else notTipped.push(entry);
+  });
+
+  // Sort tipped by most complete first
+  tipped.sort((a,b) => b.tippedCount - a.tippedCount);
+  notTipped.sort((a,b) => (a.name||'').localeCompare(b.name||''));
+
+  const pct = Math.round(tipped.length / allUids.length * 100);
+
+  container.innerHTML = `
+    <div style="margin-bottom:20px;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--green);letter-spacing:1px;margin-bottom:4px;">
+        ${activeRound.name} ${roundLocked ? '🔒' : ''}
+      </div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:16px;">
+        ${roundLocked ? 'Tips are locked' : 'Tips are open'} · ${firstMatch ? 'First game: ' + formatMatchDate(firstMatch.date) + (firstMatch.time ? ' @ ' + to12hr(firstMatch.time) : '') : ''}
+      </div>
+
+      <!-- Progress bar -->
+      <div style="background:var(--card2);border-radius:99px;height:12px;margin-bottom:8px;overflow:hidden;">
+        <div style="background:var(--green);height:100%;border-radius:99px;width:${pct}%;transition:width .5s;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:20px;">
+        <span style="color:var(--green);font-weight:700;">${tipped.length} tipped in (${pct}%)</span>
+        <span style="color:var(--muted);">${notTipped.length} yet to tip</span>
+      </div>
+
+      <!-- Tipped in -->
+      <div style="margin-bottom:20px;">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--green);margin-bottom:10px;">✓ Tipped In</div>
+        ${tipped.length === 0 ? '<div style="color:var(--muted);font-size:13px;">Nobody yet</div>' :
+          tipped.map(u => `
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+            ${u.avatar}
+            <div style="flex:1;">
+              <span style="font-weight:600;font-size:14px;">${escHtml(u.name)}</span>
+              ${u.name !== u.fullName ? `<span style="color:var(--muted);font-size:12px;"> · ${escHtml(u.fullName)}</span>` : ''}
+            </div>
+            <span style="font-size:12px;color:var(--green);font-weight:700;">${u.tippedCount}/${u.total} games</span>
+          </div>`).join('')}
+      </div>
+
+      <!-- Not tipped -->
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;">⏳ Yet to Tip</div>
+        ${notTipped.length === 0 ? '<div style="color:var(--green);font-size:13px;font-weight:600;">Everyone has tipped! 🎉</div>' :
+          notTipped.map(u => `
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+            ${u.avatar}
+            <div style="flex:1;">
+              <span style="font-weight:600;font-size:14px;">${escHtml(u.name)}</span>
+              ${u.name !== u.fullName ? `<span style="color:var(--muted);font-size:12px;"> · ${escHtml(u.fullName)}</span>` : ''}
+            </div>
+            <span style="font-size:12px;color:var(--muted);">0/${u.total} games</span>
+          </div>`).join('')}
+      </div>
+
+      <button class="btn btn-outline" style="margin-top:16px;font-size:13px;" onclick="renderAdminActivity()">↻ Refresh</button>
+    </div>
+  `;
+}
+
 function renderAdminSettings(){
   getDoc(doc(db,'config','joinCode')).then(snap=>{ el('current-join-code').textContent=snap.exists()?snap.data().code:'HUNTERSTIPPING2026'; });
 }
@@ -1832,6 +1932,7 @@ async function sendChat(){
   if(!text||!currentUser) return;
   if(text.length>280){toast('Max 280 characters',true);return;}
   input.value=''; input.style.height='auto';
+  track('chat_message_sent');
   const chatCol = currentCompId ? 'chats/'+currentCompId+'/messages' : 'chat';
   await addDoc(collection(db, ...chatCol.split('/')),{ uid:currentUser.uid, displayName:userProfile?.nick||userProfile?.name||'', text, ts:serverTimestamp() });
 }
@@ -1868,12 +1969,14 @@ async function proposeBet() {
   const targetUser = allUsers[targetUid];
   await addDoc(collection(db,'comps',currentCompId,'sidebets'),{ fromUid: currentUser.uid, fromName: userProfile.nick||userProfile.name, toUid: targetUid, toName: targetUser.nick||targetUser.name, text, stake, status: 'open', createdAt: serverTimestamp() });
   el('bet-text').value=''; el('bet-stake').value=''; el('bet-target').value='';
+  track('side_bet_proposed');
   toast('Challenge sent! 🤑');
 }
 
 async function acceptBet(betId) {
   const responderName = userProfile?.nick || userProfile?.name || 'They';
   await updateDoc(doc(db,'comps',currentCompId,'sidebets',betId),{ status: 'accepted', responseNotify: 'accepted', responderName, respondedAt: serverTimestamp() });
+  track('side_bet_accepted');
   toast('Bet accepted! Honour system from here 🤝');
 }
 
@@ -1974,7 +2077,7 @@ async function triggerInstall() {
   if (!deferredInstallPrompt) return;
   deferredInstallPrompt.prompt();
   const { outcome } = await deferredInstallPrompt.userChoice;
-  if (outcome === 'accepted') hideInstallBanner();
+  if (outcome === 'accepted') { hideInstallBanner(); track('pwa_install'); }
   deferredInstallPrompt = null;
 }
 function isIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream; }
@@ -2002,6 +2105,7 @@ function downloadCalendarReminder() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href = url; a.download = 'roughie-tips-reminder.ics'; a.click();
   URL.revokeObjectURL(url);
+  track('calendar_reminder_downloaded');
   toast('Calendar reminder downloaded! Open the file to add it 📅');
 }
 
@@ -2431,6 +2535,7 @@ function dismissReportCard() {
 }
 
 function shareReportCard(roundName, grade, correct, total, roundPts, rank, compTotal) {
+  track('share_report_card', { grade, rank, total });
   const text = `🏉 Roughie Tips — ${roundName}\n\nReport Card: ${grade}\n${correct}/${total} correct · ${roundPts} pts · #${rank} of ${compTotal}\n\nroughietips.com.au`;
   if (navigator.share) { navigator.share({ text }).catch(()=>{}); }
   else { navigator.clipboard.writeText(text).then(()=>toast('Report card copied! 📋')).catch(()=>{}); }
@@ -2492,6 +2597,7 @@ async function enablePushNotifications() {
     // permission is 'default' — request it
     const result = await Notification.requestPermission();
     if (result === 'granted') {
+      track('notifications_enabled');
       toast('Notifications enabled!');
       if (statusEl) statusEl.innerHTML = '<span style="color:var(--green);">Notifications enabled</span>';
     } else if (result === 'denied') {
@@ -2547,7 +2653,10 @@ Object.assign(window,{
 });
 </script>
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-LY7WXRQ24Q"></script>
-<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-LY7WXRQ24Q');</script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-LY7WXRQ24Q');
+function track(event, params={}) {
+  try { gtag('event', event, params); } catch(e) {}
+}</script>
 </head>
 <body>
 
@@ -2964,6 +3073,7 @@ Object.assign(window,{
         <button class="admin-tab" onclick="showAdminTab('comps',this)">🏟️ Comps</button>
         <button class="admin-tab" onclick="showAdminTab('settings',this)">🔑 Settings</button>
         <button class="admin-tab" id="edit-tips-tab-btn" onclick="showAdminTab('edittips',this)" style="display:none;">✏️ Edit Tips</button>
+        <button class="admin-tab" onclick="showAdminTab('activity',this)">📊 Activity</button>
       </div>
       <div id="admin-users" class="admin-section"><div class="card"><div style="font-weight:600;margin-bottom:14px;">All Registered Users</div><div id="admin-users-list"></div></div></div>
       <div id="admin-matches" class="admin-section" style="display:none;">
@@ -3028,6 +3138,13 @@ Object.assign(window,{
             <div class="form-group" style="margin-bottom:0;"><label>Select Round</label><select id="et-round" onchange="renderEditTipsMatches()" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;width:100%;"></select></div>
           </div>
           <div id="et-matches" style="margin-top:20px;"></div>
+        </div>
+      </div>
+      <div id="admin-activity" class="admin-section" style="display:none;">
+        <div class="card">
+          <div style="font-weight:700;font-size:16px;margin-bottom:4px;">📊 Tipping Activity</div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:20px;">Who has and hasn't submitted tips for the current open round</div>
+          <div id="activity-content"><div style="color:var(--muted);">Loading...</div></div>
         </div>
       </div>
       <div id="admin-settings" class="admin-section" style="display:none;">
