@@ -2465,27 +2465,22 @@ async function enablePushNotifications() {
       return;
     }
     toast('Setting up notifications...', false);
-    // Request native permission if not already granted
     if (Notification.permission !== 'granted') {
       const result = await Notification.requestPermission();
       if (result !== 'granted') { toast('Notifications not enabled', true); return; }
     }
-    // Use the global OneSignal object directly (it's already initialised by this point)
-    if (typeof OneSignal !== 'undefined') {
-      try {
-        // v16 API
-        if (OneSignal.Notifications) {
-          await OneSignal.Notifications.requestPermission();
-          toast('Notifications enabled! Subscribed: ' + (OneSignal.User?.PushSubscription?.optedIn ? 'yes' : 'pending'));
-        } else {
-          toast('Notifications enabled!');
-        }
-      } catch(e) {
-        console.log('OneSignal error:', e);
-        toast('Notifications enabled (OneSignal: ' + e.message + ')');
+    // Try to opt in via OneSignal User PushSubscription directly
+    // This is the correct v16 way without triggering a prompt
+    try {
+      if (typeof OneSignal !== 'undefined' && OneSignal.User && OneSignal.User.PushSubscription) {
+        await OneSignal.User.PushSubscription.optIn();
+        toast('Notifications enabled! Check OneSignal dashboard.');
+      } else {
+        toast('Notifications enabled!');
       }
-    } else {
-      toast('Notifications enabled! (OneSignal not loaded)');
+    } catch(e) {
+      console.log('OneSignal optIn error:', e.message);
+      toast('Notifications enabled! (' + e.message + ')');
     }
     if (statusEl) statusEl.innerHTML = '<span style="color:var(--green);">Notifications enabled</span>';
   } catch(e) {
