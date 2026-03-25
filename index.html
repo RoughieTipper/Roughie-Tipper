@@ -2464,25 +2464,30 @@ async function enablePushNotifications() {
       if (statusEl) statusEl.innerHTML = '<span style="color:var(--red);">Blocked in settings</span>';
       return;
     }
-    // Request or re-register with OneSignal regardless of current permission state
     toast('Setting up notifications...', false);
+    // Request native permission if not already granted
     if (Notification.permission !== 'granted') {
-      await Notification.requestPermission();
+      const result = await Notification.requestPermission();
+      if (result !== 'granted') { toast('Notifications not enabled', true); return; }
     }
-    if (Notification.permission === 'granted') {
-      // Always push through OneSignal to ensure they are registered in dashboard
+    // Use the global OneSignal object directly (it's already initialised by this point)
+    if (typeof OneSignal !== 'undefined') {
       try {
-        if (window.OneSignalDeferred) {
-          window.OneSignalDeferred.push(async function(OS) {
-            try { await OS.Notifications.requestPermission(); } catch(e) {}
-          });
+        // v16 API
+        if (OneSignal.Notifications) {
+          await OneSignal.Notifications.requestPermission();
+          toast('Notifications enabled! Subscribed: ' + (OneSignal.User?.PushSubscription?.optedIn ? 'yes' : 'pending'));
+        } else {
+          toast('Notifications enabled!');
         }
-      } catch(e) {}
-      toast('Notifications enabled!');
-      if (statusEl) statusEl.innerHTML = '<span style="color:var(--green);">Notifications enabled</span>';
+      } catch(e) {
+        console.log('OneSignal error:', e);
+        toast('Notifications enabled (OneSignal: ' + e.message + ')');
+      }
     } else {
-      toast('Notifications not enabled', true);
+      toast('Notifications enabled! (OneSignal not loaded)');
     }
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--green);">Notifications enabled</span>';
   } catch(e) {
     toast('Error: ' + e.message, true);
   }
