@@ -1131,6 +1131,7 @@ function renderLeaderboard() {
   }
 
   el('lb-body').innerHTML = scores.map((s,i)=>{
+    const isMe = s.uid === currentUser?.uid;
     const rank=i+1, rc=rank<=3?`rank-${rank}`:'rank-other', me=isMe;
     const thisRound = latestRound?(s.roundPts[latestRound.id]??'—'):'—';
     const roundMargin = latestRound?(s.roundMarginDiffs?.[latestRound.id]??'—'):'—';
@@ -1139,7 +1140,6 @@ function renderLeaderboard() {
     const emojiBadges = (emojiMap[s.uid]||[]).map(e =>
       `<span style="font-size:16px;line-height:1;" title="${e==='👑'?'Leading the comp':e==='🥄'?'Last place':e==='⭐'?'Top score this round':e==='🥶'?'Lowest score this round':e==='🔮'?'Perfect round!':''}">${e}</span>`
     ).join('');
-    const isMe = s.uid === currentUser?.uid;
     const rawAvatar = renderUserAvatar(allUsers[s.uid], 32);
     const avatarHtml = isMe
       ? `<div onclick="openBadgeSheet()" style="cursor:pointer;position:relative;" title="Tap to change badge">${rawAvatar}<div style="position:absolute;bottom:-2px;right:-2px;width:14px;height:14px;background:var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;color:var(--navy);font-weight:700;border:1.5px solid var(--card);">✎</div></div>`
