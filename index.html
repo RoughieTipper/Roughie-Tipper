@@ -563,6 +563,9 @@ onAuthStateChanged(auth, async user => {
         subscribeGlobal();
         setTimeout(checkRoundWinnerCelebration, 3000);
         setTimeout(showNotifResetBanner, 5000);
+        // Show report card for ALL users (not just round winner)
+        // Delay longer so celebration shows first for winner
+        setTimeout(showReportCardIfNotWinner, 5000);
         setTimeout(showNewUrlBanner, 2000);
         const storedJoin = sessionStorage.getItem('pendingJoin');
         if (storedJoin) {
@@ -645,6 +648,9 @@ async function checkEmailVerified() {
           subscribeGlobal();
           setTimeout(checkRoundWinnerCelebration, 3000);
         setTimeout(showNotifResetBanner, 5000);
+        // Show report card for ALL users (not just round winner)
+        // Delay longer so celebration shows first for winner
+        setTimeout(showReportCardIfNotWinner, 5000);
           setTimeout(showNewUrlBanner, 2000);
           const lastComp = userProfile.lastCompId;
           if (lastComp) { loadComp(lastComp); }
@@ -670,7 +676,7 @@ async function doForgotPassword() {
   if (!email) { toast('Enter your email address first', true); return; }
   try {
     await sendPasswordResetEmail(auth, email);
-    toast('Password reset email sent — check your inbox 📧');
+    toast('Reset email sent — check your inbox AND spam folder 📧');
   } catch(e) {
     toast('Could not send reset email — check the address is correct', true);
   }
@@ -794,6 +800,8 @@ function subscribeGlobal() {
     if(el('page-global')?.classList.contains('active')) renderGlobalLeaderboard();
     if(el('page-mycomps')?.classList.contains('active')) renderMyComps();
     if(el('page-admin')?.classList.contains('active')) { renderAdmin(); renderAdminRoundsList(); }
+    // Retry celebration check now that round data is fresh
+    if(currentUser && !window._celebChecked) setTimeout(checkRoundWinnerCelebration, 500);
   });
   unsubFns.push(u1);
 
@@ -823,6 +831,8 @@ function subscribeGlobal() {
     if(el('page-global')?.classList.contains('active')) renderGlobalLeaderboard();
     if(el('page-mycomps')?.classList.contains('active')) renderMyComps();
     if(el('page-admin')?.classList.contains('active')) renderAdminUsers();
+    // Retry report card check now that user data is fresh
+    if(currentUser && !window._celebChecked) setTimeout(checkRoundWinnerCelebration, 500);
   });
   unsubFns.push(u3);
 
@@ -1201,6 +1211,7 @@ function renderGlobalLeaderboard() {
   const scores = calcScoresForUsers(Object.keys(allUsers));
   const latestRound = [...rounds].reverse().find(r=>(r.matches||[]).some(m=>m.winner));
   el('global-body').innerHTML = scores.map((s,i)=>{
+    const isMe = s.uid === currentUser?.uid;
     const rank=i+1, rc=rank<=3?`rank-${rank}`:'rank-other', me=isMe;
     const u = allUsers[s.uid];
     const userCompNames = (u?.compIds||[]).map(id=>allComps[id]?.name).filter(Boolean).join(', ');
@@ -2214,7 +2225,6 @@ let confettiInterval = null;
 function checkRoundWinnerCelebration() {
   if (!currentUser || !currentCompId) return;
   if (window._celebChecked) return;
-  window._celebChecked = true;
   const completedRounds = rounds.filter(r => (r.matches||[]).length > 0 && (r.matches||[]).every(m => m.winner));
   if (completedRounds.length === 0) return;
   const lastRound = completedRounds[completedRounds.length - 1];
@@ -2227,7 +2237,7 @@ function checkRoundWinnerCelebration() {
   if (scores.length === 0) return;
   let bestPts = -1, winners = [];
   scores.forEach(s => { const rp = s.roundPts[lastRound.id] || 0; if (rp > bestPts) { bestPts = rp; winners = [s]; } else if (rp === bestPts) winners.push(s); });
-  if (bestPts <= 0) return;
+  if (bestPts <= 0) { window._celebChecked = true; return; }
   let winner = winners[0];
   if (winners.length > 1) {
     const allUids = Object.keys(allUsers), globalScores = calcScoresForUsers(allUids), globalRankMap = {};
@@ -2236,6 +2246,7 @@ function checkRoundWinnerCelebration() {
     withTiebreak.sort((a,b) => a.mDiff !== b.mDiff ? a.mDiff - b.mDiff : a.globalRank - b.globalRank);
     winner = withTiebreak[0].s;
   }
+  window._celebChecked = true;
   localStorage.setItem(celebKey, Date.now().toString());
   document.getElementById('cel-round-label').textContent = (lastRound.name || ('Round ' + (lastRound.order || ''))).toUpperCase();
   document.getElementById('cel-name').textContent = winner.nick || winner.name;
@@ -2404,6 +2415,49 @@ function getTeacherComment(overallGrade, moved, movedName, rank, total) {
     comment += ` ${movedName} snuck past you this round — watch your back.`;
   }
   return comment;
+}
+
+function showReportCardIfNotWinner() {
+  // Only show report card here for non-winners
+  // Winners get it via dismissCelebration() after the overlay
+  if (!currentUser || !currentCompId) return;
+  const completedRounds = rounds.filter(r => (r.matches||[]).length > 0 && (r.matches||[]).every(m => m.winner));
+  if (!completedRounds.length) return;
+  const lastRound = completedRounds[completedRounds.length - 1];
+
+  // Check if next round has started — don't show if it has
+  const nextRound = rounds.find(r => (r.matches||[]).length > 0 && !(r.matches||[]).every(m => m.winner));
+  if (nextRound) {
+    const firstMatch = (nextRound.matches||[])[0];
+    if (firstMatch && isLocked(firstMatch.date, firstMatch.time)) return;
+  }
+
+  // Already seen?
+  const seenKey = `rc_seen_${currentUser.uid}_${currentCompId}_${lastRound.id}`;
+  if (localStorage.getItem(seenKey)) return;
+
+  // Check if this user is the round winner — if so, let the celebration handle it
+  const memberIds = Object.entries(allUsers).filter(([uid,u]) => (u.compIds||[]).includes(currentCompId)).map(([uid]) => uid);
+  const scores = calcScoresForUsers(memberIds);
+  if (!scores.length) return;
+
+  // Find round winner
+  let bestPts = -1;
+  scores.forEach(s => { const rp = s.roundPts[lastRound.id] || 0; if (rp > bestPts) bestPts = rp; });
+  const topScorers = scores.filter(s => (s.roundPts[lastRound.id] || 0) === bestPts);
+  const allUids = Object.keys(allUsers);
+  const globalScores = calcScoresForUsers(allUids);
+  const globalRankMap = {};
+  globalScores.forEach((s,i) => { globalRankMap[s.uid] = i+1; });
+  const withTiebreak = topScorers.map(s => ({ s, mDiff: s.roundMarginDiffs?.[lastRound.id] ?? 9999, globalRank: globalRankMap[s.uid] || 999 }));
+  withTiebreak.sort((a,b) => a.mDiff !== b.mDiff ? a.mDiff - b.mDiff : a.globalRank - b.globalRank);
+  const roundWinnerUid = withTiebreak[0]?.s?.uid;
+
+  // If current user is the round winner, skip — celebration will handle it
+  if (currentUser.uid === roundWinnerUid) return;
+
+  // Everyone else — show report card directly
+  showReportCard();
 }
 
 function showReportCard() {
@@ -2706,6 +2760,7 @@ Object.assign(window,{
   resendVerificationEmail,checkEmailVerified,cancelVerification,
   toggleMoreMenu,closeMoreMenu,
   openBadgeSheet,closeBadgeSheet,saveBadgeFromSheet,
+  showReportCardIfNotWinner,
   showReportCard,dismissReportCard,shareReportCard
 });
 </script>
@@ -2742,7 +2797,7 @@ function track(event, params={}) {
       <div class="form-group"><label>Password</label><input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/></div>
       <button class="btn btn-full" id="login-btn" onclick="doLogin()">Log In →</button>
       <div style="text-align:center;margin-top:12px;">
-        <button onclick="doForgotPassword()" style="background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;text-decoration:underline;font-family:'DM Sans',sans-serif;padding:0;">Forgot your password?</button>
+        <button onclick="doForgotPassword()" style="background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;text-decoration:underline;font-family:'DM Sans',sans-serif;padding:0;">Forgot your password? (check spam)</button>
       </div>
     </form></div>
     <div class="auth-panel" id="auth-register"><form onsubmit="doRegister();return false;" style="margin:0;">
