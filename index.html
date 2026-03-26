@@ -13,7 +13,8 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 img{max-width:100%;height:auto;}
-body{font-family:'DM Sans',sans-serif;background:var(--navy);color:var(--text);min-height:100vh;
+html{overflow-x:hidden;}
+body{font-family:'DM Sans',sans-serif;background:var(--navy);color:var(--text);min-height:100vh;overflow-x:hidden;
   background-image:
     radial-gradient(ellipse 80% 40% at 50% -10%,rgba(0,200,83,.15) 0%,transparent 60%),
     radial-gradient(ellipse 40% 30% at 90% 80%,rgba(255,214,0,.04) 0%,transparent 60%),
@@ -45,7 +46,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--navy);color:var(--text);m
 .btn-red{background:var(--red);color:#fff;}.btn-red:hover{background:#ff6b6b;box-shadow:0 0 20px rgba(255,61,61,0.4);}
 .btn-row{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;}
 #app-shell{display:none;}
-header{display:flex;flex-direction:column;background:rgba(10,22,40,.96);padding:6px 16px 6px;width:100%;box-sizing:border-box;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;backdrop-filter:blur(16px);box-shadow:0 1px 0 rgba(0,200,83,0.08),0 4px 24px rgba(0,0,0,0.3);}
+header{display:flex;flex-direction:column;background:rgba(10,22,40,.96);padding:6px 16px 6px;width:100%;max-width:100vw;box-sizing:border-box;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;backdrop-filter:blur(16px);box-shadow:0 1px 0 rgba(0,200,83,0.08),0 4px 24px rgba(0,0,0,0.3);overflow:hidden;}
 .header-top{width:100%;display:flex;justify-content:flex-end;align-items:center;padding-bottom:4px;}
 .header-right{display:flex;align-items:center;gap:10px;}
 #user-display{font-size:13px;color:var(--muted);}
@@ -54,8 +55,8 @@ header{display:flex;flex-direction:column;background:rgba(10,22,40,.96);padding:
 .logo-center{flex-shrink:0;}
 .main-logo{width:330px;max-width:35vw;height:auto;max-height:80px;object-fit:contain;display:block;filter:drop-shadow(0 0 12px rgba(0,200,83,0.5));}
 .season-badge{display:none;}
-nav{flex:1;display:flex;gap:3px;padding:3px;background:rgba(255,255,255,0.04);border-radius:9px;}
-nav button{flex:1;background:none;border:none;color:rgba(232,237,245,0.45);font-family:'DM Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.7px;text-transform:uppercase;padding:7px 4px;border-radius:7px;cursor:pointer;transition:all var(--transition-fast);white-space:nowrap;}
+nav{flex:1;display:flex;gap:3px;padding:3px;background:rgba(255,255,255,0.04);border-radius:9px;min-width:0;overflow:hidden;}
+nav button{flex:1;min-width:0;background:none;border:none;color:rgba(232,237,245,0.45);font-family:'DM Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;padding:7px 2px;border-radius:7px;cursor:pointer;transition:all var(--transition-fast);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 nav button:hover{color:var(--text);background:rgba(255,255,255,0.06);}
 nav button.active{background:var(--green);color:var(--navy);}
 nav button.active:hover{background:var(--green2);}
@@ -67,7 +68,7 @@ nav button.active:hover{background:var(--green2);}
 #comp-banner{display:none;background:rgba(0,200,83,0.08);border-bottom:1px solid var(--border);padding:8px 28px;align-items:center;gap:10px;font-size:13px;}
 #comp-banner .comp-label{color:var(--muted);}
 #comp-name-display{font-weight:700;color:var(--green);}
-main{max-width:1200px;margin:0 auto;padding:28px 20px;}
+main{max-width:1200px;margin:0 auto;padding:28px 20px;overflow-x:hidden;}
 .page{display:none;}.page.active{display:block;animation:slideInPage .35s cubic-bezier(0.4,0,0.2,1);}
 @keyframes slideInPage{from{opacity:0;transform:translateY(14px) scale(0.99)}to{opacity:1;transform:translateY(0) scale(1)}}
 .section-title{font-family:'Bebas Neue',sans-serif;font-size:34px;letter-spacing:2px;margin-bottom:6px;position:relative;display:inline-block;}
@@ -217,7 +218,7 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
   header{padding:4px 10px 4px;}
   .main-logo{width:160px;max-width:40vw;max-height:48px;}
   .header-nav-row{gap:4px;}
-  nav button{padding:6px 3px;font-size:9px;}
+  nav button{padding:5px 1px;font-size:8.5px;letter-spacing:0.3px;}
   main{padding:16px 12px;}
   .stats-row{grid-template-columns:1fr 1fr;}
   .team-btn{width:100%;}
@@ -2866,7 +2867,7 @@ function track(event, params={}) {
 </div>
 
 <!-- APP SHELL -->
-<div id="app-shell" style="display:none;">
+<div id="app-shell" style="display:none;overflow-x:hidden;max-width:100vw;">
   <header>
     <div class="header-top">
       <div class="header-right">
