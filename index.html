@@ -1195,9 +1195,9 @@ function renderLeaderboard() {
       <td><span class="pts-big">${s.totalPts}</span></td>
       <td style="display:none;"></td>
       <td style="white-space:nowrap;">
-        <span style="font-weight:700;color:${rWins>0?'var(--gold)':'var(--muted)'};">${rWins} 🥊</span>
-        <span style="color:var(--muted);font-size:10px;margin:0 2px;">·</span>
-        <span style="font-weight:700;color:${perfectRoundCounts[s.uid]>0?'var(--green)':'var(--muted)'};">${perfectRoundCounts[s.uid]||0} 🔮</span>
+        ${rWins>0?`<span style="font-weight:700;color:var(--gold);margin-right:4px;">${rWins} 🥊</span>`:''}
+        ${perfectRoundCounts[s.uid]>0?`<span style="font-weight:700;color:var(--green);">${perfectRoundCounts[s.uid]} 🔮</span>`:''}
+        ${rWins===0&&!perfectRoundCounts[s.uid]?`<span style="color:var(--muted);">—</span>`:''}
       </td>
       <td>${thisRound} pts</td>
       <td><span style="font-size:13px;color:var(--muted);">${roundMargin==='—'?'—':roundMargin}</span></td>
