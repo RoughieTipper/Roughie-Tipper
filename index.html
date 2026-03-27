@@ -1623,7 +1623,9 @@ function renderAdminMatchesList(){
           ${clubBadge(m.away,22)} <span style="font-weight:600;">${escHtml(m.away)}</span> <span style="color:var(--gold);">$${Number(m.awayOdds).toFixed(2)}</span>
           <span style="color:var(--muted);font-size:12px;">📅 ${formatMatchDate(m.date)} ${m.time?'@ '+to12hr(m.time):''} ${m.venue?'· '+escHtml(m.venue):''}</span>
         </div>
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-outline" style="font-size:11px;padding:4px 8px;" onclick="moveMatch('${roundId}','${m.id}',-1)">↑</button>
+          <button class="btn btn-outline" style="font-size:11px;padding:4px 8px;" onclick="moveMatch('${roundId}','${m.id}',1)">↓</button>
           <button class="btn btn-outline" style="font-size:12px;padding:5px 12px;" onclick="toggleEditMatch('${roundId}','${m.id}')">✏️ Edit</button>
           <button class="btn btn-red" style="font-size:12px;padding:5px 12px;" onclick="removeMatch('${roundId}','${m.id}')">Remove</button>
         </div>
@@ -1649,6 +1651,18 @@ function renderAdminMatchesList(){
       </div>
     </div>`).join('');
 }
+async function moveMatch(roundId, matchId, direction) {
+  const round = rounds.find(r => r.id === roundId); if (!round) return;
+  const matches = [...(round.matches || [])];
+  const idx = matches.findIndex(m => m.id === matchId); if (idx === -1) return;
+  const swapIdx = idx + direction;
+  if (swapIdx < 0 || swapIdx >= matches.length) return;
+  // Swap
+  [matches[idx], matches[swapIdx]] = [matches[swapIdx], matches[idx]];
+  await updateDoc(doc(db, 'rounds', roundId), { matches });
+  toast('Match moved');
+}
+
 function toggleEditMatch(roundId, matchId) {
   const form = el('edit-form-'+matchId); if (!form) return;
   form.style.display = form.style.display === 'none' ? 'block' : 'none';
@@ -2815,7 +2829,7 @@ Object.assign(window,{
   saveJoinCode,sendChat,chatKeydown,insertEmoji,deleteMessage,
   toggleAdmin,saveProfile,previewAvatar,
   joinComp,autoJoinFromInvite,createComp,switchComp,deleteComp,renderAdminComps,
-  togglePaid,savePrizes,pickMargin,toggleEditMatch,saveMatchEdit,
+  togglePaid,savePrizes,pickMargin,toggleEditMatch,saveMatchEdit,moveMatch,
   proposeBet,acceptBet,declineBet,deleteBet,showBetNotification,showBetResponseNotification,
   triggerInstall,dismissInstall,
   switchAuthTab,
