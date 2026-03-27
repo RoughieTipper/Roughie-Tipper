@@ -276,6 +276,7 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
 <meta name="twitter:image" content="https://roughietips.com.au/icon-512.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(async function(OneSignal) {
@@ -2676,11 +2677,46 @@ function dismissReportCard() {
   if (el) el.remove();
 }
 
-function shareReportCard(roundName, grade, correct, total, roundPts, rank, compTotal) {
+async function shareReportCard(roundName, grade, correct, total, roundPts, rank, compTotal) {
   track('share_report_card', { grade, rank, total });
-  const text = `🏉 Roughie Tips — ${roundName}\n\nReport Card: ${grade}\n${correct}/${total} correct · ${roundPts} pts · #${rank} of ${compTotal}\n\nroughietips.com.au`;
-  if (navigator.share) { navigator.share({ text }).catch(()=>{}); }
-  else { navigator.clipboard.writeText(text).then(()=>toast('Report card copied! 📋')).catch(()=>{}); }
+  const cardEl = document.querySelector('#report-card-overlay > div');
+  if (!cardEl || typeof html2canvas === 'undefined') {
+    // Fallback to text
+    const text = `🏉 Roughie Tips — ${roundName}\n\nReport Card: ${grade}\n${correct}/${total} correct · ${roundPts} pts · #${rank} of ${compTotal}\n\nroughietips.com.au`;
+    if (navigator.share) navigator.share({ text }).catch(()=>{});
+    else navigator.clipboard.writeText(text).then(()=>toast('Copied! 📋'));
+    return;
+  }
+  toast('Generating image...');
+  try {
+    const canvas = await html2canvas(cardEl, {
+      backgroundColor: null,
+      scale: 2,
+      useCORS: true,
+      logging: false
+    });
+    canvas.toBlob(async (blob) => {
+      if (!blob) { toast('Could not generate image', true); return; }
+      const file = new File([blob], 'roughie-tips-report.png', { type: 'image/png' });
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: `Roughie Tips — ${roundName}`,
+          text: `My round report card: ${grade} — roughietips.com.au`
+        }).catch(()=>{});
+      } else {
+        // Fallback — download the image
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'roughie-tips-report.png'; a.click();
+        URL.revokeObjectURL(url);
+        toast('Image saved — share it from your photos! 📸');
+      }
+    }, 'image/png');
+  } catch(e) {
+    console.error('Share image error:', e);
+    toast('Could not generate image', true);
+  }
 }
 
 
