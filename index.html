@@ -1381,6 +1381,39 @@ function pickTip(matchId,team){
 
 async function saveTips(){
   if(!currentUser||!Object.keys(pendingTips).length) return;
+
+  // Check for missing tips or margin in the current round
+  const roundId = el('tip-round-select')?.value;
+  const round = rounds.find(r => r.id === roundId);
+  if (round) {
+    const matches = round.matches || [];
+    const openMatches = matches.filter(m => !isLocked(m.date, m.time) && !m.winner);
+    const existingTips = allTips[currentUser.uid] || {};
+    const existingMargins = allMargins[currentUser.uid] || {};
+
+    // Find open matches with no tip (neither saved nor pending)
+    const missingTips = openMatches.filter(m => !pendingTips[m.id] && !existingTips[m.id]);
+
+    // Check margin for first match
+    const firstMatch = matches[0];
+    const marginMissing = firstMatch && !isLocked(firstMatch.date, firstMatch.time) && !firstMatch.winner
+      && !pendingTips['margin_' + firstMatch.id] && !existingMargins[firstMatch.id];
+
+    const warnings = [];
+    if (missingTips.length > 0) {
+      const matchList = missingTips.map(m => m.home + ' vs ' + m.away).join(', ');
+      warnings.push('No tip for: ' + matchList + ' (away team will be auto-assigned)');
+    }
+    if (marginMissing) {
+      warnings.push('No margin guess for ' + firstMatch.home + ' vs ' + firstMatch.away + ' (default 1pt used for tiebreaking)');
+    }
+
+    if (warnings.length > 0) {
+      const msg = 'Heads up before saving:\n\n' + warnings.join('\n') + '\n\nSave anyway?';
+      if (!confirm(msg)) return;
+    }
+  }
+
   el('save-tips-btn').textContent='Saving…';
   const tipPicks={}, marginGuesses={};
   Object.entries(pendingTips).forEach(([k,v])=>{
@@ -1392,7 +1425,7 @@ async function saveTips(){
   pendingTips={};
   el('save-tips-btn').style.display='none';
   el('save-tips-btn').textContent='💾 Save My Tips';
-  track('tips_saved', { round_id: el('tip-round-select')?.value });
+  track('tips_saved', { round_id: roundId });
   toast('Tips saved! 🏉');
 }
 
