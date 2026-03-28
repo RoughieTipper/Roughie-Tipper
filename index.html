@@ -238,7 +238,7 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
 #badge-sheet-body{overflow-y:auto;padding:14px 16px;flex:1;}
 
 /* Floating tips counter */
-#tips-counter{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:500;background:var(--navy);border:1px solid var(--border);border-radius:99px;padding:10px 20px;display:none;align-items:center;gap:10px;box-shadow:0 4px 24px rgba(0,0,0,0.5);font-size:13px;font-weight:600;white-space:nowrap;}
+#tips-counter{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:500;background:var(--navy);border:1px solid var(--border);border-radius:99px;padding:10px 20px;display:none;align-items:center;gap:8px;box-shadow:0 4px 24px rgba(0,0,0,0.5);font-size:13px;font-weight:600;white-space:nowrap;max-width:90vw;}
 #tips-counter.visible{display:flex;}
 #tips-counter.complete{border-color:var(--green);background:rgba(0,200,83,0.12);}
 
@@ -1359,7 +1359,7 @@ function renderTipMatches() {
         </div>
       </div>${earnedDiv}</div>`;
   }).join('')||'<div class="card" style="text-align:center;color:var(--muted);">No matches in this round.</div>';
-  el('save-tips-btn').style.display=hasOpen&&Object.keys(pendingTips).length>0?'inline-flex':'none';
+  setTimeout(updateTipsCounter, 50);
 }
 
 function pickMargin(matchId, val) {
@@ -1379,10 +1379,12 @@ function pickMargin(matchId, val) {
 }
 
 function pickTip(matchId,team){
-  if(pendingTips[matchId]===team) delete pendingTips[matchId];
-  else pendingTips[matchId]=team;
+  // Toggle: if same team tapped again, deselect
+  const newTeam = (pendingTips[matchId]===team || allTips[currentUser?.uid]?.[matchId]===team) ? null : team;
+  if (newTeam) pendingTips[matchId] = newTeam;
+  else delete pendingTips[matchId];
   renderTipMatches();
-  autoSaveTip(matchId, team);
+  autoSaveTip(matchId, newTeam);
 }
 
 async function autoSaveMargin(matchId, val) {
@@ -1404,12 +1406,12 @@ async function autoSaveMargin(matchId, val) {
   }, 800);
 }
 
-async function autoSaveTip(matchId, team) {
+async function autoSaveTip(matchId, teamToSave) {
   if(!currentUser) return;
   try {
     const existing = allTips[currentUser.uid]||{};
     const newTips = {...existing};
-    if (pendingTips[matchId]) newTips[matchId] = pendingTips[matchId];
+    if (teamToSave) newTips[matchId] = teamToSave;
     else delete newTips[matchId];
     await setDoc(doc(db,'tips',currentUser.uid), newTips);
     delete pendingTips[matchId];
@@ -1904,7 +1906,7 @@ function updateTipsCounter() {
   const myTips = allTips[currentUser?.uid] || {};
   const myMargins = allMargins[currentUser?.uid] || {};
 
-  const tippedCount = openMatches.filter(m => myTips[m.id]).length;
+  const tippedCount = openMatches.filter(m => myTips[m.id] || pendingTips[m.id]).length;
   const total = openMatches.length;
 
   // Check margin for first match
