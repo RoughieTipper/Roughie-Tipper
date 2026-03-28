@@ -1266,7 +1266,7 @@ function renderTipsPage() {
   document.querySelectorAll('#page-tips .scoring-legend-container').forEach(c => { c.innerHTML = scoringLegendHTML(); });
   const rsel = el('tip-round-select');
   rsel.innerHTML = rounds.filter(r=>(r.matches||[]).length>0).map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
-  if (!rsel.onchange) rsel.onchange = () => { renderTipMatches(); setTimeout(updateTipsCounter, 300); };
+  rsel.onchange = () => { renderTipMatches(); setTimeout(updateTipsCounter, 300); };
   const openRound = rounds.find(r=>(r.matches||[]).some(m=>!isLocked(m.date, m.time)));
   if (openRound) rsel.value = openRound.id;
   else if (rounds.filter(r=>(r.matches||[]).length>0).length) rsel.value = rounds.filter(r=>(r.matches||[]).length>0).slice(-1)[0].id;
@@ -1917,7 +1917,7 @@ function updateTipsCounter() {
   const allDone = tippedCount === total && hasMargin;
   const colour = allDone ? 'var(--green)' : tippedCount === total ? 'var(--gold)' : 'var(--text)';
 
-  counterText.innerHTML = `<span style="color:${colour};">${tippedCount}/${total} tips saved${marginText}</span>`;
+  counterText.innerHTML = `<span style="color:var(--muted);font-size:11px;margin-right:4px;">✨ Tips autosave!</span><span style="color:${colour};font-weight:700;">${tippedCount}/${total} saved${marginText}</span>`;
   counter.classList.toggle('complete', allDone);
   counter.classList.add('visible');
 }
