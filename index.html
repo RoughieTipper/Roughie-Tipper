@@ -237,6 +237,11 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
 #badge-sheet-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;color:var(--text);padding:12px 20px 8px;border-bottom:1px solid var(--border);}
 #badge-sheet-body{overflow-y:auto;padding:14px 16px;flex:1;}
 
+/* Floating tips counter */
+#tips-counter{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:500;background:var(--navy);border:1px solid var(--border);border-radius:99px;padding:10px 20px;display:none;align-items:center;gap:10px;box-shadow:0 4px 24px rgba(0,0,0,0.5);font-size:13px;font-weight:600;white-space:nowrap;}
+#tips-counter.visible{display:flex;}
+#tips-counter.complete{border-color:var(--green);background:rgba(0,200,83,0.12);}
+
 #promo-banner{position:relative;overflow:hidden;margin-bottom:20px;border-radius:14px;}
 #promo-track{display:flex;transition:transform 0.5s ease;width:100%;will-change:transform;}
 .promo-slide{min-width:100%;flex-shrink:0;box-sizing:border-box;overflow:hidden;}
@@ -495,7 +500,8 @@ function showPage(id) {
   closeMoreMenu();
   if(id==='leaderboard') { renderLeaderboard(); track('view_leaderboard'); }
   if(id==='global') renderGlobalLeaderboard();
-  if(id==='tips') { renderTipsPage(); track('view_tips'); }
+  if(id==='tips') { renderTipsPage(); track('view_tips'); setTimeout(updateTipsCounter, 300); }
+  if(id!=='tips') { const c=el('tips-counter'); if(c) c.classList.remove('visible','complete'); }
   if(id==='rounds') { renderRoundsPage(); track('view_rounds'); }
   if(id==='admin') renderAdmin();
   if(id==='profile') { renderProfilePage(); }
@@ -1260,7 +1266,7 @@ function renderTipsPage() {
   document.querySelectorAll('#page-tips .scoring-legend-container').forEach(c => { c.innerHTML = scoringLegendHTML(); });
   const rsel = el('tip-round-select');
   rsel.innerHTML = rounds.filter(r=>(r.matches||[]).length>0).map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
-  if (!rsel.onchange) rsel.onchange = renderTipMatches;
+  if (!rsel.onchange) rsel.onchange = () => { renderTipMatches(); setTimeout(updateTipsCounter, 300); };
   const openRound = rounds.find(r=>(r.matches||[]).some(m=>!isLocked(m.date, m.time)));
   if (openRound) rsel.value = openRound.id;
   else if (rounds.filter(r=>(r.matches||[]).length>0).length) rsel.value = rounds.filter(r=>(r.matches||[]).length>0).slice(-1)[0].id;
@@ -1287,7 +1293,7 @@ function renderTipMatches() {
       :locked?(sel===m.home?'selected locked':'locked'):(sel===m.home?'selected':'');
     const aClass = finished?(isDraw?'winner-correct':(m.winner===m.away?'winner-correct':(sel===m.away?'winner-wrong':'')))
       :locked?(sel===m.away?'selected locked':'locked'):(sel===m.away?'selected':'');
-    const isPending = pendingTips[m.id]&&pendingTips[m.id]!==saved;
+
     const isGenerated = !!myTips['gen_'+m.id];
     const isDrawMatch = finished && m.winner==='Draw';
     let earnedDiv='';
@@ -1334,7 +1340,7 @@ function renderTipMatches() {
         ${locked&&!finished?'<span class="result-badge badge-pending" style="margin-left:6px;">🔒 Tips Locked</span>':''}
         ${isDefaultAway&&!finished?'<span class="result-badge badge-loss" style="margin-left:6px;">⚠️ Auto: Away</span>':''}
         ${finished?'<span class="result-badge badge-win" style="margin-left:6px;">✓ Result In</span>':''}
-        ${isPending?'<span class="result-badge" style="background:rgba(255,214,0,0.2);color:var(--gold);margin-left:6px;">⚡ Unsaved</span>':''}
+
       </div>
       ${marginInput}
       <div class="match-teams">
@@ -1359,7 +1365,7 @@ function renderTipMatches() {
 function pickMargin(matchId, val) {
   if (val) pendingTips['margin_'+matchId] = val;
   else delete pendingTips['margin_'+matchId];
-  el('save-tips-btn').style.display = 'inline-flex';
+  autoSaveMargin(matchId, val);
   const box = document.querySelector(`[data-margin-box="${matchId}"]`);
   if (box) {
     const entered = !!val;
@@ -1375,46 +1381,49 @@ function pickMargin(matchId, val) {
 function pickTip(matchId,team){
   if(pendingTips[matchId]===team) delete pendingTips[matchId];
   else pendingTips[matchId]=team;
-  el('save-tips-btn').style.display='inline-flex';
   renderTipMatches();
+  autoSaveTip(matchId, team);
+}
+
+async function autoSaveMargin(matchId, val) {
+  if(!currentUser) return;
+  // Debounce — wait 800ms after last keypress before saving
+  clearTimeout(window._marginSaveTimer);
+  window._marginSaveTimer = setTimeout(async () => {
+    try {
+      const existingM = allMargins[currentUser.uid]||{};
+      const newMargins = {...existingM};
+      if (val) newMargins[matchId] = val;
+      else delete newMargins[matchId];
+      await setDoc(doc(db,'margins',currentUser.uid), newMargins);
+      delete pendingTips['margin_'+matchId];
+      updateTipsCounter();
+    } catch(e) {
+      toast('Could not save margin — check your connection', true);
+    }
+  }, 800);
+}
+
+async function autoSaveTip(matchId, team) {
+  if(!currentUser) return;
+  try {
+    const existing = allTips[currentUser.uid]||{};
+    const newTips = {...existing};
+    if (pendingTips[matchId]) newTips[matchId] = pendingTips[matchId];
+    else delete newTips[matchId];
+    await setDoc(doc(db,'tips',currentUser.uid), newTips);
+    delete pendingTips[matchId];
+    track('tips_saved', { round_id: el('tip-round-select')?.value });
+    updateTipsCounter();
+  } catch(e) {
+    toast('Could not save tip — check your connection', true);
+  }
 }
 
 async function saveTips(){
   if(!currentUser||!Object.keys(pendingTips).length) return;
 
-  // Check for missing tips or margin in the current round
-  const roundId = el('tip-round-select')?.value;
-  const round = rounds.find(r => r.id === roundId);
-  if (round) {
-    const matches = round.matches || [];
-    const openMatches = matches.filter(m => !isLocked(m.date, m.time) && !m.winner);
-    const existingTips = allTips[currentUser.uid] || {};
-    const existingMargins = allMargins[currentUser.uid] || {};
-
-    // Find open matches with no tip (neither saved nor pending)
-    const missingTips = openMatches.filter(m => !pendingTips[m.id] && !existingTips[m.id]);
-
-    // Check margin for first match
-    const firstMatch = matches[0];
-    const marginMissing = firstMatch && !isLocked(firstMatch.date, firstMatch.time) && !firstMatch.winner
-      && !pendingTips['margin_' + firstMatch.id] && !existingMargins[firstMatch.id];
-
-    const warnings = [];
-    if (missingTips.length > 0) {
-      const matchList = missingTips.map(m => m.home + ' vs ' + m.away).join(', ');
-      warnings.push('No tip for: ' + matchList + ' (away team will be auto-assigned)');
-    }
-    if (marginMissing) {
-      warnings.push('No margin guess for ' + firstMatch.home + ' vs ' + firstMatch.away + ' (default 1pt used for tiebreaking)');
-    }
-
-    if (warnings.length > 0) {
-      const msg = 'Heads up before saving:\n\n' + warnings.join('\n') + '\n\nSave anyway?';
-      if (!confirm(msg)) return;
-    }
-  }
-
-  el('save-tips-btn').textContent='Saving…';
+  el('save-tips-btn') && (el('save-tips-btn').textContent='Saving…');
   const tipPicks={}, marginGuesses={};
   Object.entries(pendingTips).forEach(([k,v])=>{
     if(k.startsWith('margin_')) marginGuesses[k.replace('margin_','')] = v;
@@ -1873,6 +1882,46 @@ async function removeRound(roundId){
   await deleteDoc(doc(db,'rounds',roundId));
   toast('Round deleted');
 }
+function updateTipsCounter() {
+  const counter = el('tips-counter');
+  const counterText = el('tips-counter-text');
+  if (!counter || !counterText) return;
+
+  // Only show on tips page
+  if (!el('page-tips')?.classList.contains('active')) {
+    counter.classList.remove('visible','complete');
+    return;
+  }
+
+  const roundId = el('tip-round-select')?.value;
+  const round = rounds.find(r => r.id === roundId);
+  if (!round) { counter.classList.remove('visible','complete'); return; }
+
+  const matches = round.matches || [];
+  const openMatches = matches.filter(m => !isLocked(m.date, m.time) && !m.winner);
+  if (openMatches.length === 0) { counter.classList.remove('visible','complete'); return; }
+
+  const myTips = allTips[currentUser?.uid] || {};
+  const myMargins = allMargins[currentUser?.uid] || {};
+
+  const tippedCount = openMatches.filter(m => myTips[m.id]).length;
+  const total = openMatches.length;
+
+  // Check margin for first match
+  const firstMatch = matches[0];
+  const hasMargin = !firstMatch || isLocked(firstMatch.date, firstMatch.time) || firstMatch.winner || myMargins[firstMatch.id];
+  const marginText = firstMatch && !isLocked(firstMatch.date, firstMatch.time) && !firstMatch.winner
+    ? (myMargins[firstMatch.id] ? ' · 🎯 Margin ✓' : ' · 🎯 Margin needed')
+    : '';
+
+  const allDone = tippedCount === total && hasMargin;
+  const colour = allDone ? 'var(--green)' : tippedCount === total ? 'var(--gold)' : 'var(--text)';
+
+  counterText.innerHTML = `<span style="color:${colour};">${tippedCount}/${total} tips saved${marginText}</span>`;
+  counter.classList.toggle('complete', allDone);
+  counter.classList.add('visible');
+}
+
 function renderAdminActivity() {
   const container = el('activity-content');
   if (!container) return;
@@ -2877,6 +2926,7 @@ Object.assign(window,{
   toggleMoreMenu,closeMoreMenu,
   openBadgeSheet,closeBadgeSheet,saveBadgeFromSheet,
   showReportCardIfNotWinner,showReportCardFromButton,
+  updateTipsCounter,autoSaveTip,autoSaveMargin,
   showReportCard,dismissReportCard,shareReportCard
 });
 </script>
@@ -3153,7 +3203,7 @@ function track(event, params={}) {
         <select id="tip-round-select" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;"></select>
       </div>
       <div id="tip-matches"></div>
-      <div class="btn-row"><button class="btn" id="save-tips-btn" onclick="saveTips()" style="display:none;">💾 Save My Tips</button></div>
+      <div class="btn-row"></div>
     </div>
 
     <!-- ROUNDS -->
@@ -3517,6 +3567,11 @@ window.addEventListener('load', () => {
   </div>
 </div>
 
+
+<!-- FLOATING TIPS COUNTER -->
+<div id="tips-counter">
+  <span id="tips-counter-text"></span>
+</div>
 
 <!-- BADGE PICKER BOTTOM SHEET -->
 <div id="badge-sheet-overlay" onclick="closeBadgeSheet()"></div>
