@@ -41,11 +41,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--navy);color:var(--text);m
 .btn-red{background:var(--red);color:#fff;}.btn-red:hover{background:#ff6b6b;box-shadow:0 0 20px rgba(255,61,61,0.4);}
 .btn-row{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;}
 #app-shell{display:none;}
-/* ── HEADER ──
-   Layout: two rows
-   Row 1: user info + logout (top right)
-   Row 2: logo left | nav centred | spacer right
-── */
 header{display:flex;flex-direction:column;background:rgba(10,22,40,.96);padding:6px 16px 6px;width:100%;box-sizing:border-box;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;backdrop-filter:blur(16px);box-shadow:0 1px 0 rgba(0,200,83,0.08),0 4px 24px rgba(0,0,0,0.3);}
 .header-top{width:100%;display:flex;justify-content:flex-end;align-items:center;padding-bottom:4px;}
 .header-right{display:flex;align-items:center;gap:10px;}
@@ -231,3 +226,43 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
 .promo-slide a{display:block;width:100%;}
 .promo-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.4);cursor:pointer;transition:background .3s;}
 .promo-dot.active{background:#fff;}
+
+/* ── RESULTS PAGE: texta-style winner circle & loser strikethrough ── */
+
+/* Wobbly green oval around the winning team name */
+.team-winner-circle{
+  position:relative;
+  display:inline;
+  color:#00c853 !important;
+  font-weight:800;
+}
+.team-winner-circle::after{
+  content:'';
+  position:absolute;
+  inset:-6px -11px;
+  border:3.5px solid #00c853;
+  /* uneven radius = hand-drawn oval feel */
+  border-radius:50% 44% 56% 47% / 47% 56% 44% 53%;
+  transform:rotate(-2deg);
+  pointer-events:none;
+  opacity:0.9;
+}
+
+/* Red diagonal strikethrough on the losing team name */
+.team-loser-strike{
+  position:relative;
+  display:inline;
+  color:#ff4d4d !important;
+}
+.team-loser-strike::after{
+  content:'';
+  position:absolute;
+  left:-3px;
+  right:-3px;
+  top:48%;
+  height:3px;
+  background:#ff4d4d;
+  transform:rotate(-1.5deg);
+  border-radius:2px;
+  opacity:0.85;
+}
