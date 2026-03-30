@@ -248,12 +248,6 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
 @media(max-width:768px){
   .promo-slide img,.promo-slide a img{max-height:200px;}
 }
-
-/* ── RESULTS PAGE: texta-style winner circle & loser strikethrough ── */
-.team-winner-circle{position:relative;display:inline;color:#00c853!important;font-weight:800;}
-.team-winner-circle::after{content:'';position:absolute;inset:-6px -11px;border:3.5px solid #00c853;border-radius:50% 44% 56% 47% / 47% 56% 44% 53%;transform:rotate(-2deg);pointer-events:none;opacity:0.9;}
-.team-loser-strike{position:relative;display:inline;color:#ff4d4d!important;}
-.team-loser-strike::after{content:'';position:absolute;left:-3px;right:-3px;top:48%;height:3px;background:#ff4d4d;transform:rotate(-1.5deg);border-radius:2px;opacity:0.85;}
 </style>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -1266,7 +1260,7 @@ function renderTipsPage() {
   document.querySelectorAll('#page-tips .scoring-legend-container').forEach(c => { c.innerHTML = scoringLegendHTML(); });
   const rsel = el('tip-round-select');
   rsel.innerHTML = rounds.filter(r=>(r.matches||[]).length>0).map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
-  if (!rsel.onchange) rsel.onchange = renderTipMatches;
+  if (!rsel.onchange) rsel.onchange = () => { resetAutosaveLabel(); renderTipMatches(); };
   const openRound = rounds.find(r=>(r.matches||[]).some(m=>!isLocked(m.date, m.time)));
   if (openRound) rsel.value = openRound.id;
   else if (rounds.filter(r=>(r.matches||[]).length>0).length) rsel.value = rounds.filter(r=>(r.matches||[]).length>0).slice(-1)[0].id;
@@ -1360,12 +1354,14 @@ function renderTipMatches() {
       </div>${earnedDiv}</div>`;
   }).join('')||'<div class="card" style="text-align:center;color:var(--muted);">No matches in this round.</div>';
   el('save-tips-btn').style.display=hasOpen&&Object.keys(pendingTips).length>0?'inline-flex':'none';
+  updateAutosaveLabel();
 }
 
 function pickMargin(matchId, val) {
   if (val) pendingTips['margin_'+matchId] = val;
   else delete pendingTips['margin_'+matchId];
   el('save-tips-btn').style.display = 'inline-flex';
+  autoSaveMargin(matchId, val);
   const box = document.querySelector(`[data-margin-box="${matchId}"]`);
   if (box) {
     const entered = !!val;
@@ -1383,6 +1379,7 @@ function pickTip(matchId,team){
   else pendingTips[matchId]=team;
   el('save-tips-btn').style.display='inline-flex';
   renderTipMatches();
+  autoSaveTip(matchId);
 }
 
 async function saveTips(){
@@ -1435,6 +1432,68 @@ async function saveTips(){
   toast('Tips saved! 🏉');
 }
 
+// ─── AUTOSAVE ────────────────────────────────────────────────
+async function autoSaveTip(matchId) {
+  if (!currentUser) return;
+  const team = pendingTips[matchId];
+  if (!team) return;
+  try {
+    const existing = allTips[currentUser.uid] || {};
+    await setDoc(doc(db,'tips',currentUser.uid), {...existing, [matchId]: team});
+    // Remove from pending now it's saved
+    delete pendingTips[matchId];
+    updateAutosaveLabel();
+  } catch(e) { console.log('Autosave tip error:', e); }
+}
+
+async function autoSaveMargin(matchId, val) {
+  if (!currentUser || !val) return;
+  try {
+    const existing = allMargins[currentUser.uid] || {};
+    await setDoc(doc(db,'margins',currentUser.uid), {...existing, [matchId]: val});
+    delete pendingTips['margin_'+matchId];
+    updateAutosaveLabel();
+  } catch(e) { console.log('Autosave margin error:', e); }
+}
+
+function updateAutosaveLabel() {
+  const label = el('autosave-label');
+  if (!label) return;
+  const roundId = el('tip-round-select')?.value;
+  const round = rounds.find(r => r.id === roundId);
+  if (!round) { label.style.display = 'none'; return; }
+  const matches = round.matches || [];
+  const openMatches = matches.filter(m => !isLocked(m.date, m.time) && !m.winner);
+  if (!openMatches.length) { label.style.display = 'none'; return; }
+  const myTips = allTips[currentUser.uid] || {};
+  const myMargins = allMargins[currentUser.uid] || {};
+  const tippedCount = openMatches.filter(m => myTips[m.id]).length;
+  const total = openMatches.length;
+  const firstMatch = matches[0];
+  const marginOpen = firstMatch && !isLocked(firstMatch.date, firstMatch.time) && !firstMatch.winner;
+  const marginSaved = marginOpen ? !!myMargins[firstMatch.id] : null;
+  const countText = tippedCount + '/' + total + ' tip' + (total !== 1 ? 's' : '');
+  const marginText = marginOpen
+    ? (marginSaved ? ' · margin ✓' : ' · margin needed')
+    : '';
+  const allDone = tippedCount === total && (marginSaved !== false);
+  label.style.display = 'flex';
+  label.style.background = allDone ? 'rgba(0,200,83,0.95)' : 'rgba(17,30,54,0.97)';
+  label.style.borderColor = allDone ? 'var(--green)' : 'var(--border)';
+  const dot = label.querySelector('.as-dot');
+  const text = label.querySelector('.as-text');
+  if (dot) dot.style.background = allDone ? '#fff' : 'var(--green)';
+  if (text) {
+    text.style.color = allDone ? 'var(--navy)' : 'var(--text)';
+    text.innerHTML = '<strong>Tips autosave</strong> &nbsp;·&nbsp; ' + countText + marginText;
+  }
+}
+
+function resetAutosaveLabel() {
+  const label = el('autosave-label');
+  if (label) label.style.display = 'none';
+}
+
 // ─── ROUNDS PAGE ─────────────────────────────────────────────
 function renderRoundsPage(){
   document.querySelectorAll('#page-rounds .scoring-legend-container').forEach(c => { c.innerHTML = scoringLegendHTML(); });
@@ -1464,11 +1523,11 @@ function showRound(roundId,btn){
     return `<div class="match-card ${m.winner?'tipped':''}">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          ${clubBadge(m.home,28)} <span style="font-weight:700;" class="${m.winner&&m.winner!=='Draw'?(m.winner===m.home?'team-winner-circle':'team-loser-strike'):''}">${escHtml(m.home)}</span>
+          ${clubBadge(m.home,28)} <span style="font-weight:700;">${escHtml(m.home)}</span>
           <span style="color:var(--gold);">$${Number(m.homeOdds).toFixed(2)}</span>
           ${m.homeOdds>=2?'<span class="roughie-tag">R</span>':''}
           <span style="color:var(--muted);margin:0 6px;">vs</span>
-          ${clubBadge(m.away,28)} <span style="font-weight:700;" class="${m.winner&&m.winner!=='Draw'?(m.winner===m.away?'team-winner-circle':'team-loser-strike'):''}">${escHtml(m.away)}</span>
+          ${clubBadge(m.away,28)} <span style="font-weight:700;">${escHtml(m.away)}</span>
           <span style="color:var(--gold);">$${Number(m.awayOdds).toFixed(2)}</span>
           ${m.awayOdds>=2?'<span class="roughie-tag">R</span>':''}
           <span style="color:var(--muted);font-size:12px;margin-left:6px;">${formatMatchDate(m.date)} ${m.time?'@ '+to12hr(m.time):''} ${m.venue?'· '+escHtml(m.venue):''}</span>
@@ -1501,11 +1560,11 @@ function showRound(roundId,btn){
             const tippers = groups[team];
             const correct = m.winner && team===m.winner;
             const wrong = m.winner && team!==m.winner && !isDraw;
-            const teamColour = correct||isDraw ? 'var(--green)' : wrong ? '#ff4d4d' : 'var(--text)';
+            const teamColour = correct||isDraw ? 'var(--green)' : wrong ? 'var(--muted)' : 'var(--text)';
             const teamOdds = team===m.home ? m.homeOdds : m.awayOdds;
             const resultTag = isDraw ? ' <span style="color:var(--green);font-size:11px;">🤝 +1</span>'
               : correct ? ` <span style="color:var(--green);font-size:11px;">✓ +${pts(teamOdds)}pts</span>`
-              : wrong ? ' <span style="color:#ff4d4d;font-size:11px;">✗</span>' : '';
+              : wrong ? ' <span style="color:var(--muted);font-size:11px;">✗</span>' : '';
             const tipperList = tippers.map(({u, isAuto, isGenerated, marginGuess})=>{
               const name = escHtml(sanitiseNick(u.nick||u.name));
               const tags = (isAuto ? ' <span style="color:var(--gold);font-size:10px;">AUTO</span>' : '')
@@ -3160,6 +3219,12 @@ function track(event, params={}) {
       </div>
       <div id="tip-matches"></div>
       <div class="btn-row"><button class="btn" id="save-tips-btn" onclick="saveTips()" style="display:none;">💾 Save My Tips</button></div>
+
+      <!-- AUTOSAVE STICKY LABEL -->
+      <div id="autosave-label" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:500;align-items:center;gap:10px;background:rgba(17,30,54,0.97);border:1px solid var(--border);border-radius:99px;padding:10px 20px;box-shadow:0 4px 24px rgba(0,0,0,0.4);backdrop-filter:blur(12px);pointer-events:none;white-space:nowrap;">
+        <span class="as-dot" style="width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 1.5s infinite;flex-shrink:0;display:inline-block;"></span>
+        <span class="as-text" style="font-size:13px;font-weight:500;color:var(--text);"></span>
+      </div>
     </div>
 
     <!-- ROUNDS -->
