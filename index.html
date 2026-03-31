@@ -3048,7 +3048,7 @@ function showMentionSuggestions(query) {
     m.uid !== currentUser?.uid && m.display.toLowerCase().includes(query)
   ).slice(0, 6);
   if (!members.length) { hideMentionSuggestions(); return; }
-  // Position above the chat input
+  // Position above the chat input using fixed coords
   const input = el('chat-input');
   if (input) {
     const rect = input.getBoundingClientRect();
@@ -3058,11 +3058,20 @@ function showMentionSuggestions(query) {
     box.style.top = 'auto';
   }
   box.style.display = 'block';
-  box.innerHTML = members.map(m => `
-    <div onclick="insertMention('${escHtml(m.display)}')" style="padding:9px 14px;cursor:pointer;font-size:13px;color:var(--text);display:flex;align-items:center;gap:8px;transition:background .15s;"
-      onmouseover="this.style.background='var(--card2)'" onmouseout="this.style.background=''"
-    >${renderUserAvatar(allUsers[m.uid], 24)} <span><strong style="color:var(--green);">@${escHtml(m.display)}</strong></span></div>
-  `).join('');
+  // Build rows with event listeners — no inline onclick so module scope works fine
+  box.innerHTML = '';
+  members.forEach(m => {
+    const row = document.createElement('div');
+    row.style.cssText = 'padding:9px 14px;cursor:pointer;font-size:13px;color:var(--text);display:flex;align-items:center;gap:8px;transition:background .15s;';
+    row.innerHTML = renderUserAvatar(allUsers[m.uid], 24) + ' <span><strong style="color:var(--green);">@' + escHtml(m.display) + '</strong></span>';
+    row.addEventListener('mousedown', (e) => {
+      e.preventDefault(); // prevent textarea blur before insert
+      insertMention(m.display);
+    });
+    row.addEventListener('mouseover', () => row.style.background = 'var(--card2)');
+    row.addEventListener('mouseout', () => row.style.background = '');
+    box.appendChild(row);
+  });
 }
 
 function hideMentionSuggestions() {
