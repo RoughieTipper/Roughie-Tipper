@@ -275,6 +275,12 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
 
 /* @ mention highlight in chat */
 .chat-mention{color:var(--green);font-weight:700;background:rgba(0,200,83,0.12);border-radius:4px;padding:1px 4px;}
+
+/* ── RESULTS PAGE: texta-style winner circle & loser strikethrough ── */
+.team-winner-circle{position:relative;display:inline;color:#00c853!important;font-weight:800;}
+.team-winner-circle::after{content:'';position:absolute;inset:-6px -11px;border:3.5px solid #00c853;border-radius:50% 44% 56% 47% / 47% 56% 44% 53%;transform:rotate(-2deg);pointer-events:none;opacity:0.9;}
+.team-loser-strike{position:relative;display:inline;color:#ff4d4d!important;}
+.team-loser-strike::after{content:'';position:absolute;left:-3px;right:-3px;top:48%;height:3px;background:#ff4d4d;transform:rotate(-1.5deg);border-radius:2px;opacity:0.85;}
 </style>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
