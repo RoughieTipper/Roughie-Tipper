@@ -249,11 +249,32 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
   .promo-slide img,.promo-slide a img{max-height:200px;}
 }
 
-/* ── RESULTS PAGE: texta-style winner circle & loser strikethrough ── */
-.team-winner-circle{position:relative;display:inline;color:#00c853!important;font-weight:800;}
-.team-winner-circle::after{content:'';position:absolute;inset:-6px -11px;border:3.5px solid #00c853;border-radius:50% 44% 56% 47% / 47% 56% 44% 53%;transform:rotate(-2deg);pointer-events:none;opacity:0.9;}
-.team-loser-strike{position:relative;display:inline;color:#ff4d4d!important;}
-.team-loser-strike::after{content:'';position:absolute;left:-3px;right:-3px;top:48%;height:3px;background:#ff4d4d;transform:rotate(-1.5deg);border-radius:2px;opacity:0.85;}
+/* ── IN-APP NOTIFICATION BADGE & DROPDOWN ── */
+#notif-badge-wrap{position:relative;display:inline-flex;align-items:center;cursor:pointer;user-select:none;}
+#notif-badge{position:absolute;top:-6px;right:-8px;background:#ff3d3d;color:#fff;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:99px;display:none;align-items:center;justify-content:center;padding:0 4px;line-height:1;border:2px solid rgba(10,22,40,0.96);animation:badge-pop .25s cubic-bezier(0.34,1.56,0.64,1);}
+@keyframes badge-pop{from{transform:scale(0)}to{transform:scale(1)}}
+#notif-dropdown{position:fixed;top:auto;right:12px;width:320px;max-width:calc(100vw - 24px);background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 40px rgba(0,0,0,0.5);z-index:300;display:none;max-height:420px;flex-direction:column;overflow:hidden;}
+#notif-dropdown.open{display:flex;}
+.notif-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.notif-header-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:var(--text);}
+.notif-clear-btn{background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;padding:0;}
+.notif-clear-btn:hover{color:var(--green);}
+.notif-list{overflow-y:auto;flex:1;}
+.notif-list::-webkit-scrollbar{width:4px;}
+.notif-list::-webkit-scrollbar-thumb{background:rgba(0,200,83,0.3);border-radius:2px;}
+.notif-item{padding:12px 16px;border-bottom:1px solid rgba(30,48,84,0.5);display:flex;align-items:flex-start;gap:10px;transition:background var(--transition-fast);cursor:pointer;}
+.notif-item:hover{background:var(--card2);}
+.notif-item:last-child{border-bottom:none;}
+.notif-item.unread{background:rgba(0,200,83,0.05);}
+.notif-icon{font-size:20px;flex-shrink:0;margin-top:1px;}
+.notif-body{flex:1;min-width:0;}
+.notif-body-text{font-size:13px;color:var(--text);line-height:1.4;word-break:break-word;}
+.notif-body-text strong{color:var(--green);}
+.notif-time{font-size:11px;color:var(--muted);margin-top:3px;}
+.notif-empty{padding:28px 16px;text-align:center;color:var(--muted);font-size:13px;}
+
+/* @ mention highlight in chat */
+.chat-mention{color:var(--green);font-weight:700;background:rgba(0,200,83,0.12);border-radius:4px;padding:1px 4px;}
 </style>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -1446,7 +1467,6 @@ async function autoSaveTip(matchId) {
   try {
     const existing = allTips[currentUser.uid] || {};
     await setDoc(doc(db,'tips',currentUser.uid), {...existing, [matchId]: team});
-    // Remove from pending now it's saved
     delete pendingTips[matchId];
     updateAutosaveLabel();
   } catch(e) { console.log('Autosave tip error:', e); }
@@ -1479,9 +1499,7 @@ function updateAutosaveLabel() {
   const marginOpen = firstMatch && !isLocked(firstMatch.date, firstMatch.time) && !firstMatch.winner;
   const marginSaved = marginOpen ? !!myMargins[firstMatch.id] : null;
   const countText = tippedCount + '/' + total + ' tip' + (total !== 1 ? 's' : '');
-  const marginText = marginOpen
-    ? (marginSaved ? ' · margin ✓' : ' · margin needed')
-    : '';
+  const marginText = marginOpen ? (marginSaved ? ' · margin ✓' : ' · margin needed') : '';
   const allDone = tippedCount === total && (marginSaved !== false);
   label.style.display = 'flex';
   label.style.background = allDone ? 'rgba(0,200,83,0.95)' : 'rgba(17,30,54,0.97)';
@@ -2087,13 +2105,14 @@ function renderChat(messages){
         ${!isMe?avatarHtml:''}
         <div class="chat-bubble ${isMe?'bubble-me':'bubble-them'}">
           ${!isMe?`<div class="chat-sender">${escHtml(displayName)}</div>`:''}
-          <div class="chat-text">${escHtml(m.text)}</div>
+          <div class="chat-text">${renderChatMessage(m.text)}</div>
           <div class="chat-time">${timeStr}</div>
         </div>
         ${isMe?avatarHtml:''}
       </div>`;
     }).join('');
   if(wasAtBottom||messages.length<=5) feed.scrollTop=feed.scrollHeight;
+  checkForMentions(messages);
 }
 function formatTime(d){
   const now=new Date();
@@ -2178,23 +2197,11 @@ function subscribeSideBets() {
 
 function showBetNotification(betId, fromName, text, stake) {
   localStorage.setItem('bet_seen_' + betId, '1');
-  const existing = el('bet-notification-banner'); if (existing) existing.remove();
-  const banner = document.createElement('div');
-  banner.id = 'bet-notification-banner';
-  banner.style.cssText = `position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:9000;width:calc(100% - 32px);max-width:480px;background:linear-gradient(135deg,rgba(255,214,0,0.15),rgba(255,214,0,0.08));border:2px solid rgba(255,214,0,0.6);border-radius:16px;padding:16px 18px;box-shadow:0 8px 32px rgba(0,0,0,0.5);animation:slideInPage .3s ease;`;
-  banner.innerHTML = `<div style="display:flex;align-items:flex-start;gap:12px;"><div style="font-size:28px;flex-shrink:0;">🤑</div><div style="flex:1;"><div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--gold);letter-spacing:1px;margin-bottom:4px;">SIDE BET CHALLENGE!</div><div style="font-size:13px;color:var(--text);margin-bottom:4px;"><strong>${escHtml(fromName)}</strong> has challenged you</div><div style="font-size:12px;color:var(--muted);margin-bottom:6px;">${escHtml(text||'')}</div>${stake?`<div style="font-size:12px;background:rgba(255,214,0,0.1);border:1px solid rgba(255,214,0,0.3);border-radius:6px;padding:4px 10px;display:inline-block;color:var(--gold);">Stake: ${escHtml(stake)}</div>`:''}</div><button onclick="document.getElementById('bet-notification-banner').remove()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;flex-shrink:0;padding:0;line-height:1;">×</button></div><div style="display:flex;gap:8px;margin-top:12px;"><button class="btn" style="flex:1;font-size:13px;padding:9px;" onclick="showPage('leaderboard');document.getElementById('bet-notification-banner').remove();">View Challenge →</button></div>`;
-  document.body.appendChild(banner);
-  setTimeout(() => { if (el('bet-notification-banner')) el('bet-notification-banner').remove(); }, 12000);
+  addNotification('bet_' + betId, '🤑', '<strong>' + escHtml(fromName) + '</strong> challenged you to a side bet: ' + escHtml(text||'') + (stake ? ' <em>(' + escHtml(stake) + ')</em>' : ''), () => showPage('leaderboard'));
 }
 
 function showBetResponseNotification(betId, responderName, text, stake, accepted) {
-  const existing = el('bet-response-banner'); if (existing) existing.remove();
-  const banner = document.createElement('div');
-  banner.id = 'bet-response-banner';
-  banner.style.cssText = `position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:9000;width:calc(100% - 32px);max-width:480px;background:linear-gradient(135deg,${accepted?'rgba(0,200,83,0.15),rgba(0,200,83,0.08)':'rgba(255,61,61,0.15),rgba(255,61,61,0.08)'});border:2px solid ${accepted?'rgba(0,200,83,0.6)':'rgba(255,61,61,0.5)'};border-radius:16px;padding:16px 18px;box-shadow:0 8px 32px rgba(0,0,0,0.5);animation:slideInPage .3s ease;`;
-  banner.innerHTML = `<div style="display:flex;align-items:flex-start;gap:12px;"><div style="font-size:28px;flex-shrink:0;">${accepted?'🤝':'😤'}</div><div style="flex:1;"><div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:${accepted?'var(--green)':'var(--red)'};letter-spacing:1px;margin-bottom:4px;">CHALLENGE ${accepted?'ACCEPTED':'DECLINED'}!</div><div style="font-size:13px;color:var(--text);margin-bottom:4px;"><strong>${escHtml(responderName)}</strong> has ${accepted?'accepted':'declined'} your side bet</div>${text?`<div style="font-size:12px;color:var(--muted);">${escHtml(text)}</div>`:''}${stake&&accepted?`<div style="font-size:12px;background:rgba(0,200,83,0.1);border:1px solid rgba(0,200,83,0.3);border-radius:6px;padding:4px 10px;display:inline-block;color:var(--green);margin-top:6px;">Stake locked in: ${escHtml(stake)}</div>`:''}</div><button onclick="document.getElementById('bet-response-banner').remove()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;flex-shrink:0;padding:0;line-height:1;">×</button></div>`;
-  document.body.appendChild(banner);
-  setTimeout(() => { if (el('bet-response-banner')) el('bet-response-banner').remove(); }, 10000);
+  addNotification('betresp_' + betId, accepted ? '🤝' : '😤', '<strong>' + escHtml(responderName) + '</strong> ' + (accepted ? 'accepted' : 'declined') + ' your side bet' + (text ? ': ' + escHtml(text) : '') + (stake && accepted ? ' — stake: <em>' + escHtml(stake) + '</em>' : ''), () => showPage('leaderboard'));
 }
 
 function renderSideBets(bets) {
@@ -2924,6 +2931,193 @@ async function updateNotifStatus() {
   } catch(e) {}
 }
 
+// ─── NOTIFICATION SYSTEM ─────────────────────────────────────
+let notifications = []; // { id, icon, html, time, read, onClick }
+
+function addNotification(id, icon, html, onClick) {
+  // Don't duplicate
+  if (notifications.find(n => n.id === id)) return;
+  notifications.unshift({ id, icon, html, time: new Date(), read: false, onClick: onClick || null });
+  renderNotifDropdown();
+  updateNotifBadge();
+}
+
+function updateNotifBadge() {
+  const badge = el('notif-badge');
+  if (!badge) return;
+  const unread = notifications.filter(n => !n.read).length;
+  if (unread > 0) {
+    badge.textContent = unread > 9 ? '9+' : unread;
+    badge.style.display = 'inline-flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function renderNotifDropdown() {
+  const list = el('notif-list');
+  if (!list) return;
+  if (!notifications.length) {
+    list.innerHTML = '<div class="notif-empty">No notifications yet</div>';
+    return;
+  }
+  list.innerHTML = notifications.map(n => {
+    const timeStr = formatTime(n.time);
+    return `<div class="notif-item ${n.read ? '' : 'unread'}" onclick="handleNotifClick('${n.id}')">
+      <div class="notif-icon">${n.icon}</div>
+      <div class="notif-body">
+        <div class="notif-body-text">${n.html}</div>
+        <div class="notif-time">${timeStr}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function handleNotifClick(id) {
+  const n = notifications.find(x => x.id === id);
+  if (!n) return;
+  n.read = true;
+  renderNotifDropdown();
+  updateNotifBadge();
+  closeNotifDropdown();
+  if (n.onClick) n.onClick();
+}
+
+function clearAllNotifs() {
+  notifications.forEach(n => n.read = true);
+  renderNotifDropdown();
+  updateNotifBadge();
+}
+
+function toggleNotifDropdown() {
+  const dd = el('notif-dropdown');
+  if (!dd) return;
+  const isOpen = dd.classList.contains('open');
+  if (!isOpen) {
+    // Position below the badge wrap
+    const wrap = el('notif-badge-wrap');
+    if (wrap) {
+      const rect = wrap.getBoundingClientRect();
+      dd.style.top = (rect.bottom + 6) + 'px';
+    }
+    dd.classList.add('open');
+  } else {
+    dd.classList.remove('open');
+  }
+}
+
+function closeNotifDropdown() {
+  const dd = el('notif-dropdown');
+  if (dd) dd.classList.remove('open');
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e) {
+  const dd = el('notif-dropdown');
+  const wrap = el('notif-badge-wrap');
+  if (dd && dd.classList.contains('open') && !dd.contains(e.target) && !wrap?.contains(e.target)) {
+    closeNotifDropdown();
+  }
+});
+
+// ─── @ MENTION SYSTEM ─────────────────────────────────────────
+let mentionState = { active: false, query: '', start: 0 };
+
+function getCompMembers() {
+  if (!currentCompId) return [];
+  return Object.entries(allUsers)
+    .filter(([uid, u]) => (u.compIds||[]).includes(currentCompId))
+    .map(([uid, u]) => ({ uid, name: u.nick || u.name, display: u.nick || u.name }));
+}
+
+function handleMentionInput(textarea) {
+  const val = textarea.value;
+  const pos = textarea.selectionStart;
+  // Find last @ before cursor
+  const textBefore = val.slice(0, pos);
+  const atIdx = textBefore.lastIndexOf('@');
+  if (atIdx === -1) { hideMentionSuggestions(); return; }
+  // Make sure there's no space between @ and cursor (active mention)
+  const fragment = textBefore.slice(atIdx + 1);
+  if (/\s/.test(fragment)) { hideMentionSuggestions(); return; }
+  mentionState = { active: true, query: fragment.toLowerCase(), start: atIdx };
+  showMentionSuggestions(fragment.toLowerCase());
+}
+
+function showMentionSuggestions(query) {
+  const box = el('mention-suggestions');
+  if (!box) return;
+  const members = getCompMembers().filter(m =>
+    m.uid !== currentUser?.uid && m.display.toLowerCase().includes(query)
+  ).slice(0, 6);
+  if (!members.length) { hideMentionSuggestions(); return; }
+  box.style.display = 'block';
+  box.innerHTML = members.map(m => `
+    <div onclick="insertMention('${escHtml(m.display)}')" style="padding:9px 14px;cursor:pointer;font-size:13px;color:var(--text);display:flex;align-items:center;gap:8px;transition:background .15s;"
+      onmouseover="this.style.background='var(--card2)'" onmouseout="this.style.background=''"
+    >${renderUserAvatar(allUsers[m.uid], 24)} <span><strong style="color:var(--green);">@${escHtml(m.display)}</strong></span></div>
+  `).join('');
+}
+
+function hideMentionSuggestions() {
+  mentionState.active = false;
+  const box = el('mention-suggestions');
+  if (box) box.style.display = 'none';
+}
+
+function insertMention(displayName) {
+  const input = el('chat-input');
+  if (!input) return;
+  const val = input.value;
+  const before = val.slice(0, mentionState.start);
+  const after = val.slice(input.selectionStart);
+  input.value = before + '@' + displayName + ' ' + after;
+  input.focus();
+  const newPos = before.length + displayName.length + 2;
+  input.setSelectionRange(newPos, newPos);
+  hideMentionSuggestions();
+  input.style.height = 'auto';
+  input.style.height = input.scrollHeight + 'px';
+}
+
+// Render chat messages with @ mentions highlighted and check for tags
+function renderChatMessage(text) {
+  // Escape HTML first then highlight mentions
+  let escaped = escHtml(text);
+  // Highlight @mentions
+  const members = getCompMembers();
+  members.forEach(m => {
+    const tag = '@' + m.display;
+    const escapedTag = escHtml(tag);
+    escaped = escaped.split(escapedTag).join(`<span class="chat-mention">${escapedTag}</span>`);
+  });
+  return escaped;
+}
+
+// Check incoming chat messages for mentions of current user
+function checkForMentions(messages) {
+  if (!currentUser || !userProfile) return;
+  const myNick = userProfile.nick || userProfile.name;
+  const myTag = '@' + myNick;
+  // Only check recent messages (last 20)
+  const recent = messages.slice(-20);
+  recent.forEach(m => {
+    if (m.uid === currentUser.uid) return; // own message
+    const seenKey = 'mention_seen_' + m.id;
+    if (localStorage.getItem(seenKey)) return;
+    if (m.text && m.text.includes(myTag)) {
+      localStorage.setItem(seenKey, '1');
+      const senderName = allUsers[m.uid]?.nick || allUsers[m.uid]?.name || 'Someone';
+      addNotification(
+        'mention_' + m.id,
+        '💬',
+        '<strong>' + escHtml(senderName) + '</strong> mentioned you: <em>' + escHtml(m.text.slice(0, 80)) + (m.text.length > 80 ? '…' : '') + '</em>',
+        () => showPage('leaderboard')
+      );
+    }
+  });
+}
+
 Object.assign(window,{
   doLogin,doRegister,doLogout,doForgotPassword,showPage,showRound,showAdminTab,
   pickTip,saveTips,addRound,addMatch,removeMatch,removeUser,
@@ -2945,7 +3139,7 @@ Object.assign(window,{
   enablePushNotifications,updateNotifStatus,
   resubscribeNotifications,dismissNotifBanner,showNotifResetBanner,
   resendVerificationEmail,checkEmailVerified,cancelVerification,
-  toggleMoreMenu,closeMoreMenu,
+  toggleMoreMenu,closeMoreMenu,toggleNotifDropdown,closeNotifDropdown,handleNotifClick,clearAllNotifs,insertMention,
   openBadgeSheet,closeBadgeSheet,saveBadgeFromSheet,
   showReportCardIfNotWinner,showReportCardFromButton,
   showReportCard,dismissReportCard,shareReportCard
@@ -3058,7 +3252,20 @@ function track(event, params={}) {
     <div class="header-top">
       <div class="header-right">
         <div id="header-avatar"></div>
-        <span id="user-display"></span>
+        <div id="notif-badge-wrap" onclick="toggleNotifDropdown()" title="Notifications">
+          <span id="user-display"></span>
+          <span id="notif-badge"></span>
+        </div>
+        <!-- NOTIFICATION DROPDOWN -->
+        <div id="notif-dropdown">
+          <div class="notif-header">
+            <span class="notif-header-title">🔔 Notifications</span>
+            <button class="notif-clear-btn" onclick="clearAllNotifs()">Mark all read</button>
+          </div>
+          <div class="notif-list" id="notif-list">
+            <div class="notif-empty">No notifications yet</div>
+          </div>
+        </div>
         <button class="btn btn-outline" style="font-size:12px;padding:6px 12px;" onclick="doLogout()">Log Out</button>
       </div>
     </div>
@@ -3179,9 +3386,12 @@ function track(event, params={}) {
           <div class="chat-emoji-bar">
             <button class="emoji-btn" onclick="insertEmoji('🔥')">🔥</button><button class="emoji-btn" onclick="insertEmoji('😂')">😂</button><button class="emoji-btn" onclick="insertEmoji('👏')">👏</button><button class="emoji-btn" onclick="insertEmoji('💀')">💀</button><button class="emoji-btn" onclick="insertEmoji('🤡')">🤡</button><button class="emoji-btn" onclick="insertEmoji('😤')">😤</button><button class="emoji-btn" onclick="insertEmoji('🏉')">🏉</button><button class="emoji-btn" onclick="insertEmoji('🎯')">🎯</button><button class="emoji-btn" onclick="insertEmoji('🤑')">🤑</button>
           </div>
-          <div class="chat-input-row">
-            <textarea class="chat-input" id="chat-input" rows="1" placeholder="Talk your footy… 🏉" onkeydown="chatKeydown(event)" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" maxlength="280"></textarea>
-            <button class="chat-send-btn" onclick="sendChat()">🏉</button>
+          <div style="position:relative;">
+            <div id="mention-suggestions" style="display:none;position:absolute;bottom:100%;left:0;right:0;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:4px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.4);z-index:10;"></div>
+            <div class="chat-input-row">
+              <textarea class="chat-input" id="chat-input" rows="1" placeholder="Talk your footy… 🏉  (type @ to tag someone)" onkeydown="chatKeydown(event)" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';handleMentionInput(this)" maxlength="280"></textarea>
+              <button class="chat-send-btn" onclick="sendChat()">🏉</button>
+            </div>
           </div>
         </div>
       </div>
