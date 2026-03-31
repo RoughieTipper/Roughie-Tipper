@@ -2534,14 +2534,14 @@ function getGrade(pct) {
 
 function getTeacherComment(overallGrade, moved, movedName, rank, total) {
   const comments = {
-    'A++': ["A perfect round. Absolutely flawless. The committee is impressed.", "100% correct. We're not sure whether to be proud or suspicious.", "Perfection. Frame this report card."],
-    'A+':  ["An outstanding effort. Your rivals are nervous.", "Nearly flawless. One more like this and you're untouchable.", "Exceptional work. The leaderboard is taking notice."],
-    'A':   ["A strong round. Keep backing your instincts.", "Solid performance. The roughies are paying off.", "Very good. You clearly watch too much footy — keep it up."],
-    'B+':  ["A decent round. Room to improve but heading in the right direction.", "Not bad at all. A couple of better picks and this is an A.", "Good effort. The season is still very much alive."],
-    'B':   ["Acceptable. Could try harder.", "A middling round. The footy gods were not fully on your side.", "Some good, some not so good. Story of the season really."],
-    'C+':  ["Must try harder. Potential not being met.", "A disappointing round. We expect more from you.", "The selections this round raised some eyebrows in the staffroom."],
-    'C':   ["This is a concern. Please see the admin after class.", "Below average. We suggest watching more footy.", "A rough round. Better luck next week."],
-    'D':   ["See me after class.", "We are deeply concerned about your tipping ability.", "This round has been noted in your permanent record."]
+    'A++': ["Absolutely flawless. The match committee is standing and applauding.", "Perfect execution. Every tip on the money — the rest of the comp is rattled.", "A perfect game plan and a perfect result. Get this one framed in the rooms."],
+    'A+':  ["An outstanding effort. The opposition has no answers for you right now.", "Nearly perfect. One more performance like this and the premiership is yours.", "Exceptional work out there. The leaderboard is taking notice — keep training hard."],
+    'A':   ["A strong performance. Back yourself and keep playing your game.", "Solid work at training is paying off. The roughies are coming good.", "Very good output this week. You clearly study the form guide harder than anyone."],
+    'B+':  ["A decent showing. A couple of better calls and this is best on ground.", "Not bad at all. The game plan is working — just needs a bit more polish at training.", "Good effort. Plenty of footy left in the season and you're right in the hunt."],
+    'B':   ["Solid enough but we know you've got more in the tank.", "The footy gods weren't fully on your side this week. Back up at training.", "Some good, some not so good. The coach wants to see more consistency on the track."],
+    'C+':  ["Needs improvement. The potential is there but it's not showing up on game day.", "A disappointing round. The coaching staff expected more from you this week.", "The selections this week raised a few eyebrows in the coaches box. Back to basics."],
+    'C':   ["This is a concern. Report to the coach after training.", "Below expectations. Extra film sessions are recommended before next round.", "A tough week at the office. Shake it off and come back harder next round."],
+    'D':   ["Report to the coach's office immediately after training.", "The coaching staff is deeply concerned. Have you considered watching some replays?", "This performance has been noted in the match review. See the coach before you leave."]
   };
   const pool = comments[overallGrade] || comments['C'];
   let comment = pool[Math.floor(Math.random() * pool.length)];
@@ -2665,9 +2665,12 @@ function showReportCard() {
   const accuracy = finishedMatches.length > 0 ? correct / finishedMatches.length : 0;
   const roundPts = myScore.roundPts[lastRound.id] || 0;
 
-  // Max possible pts this round
+  // Max possible = sum of points for the teams that actually won each match
+  // This is fair — you're graded against what was actually achievable
   const maxPossible = finishedMatches.reduce((sum, m) => {
-    return sum + Math.max(pts(m.homeOdds), pts(m.awayOdds));
+    if (m.winner === 'Draw') return sum + 1;
+    const winOdds = m.winner === m.home ? m.homeOdds : m.awayOdds;
+    return sum + pts(winOdds);
   }, 0);
   const scorePct = maxPossible > 0 ? roundPts / maxPossible : 0;
 
@@ -2734,7 +2737,7 @@ function showReportCard() {
 
       <!-- Header -->
       <div style="padding:20px 24px 12px;border-bottom:2px solid #c8b89a;text-align:center;background:#f5f0e8;">
-        <div style="font-size:10px;letter-spacing:3px;color:#666;text-transform:uppercase;margin-bottom:4px;">Academic Report</div>
+        <div style="font-size:10px;letter-spacing:3px;color:#666;text-transform:uppercase;margin-bottom:4px;">Performance Review</div>
         <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;color:#1a1a1a;letter-spacing:2px;">ROUGHIE TIPS</div>
         <div style="font-size:12px;color:#444;margin-top:2px;">${escHtml(lastRound.name)} · ${new Date().getFullYear()} Season</div>
         <div style="font-size:13px;font-weight:700;color:#1a1a1a;margin-top:6px;">${escHtml(userProfile?.nick || userProfile?.name || '')}</div>
@@ -2775,7 +2778,7 @@ function showReportCard() {
 
       <!-- Teacher comment -->
       <div style="margin:0 24px 16px;padding:10px 12px;background:#fff9f0;border-left:3px solid #cc0000;border-radius:0 4px 4px 0;">
-        <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Teacher's Comment</div>
+        <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Coach's Report</div>
         <div style="font-size:12px;color:#333;font-style:italic;line-height:1.5;">"${teacherComment}"</div>
       </div>
 
