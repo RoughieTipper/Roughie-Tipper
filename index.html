@@ -2083,6 +2083,16 @@ function subscribeChat() {
   if (!currentCompId) return;
   const chatQ = query(collection(db, 'chats', currentCompId, 'messages'), orderBy('ts','asc'), limit(100));
   unsubChat = onSnapshot(chatQ, snap=>{ renderChat(snap.docs.map(d=>({id:d.id,...d.data()}))); });
+  // Wire mention input listener directly in module scope
+  setTimeout(() => {
+    const chatInput = el('chat-input');
+    if (chatInput && !chatInput._mentionWired) {
+      chatInput._mentionWired = true;
+      chatInput.addEventListener('input', () => handleMentionInput(chatInput));
+      // Hide suggestions when input loses focus (slight delay so click registers first)
+      chatInput.addEventListener('blur', () => setTimeout(hideMentionSuggestions, 150));
+    }
+  }, 500);
 }
 
 function renderChat(messages){
@@ -3154,7 +3164,7 @@ Object.assign(window,{
   enablePushNotifications,updateNotifStatus,
   resubscribeNotifications,dismissNotifBanner,showNotifResetBanner,
   resendVerificationEmail,checkEmailVerified,cancelVerification,
-  toggleMoreMenu,closeMoreMenu,toggleNotifDropdown,closeNotifDropdown,handleNotifClick,clearAllNotifs,insertMention,
+  toggleMoreMenu,closeMoreMenu,toggleNotifDropdown,closeNotifDropdown,handleNotifClick,clearAllNotifs,insertMention,handleMentionInput,hideMentionSuggestions,showMentionSuggestions,
   openBadgeSheet,closeBadgeSheet,saveBadgeFromSheet,
   showReportCardIfNotWinner,showReportCardFromButton,
   showReportCard,dismissReportCard,shareReportCard
@@ -3402,7 +3412,7 @@ function track(event, params={}) {
             <button class="emoji-btn" onclick="insertEmoji('🔥')">🔥</button><button class="emoji-btn" onclick="insertEmoji('😂')">😂</button><button class="emoji-btn" onclick="insertEmoji('👏')">👏</button><button class="emoji-btn" onclick="insertEmoji('💀')">💀</button><button class="emoji-btn" onclick="insertEmoji('🤡')">🤡</button><button class="emoji-btn" onclick="insertEmoji('😤')">😤</button><button class="emoji-btn" onclick="insertEmoji('🏉')">🏉</button><button class="emoji-btn" onclick="insertEmoji('🎯')">🎯</button><button class="emoji-btn" onclick="insertEmoji('🤑')">🤑</button>
           </div>
           <div class="chat-input-row">
-              <textarea class="chat-input" id="chat-input" rows="1" placeholder="Talk your footy… 🏉  (type @ to tag someone)" onkeydown="chatKeydown(event)" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';handleMentionInput(this)" maxlength="280"></textarea>
+              <textarea class="chat-input" id="chat-input" rows="1" placeholder="Talk your footy… 🏉  (type @ to tag someone)" onkeydown="chatKeydown(event)" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" maxlength="280"></textarea>
               <button class="chat-send-btn" onclick="sendChat()">🏉</button>
           </div>
         </div>
