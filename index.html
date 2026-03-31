@@ -315,25 +315,13 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
         slidedown: {
           prompts: [{
             type: "push",
-            autoPrompt: true,
-            text: {
-              actionMessage: "Get reminders when tips are about to close and when round results are in 🏉",
-              acceptButton: "Yes please!",
-              cancelButton: "Maybe later"
-            },
-            delay: { pageViews: 1, timeDelay: 5 }
+            autoPrompt: false,
+            delay: { pageViews: 99999, timeDelay: 99999 }
           }]
         }
       }
     });
-    // Show prompt after a short delay if not already subscribed
-    setTimeout(async () => {
-      try {
-        if (Notification.permission === 'default') {
-          OneSignal.Slidedown.promptPush();
-        }
-      } catch(e) {}
-    }, 8000);
+    // Auto-prompt disabled — user can enable via Profile > Push Notifications
   });
 </script>
 <script src="badges.js"></script>
