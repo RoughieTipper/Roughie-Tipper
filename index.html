@@ -3048,6 +3048,15 @@ function showMentionSuggestions(query) {
     m.uid !== currentUser?.uid && m.display.toLowerCase().includes(query)
   ).slice(0, 6);
   if (!members.length) { hideMentionSuggestions(); return; }
+  // Position above the chat input
+  const input = el('chat-input');
+  if (input) {
+    const rect = input.getBoundingClientRect();
+    box.style.left = rect.left + 'px';
+    box.style.width = rect.width + 'px';
+    box.style.bottom = (window.innerHeight - rect.top + 6) + 'px';
+    box.style.top = 'auto';
+  }
   box.style.display = 'block';
   box.innerHTML = members.map(m => `
     <div onclick="insertMention('${escHtml(m.display)}')" style="padding:9px 14px;cursor:pointer;font-size:13px;color:var(--text);display:flex;align-items:center;gap:8px;transition:background .15s;"
@@ -3383,12 +3392,9 @@ function track(event, params={}) {
           <div class="chat-emoji-bar">
             <button class="emoji-btn" onclick="insertEmoji('🔥')">🔥</button><button class="emoji-btn" onclick="insertEmoji('😂')">😂</button><button class="emoji-btn" onclick="insertEmoji('👏')">👏</button><button class="emoji-btn" onclick="insertEmoji('💀')">💀</button><button class="emoji-btn" onclick="insertEmoji('🤡')">🤡</button><button class="emoji-btn" onclick="insertEmoji('😤')">😤</button><button class="emoji-btn" onclick="insertEmoji('🏉')">🏉</button><button class="emoji-btn" onclick="insertEmoji('🎯')">🎯</button><button class="emoji-btn" onclick="insertEmoji('🤑')">🤑</button>
           </div>
-          <div style="position:relative;">
-            <div id="mention-suggestions" style="display:none;position:absolute;bottom:100%;left:0;right:0;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:4px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.4);z-index:10;"></div>
-            <div class="chat-input-row">
+          <div class="chat-input-row">
               <textarea class="chat-input" id="chat-input" rows="1" placeholder="Talk your footy… 🏉  (type @ to tag someone)" onkeydown="chatKeydown(event)" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';handleMentionInput(this)" maxlength="280"></textarea>
               <button class="chat-send-btn" onclick="sendChat()">🏉</button>
-            </div>
           </div>
         </div>
       </div>
@@ -3813,5 +3819,8 @@ window.addEventListener('load', () => {
 </div>
 
 <!-- REPORT CARD - generated dynamically via JS -->
+
+<!-- MENTION SUGGESTIONS POPUP -->
+<div id="mention-suggestions" style="display:none;position:fixed;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.5);z-index:9999;min-width:200px;max-width:320px;"></div>
 </body>
 </html>
