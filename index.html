@@ -406,7 +406,22 @@ const auth = getAuth(app);
 
 
 // ─── SCORING ────────────────────────────────────────────────
-function pts(odds) {
+// Scoring systems
+// Old system: used for rounds before NEW_SCORING_FROM_ROUND
+// New system: capped at 6pts, tighter bands from Round 5 onwards
+const NEW_SCORING_FROM_ORDER = 5; // rounds with order >= 5 use new system
+
+function pts(odds, roundOrder) {
+  if (roundOrder !== undefined && roundOrder >= NEW_SCORING_FROM_ORDER) {
+    // New system from Round 5
+    if (odds < 2.50) return 1;
+    if (odds < 3.50) return 2;
+    if (odds < 4.50) return 3;
+    if (odds < 5.50) return 4;
+    if (odds < 6.50) return 5;
+    return 6;
+  }
+  // Old system (Rounds 1-4)
   if (odds < 2.0)  return 1;
   if (odds < 3.0)  return 2;
   if (odds < 4.0)  return 3;
@@ -511,6 +526,43 @@ function updateNavLabels() {
   if (roundsBtn) roundsBtn.textContent = sportTerm('results').toUpperCase();
 }
 
+function showScoringChangeBanner() {
+  const key = 'scoring_change_v1';
+  if (localStorage.getItem(key)) return;
+  localStorage.setItem(key, '1');
+  const banner = document.createElement('div');
+  banner.id = 'scoring-change-banner';
+  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;padding:20px;animation:slideInPage .3s ease;';
+  banner.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;max-width:480px;width:100%;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+      <div style="font-size:36px;text-align:center;margin-bottom:12px;">⚡</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:2px;color:var(--gold);text-align:center;margin-bottom:16px;">SCORING UPDATE</div>
+      <div style="font-size:14px;color:var(--text);line-height:1.7;margin-bottom:14px;">
+        Over the first 4 rounds we had <strong>9 games</strong> with roughies in the <strong>$2.00–$2.49 range</strong>. The roughie won <strong>6 of those 9</strong>.
+      </div>
+      <div style="font-size:14px;color:var(--text);line-height:1.7;margin-bottom:14px;">
+        We ran the numbers over the last 2 years — at these odds the roughie wins close to <strong>45% of the time</strong>. We couldn't justify awarding 2 points for a near coin-flip, and with no cap on points a lucky run on big outsiders could ruin the competition for serious tippers.
+      </div>
+      <div style="background:var(--card2);border-radius:10px;padding:14px;margin-bottom:16px;">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--green);margin-bottom:8px;">New System from Round 5</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px;color:var(--muted);">
+          <div>$1.00–$2.49 → <strong style="color:var(--text);">1 pt</strong></div>
+          <div>$2.50–$3.49 → <strong style="color:var(--text);">2 pts</strong></div>
+          <div>$3.50–$4.49 → <strong style="color:var(--text);">3 pts</strong></div>
+          <div>$4.50–$5.49 → <strong style="color:var(--text);">4 pts</strong></div>
+          <div>$5.50–$6.49 → <strong style="color:var(--text);">5 pts</strong></div>
+          <div>$6.50+ → <strong style="color:var(--text);">6 pts max</strong></div>
+        </div>
+      </div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:20px;">
+        We're really sorry for the change mid-season — but it had to be done before it was exploited. <strong style="color:var(--text);">All tips and points from Rounds 1–4 stand exactly as they are.</strong> The new system applies from Round 5 onwards only.
+      </div>
+      <button onclick="document.getElementById('scoring-change-banner').remove()" style="width:100%;background:var(--green);color:var(--navy);border:none;padding:14px;border-radius:10px;font-family:'DM Sans',sans-serif;font-weight:700;font-size:15px;cursor:pointer;">Got it — Let's Go! 🏉</button>
+    </div>
+  `;
+  document.body.appendChild(banner);
+}
+
 function showPage(id) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
@@ -597,6 +649,7 @@ onAuthStateChanged(auth, async user => {
         // Delay longer so celebration shows first for winner
         setTimeout(showReportCardIfNotWinner, 5000);
         setTimeout(showNewUrlBanner, 2000);
+        setTimeout(showScoringChangeBanner, 3500);
         const storedJoin = sessionStorage.getItem('pendingJoin');
         if (storedJoin) {
           sessionStorage.removeItem('pendingJoin');
@@ -1029,11 +1082,16 @@ function calcScoresForUsers(userIds) {
       const { pick } = getEffectivePick(myTips, m);
       if(!pick) return;
       if(!isDraw && pick!==m.winner) return;
-      const p = isDraw ? 1 : pts(m.winner===m.home?m.homeOdds:m.awayOdds);
+      const roundOrder = rounds.find(r=>r.id===m.roundId)?.order || 1;
+      const p = isDraw ? 1 : pts(m.winner===m.home?m.homeOdds:m.awayOdds, roundOrder);
       const winOdds = isDraw ? 0 : (m.winner===m.home?m.homeOdds:m.awayOdds);
       const isGen = myTips.hasOwnProperty('gen_'+m.id) && !!myTips['gen_'+m.id];
-      totalPts+=p; correct++;
-      if(!isDraw && winOdds>=2.0 && !isGen) roughieBonus+=(p-1);
+      // Skull tippers (3+ missed rounds in a row) capped at 1pt, no roughie bonus
+      // Ghost tippers (2 missed rounds) still get full points including roughie bonus
+      const isSkull = getInactiveStatus(uid) === 'skull';
+      const effectiveP = isSkull ? 1 : p;
+      totalPts+=effectiveP; correct++;
+      if(!isDraw && winOdds>=2.0 && !isGen && !isSkull) roughieBonus+=(effectiveP-1);
       if(roundPts[m.roundId]!==undefined) roundPts[m.roundId]+=p;
       if(roundWins[m.roundId]!==undefined) roundWins[m.roundId]++;
     });
@@ -1064,6 +1122,29 @@ function calcScoresForUsers(userIds) {
   }).filter(Boolean).sort((a,b)=>b.totalPts-a.totalPts||a.totalMarginDiff-b.totalMarginDiff);
 }
 window.calcScoresForUsers = calcScoresForUsers;
+
+// ─── INACTIVE TIPPER DETECTION ───────────────────────────────
+function getInactiveStatus(uid) {
+  // Count consecutive rounds with zero tips saved (auto-away doesn't count as tipping)
+  const completedRounds = rounds.filter(r => (r.matches||[]).length > 0 && (r.matches||[]).every(m => m.winner));
+  if (completedRounds.length === 0) return null;
+  const myTips = allTips[uid] || {};
+  let consecutive = 0;
+  // Check from most recent round backwards
+  for (let i = completedRounds.length - 1; i >= 0; i--) {
+    const r = completedRounds[i];
+    const hasTipped = (r.matches||[]).some(m => myTips[m.id]);
+    if (!hasTipped) {
+      consecutive++;
+    } else {
+      break;
+    }
+  }
+  if (consecutive >= 3) return 'skull';
+  if (consecutive >= 2) return 'ghost';
+  return null;
+}
+window.getInactiveStatus = getInactiveStatus;
 
 // ─── SPORT TERMINOLOGY ────────────────────────────────────────
 function sportTerm(key) {
@@ -1214,6 +1295,11 @@ function renderLeaderboard() {
         });
         if (allCorrect && roundMatches.length > 0) emojis.push('🔮');
       }
+      // Ghost / skull for inactive tippers
+      const inactiveStatus = getInactiveStatus(s.uid);
+      if (inactiveStatus === 'skull') emojis.push('💀');
+      else if (inactiveStatus === 'ghost') emojis.push('👻');
+
       emojiMap[s.uid] = emojis;
     });
   }
@@ -1226,7 +1312,7 @@ function renderLeaderboard() {
     const globalRank = globalRankMap[s.uid]||'—';
     const rWins = roundWinCounts[s.uid]||0;
     const emojiBadges = (emojiMap[s.uid]||[]).map(e =>
-      `<span style="font-size:16px;line-height:1;" title="${e==='👑'?'Leading the comp':e==='🥄'?'Last place':e==='⭐'?'Top score this round':e==='🥶'?'Lowest score this round':e==='🔮'?'Perfect round!':''}">${e}</span>`
+      `<span style="font-size:16px;line-height:1;" title="${e==='👑'?'Leading the comp':e==='🥄'?'Last place':e==='⭐'?'Top score this round':e==='🥶'?'Lowest score this round':e==='🔮'?'Perfect round!':e==='👻'?'Inactive — missed 2 rounds in a row (still earning full points)':e==='💀'?'Ghost tipper — missed 3+ rounds (capped at 1pt, no roughie bonus)':''}">${e}</span>`
     ).join('');
     const rawAvatar = renderUserAvatar(allUsers[s.uid], 32);
     const avatarHtml = isMe
@@ -1271,14 +1357,13 @@ function renderLeaderboard() {
 }
 
 function scoringLegendHTML() {
-  const tiers = [
-    [1,'$1–$1.99',false],[2,'$2–$2.99',true],[3,'$3–$3.99',true],
-    [4,'$4–$4.99',true],[5,'$5–$5.99',true],[6,'$6–$6.99',true],
-    [7,'$7–$7.99',true],[8,'$8–$8.99',true],[9,'$9–$9.99',true],[10,'$10+',true],
+  const newTiers = [
+    [1,'$1.00–$2.49',false],[2,'$2.50–$3.49',true],[3,'$3.50–$4.49',true],
+    [4,'$4.50–$5.49',true],[5,'$5.50–$6.49',true],[6,'$6.50+',true],
   ];
   return `<div class="scoring-card">
-    <div class="scoring-card-title">📊 <span>Scoring System</span></div>
-    <div class="scoring-grid">${tiers.map(([p,r,roughie])=>`
+    <div class="scoring-card-title">📊 <span>Scoring System</span> <span style="font-size:11px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;">· Updated from Round 5</span></div>
+    <div class="scoring-grid" style="grid-template-columns:repeat(6,1fr);">${newTiers.map(([p,r,roughie])=>`
       <div class="legend-item ${roughie?'roughie':'normal'}">
         <div class="legend-item-icon">${roughie?'⚡':'✅'}</div>
         <div class="pts-val">${p}</div>
@@ -1286,6 +1371,7 @@ function scoringLegendHTML() {
         <div class="odds-range">${r}</div>
       </div>`).join('')}
     </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">Rounds 1–4 used the previous system · Max 6 points from Round 5 onwards</div>
   </div>`;
 }
 
@@ -1356,7 +1442,8 @@ function renderTipMatches() {
     const locked=isLocked(m.date, m.time), saved=myTips[m.id]||null, pending=pendingTips[m.id]||null;
     const isDefaultAway = locked && !saved && !pending;
     const sel=pending||saved||(isDefaultAway?m.away:null);
-    const hPts=pts(m.homeOdds), aPts=pts(m.awayOdds), finished=!!m.winner;
+    const roundOrder = round?.order || 1;
+    const hPts=pts(m.homeOdds,roundOrder), aPts=pts(m.awayOdds,roundOrder), finished=!!m.winner;
     const isDraw = finished && m.winner==='Draw';
     const hClass = finished?(isDraw?'winner-correct':(m.winner===m.home?'winner-correct':(sel===m.home?'winner-wrong':'')))
       :locked?(sel===m.home?'selected locked':'locked'):(sel===m.home?'selected':'');
@@ -1591,7 +1678,8 @@ function showRound(roundId,btn){
   container.innerHTML=(round.matches||[]).map((m,mIdx)=>{
     const isMarginGame = mIdx===0;
     const winOdds=m.winner?(m.winner===m.home?m.homeOdds:m.awayOdds):null;
-    const winPts=winOdds?pts(winOdds):null, locked=isLocked(m.date, m.time);
+    const roundOrd = round?.order || 1;
+    const winPts=winOdds?pts(winOdds,roundOrd):null, locked=isLocked(m.date, m.time);
     return `<div class="match-card ${m.winner?'tipped':''}">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -1635,7 +1723,7 @@ function showRound(roundId,btn){
             const teamColour = correct||isDraw ? 'var(--green)' : wrong ? '#ff4d4d' : 'var(--text)';
             const teamOdds = team===m.home ? m.homeOdds : m.awayOdds;
             const resultTag = isDraw ? ' <span style="color:var(--green);font-size:11px;">🤝 +1</span>'
-              : correct ? ` <span style="color:var(--green);font-size:11px;">✓ +${pts(teamOdds)}pts</span>`
+              : correct ? ` <span style="color:var(--green);font-size:11px;">✓ +${pts(teamOdds,roundOrd)}pts</span>`
               : wrong ? ' <span style="color:#ff4d4d;font-size:11px;">✗</span>' : '';
             const tipperList = tippers.map(({u, isAuto, isGenerated, marginGuess})=>{
               const name = escHtml(sanitiseNick(u.nick||u.name));
@@ -3605,6 +3693,21 @@ function track(event, params={}) {
         </div>
       </div>
       <div id="scoring-legend" style="display:none;"></div>
+
+      <!-- EMOJI KEY -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-top:14px;">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;">Emoji Key</div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;">
+          <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">👑 <span>Leading the comp</span></div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">⭐ <span>Top score this round</span></div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">🔮 <span>Perfect round</span></div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">🥶 <span>Lowest score this round</span></div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">🥄 <span>Last place</span></div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">🥊 <span>Round wins</span></div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">👻 <span>Inactive — missed 2 rounds in a row (still earns full points)</span></div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">💀 <span>Ghost tipper — missed 3+ rounds (capped at 1pt per correct tip)</span></div>
+        </div>
+      </div>
 
       <div class="chat-wrap">
         <div class="chat-header">
