@@ -504,13 +504,20 @@ function sanitiseNick(n){
   }
 })();
 
+function updateNavLabels() {
+  const tipsBtn = el('nav-tips');
+  const roundsBtn = el('nav-rounds');
+  if (tipsBtn) tipsBtn.textContent = 'MY ' + sportTerm('tips').toUpperCase();
+  if (roundsBtn) roundsBtn.textContent = sportTerm('results').toUpperCase();
+}
+
 function showPage(id) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
   const pg = el('page-'+id); if(pg) pg.classList.add('active');
   const bn = el('nav-'+id); if(bn) bn.classList.add('active');
   // Highlight MORE button if active page is in the more menu
-  const morePages = ['contact','honours','rules','admin'];
+  const morePages = ['contact','honours','rules','terms','admin'];
   const moreBtn = el('nav-more-btn');
   if (moreBtn) moreBtn.classList.toggle('active', morePages.includes(id));
   closeMoreMenu();
@@ -884,50 +891,64 @@ async function loadComp(compId) {
   userProfile.lastCompId = compId;
   subscribeChat();
   subscribeSideBets();
+  updateNavLabels();
   showPage('leaderboard');
 }
 
 function renderMyComps() {
   if (!userProfile || !allComps) return;
   const myCompIds = userProfile.compIds || [];
-  const compStats = Object.entries(allComps).map(([id, c]) => {
-    const memberIds = Object.entries(allUsers)
-      .filter(([uid,u]) => (u.compIds||[]).includes(id))
-      .map(([uid]) => uid);
-    if (memberIds.length === 0) return null;
-    const scores = calcScoresForUsers(memberIds);
-    const avg = scores.length > 0 ? Math.round(scores.reduce((s, x) => s + x.totalPts, 0) / scores.length) : 0;
-    return { id, name: c.name, ownerName: c.ownerName||'', memberCount: memberIds.length, avg };
-  }).filter(Boolean).sort((a, b) => b.avg - a.avg);
+  const searchVal = (el('comp-search')?.value || '').toLowerCase().trim();
 
-  const isMember = id => myCompIds.includes(id);
-  el('comp-leaderboard').innerHTML = compStats.length === 0
-    ? '<div style="color:var(--muted);padding:16px 0;text-align:center;">No competitions yet</div>'
-    : compStats.map((c, i) => {
-        const rank = i + 1;
-        const rc = rank <= 3 ? `rank-${rank}` : 'rank-other';
-        const isActive = currentCompId === c.id;
-        const joined = isMember(c.id);
-        const actionBtn = joined
-          ? (isActive
-              ? '<span class="result-badge badge-win" style="font-size:12px;">✓ Active</span>'
-              : `<button class="btn" style="font-size:12px;padding:6px 12px;" onclick="switchComp('${c.id}')">Switch →</button>`)
-          : `<button class="btn btn-outline" style="font-size:12px;padding:6px 12px;" onclick="joinComp('${c.id}')">Join →</button>`;
-        return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);">
-          <span class="rank-badge ${rc}" style="flex-shrink:0;">${rank}</span>
-          <div style="flex:1;min-width:0;">
-            <div style="font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(c.name)}</div>
-            <div style="font-size:12px;color:var(--muted);">${c.memberCount} tipper${c.memberCount!==1?'s':''} · avg ${c.avg} pts</div>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
-            <div style="text-align:right;">
-              <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--green);line-height:1;">${c.avg}</div>
-              <div style="font-size:10px;color:var(--muted);letter-spacing:0.5px;">AVG PTS</div>
-            </div>
-            ${actionBtn}
-          </div>
-        </div>`;
-      }).join('');
+  // All comps sorted alphabetically
+  const allCompsList = Object.entries(allComps)
+    .map(([id, c]) => {
+      const memberIds = Object.entries(allUsers).filter(([uid,u]) => (u.compIds||[]).includes(id)).map(([uid]) => uid);
+      return { id, name: c.name, sport: c.sport||'AFL', plan: c.plan||'free', ownerName: c.ownerName||'', memberCount: memberIds.length };
+    })
+    .filter(c => !searchVal || c.name.toLowerCase().includes(searchVal))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const myComps = allCompsList.filter(c => myCompIds.includes(c.id));
+  const otherComps = allCompsList.filter(c => !myCompIds.includes(c.id));
+
+  const sportBadge = (sport) => {
+    const colours = { AFL: '#00c853', NFL: '#0066cc', NRL: '#ff6600' };
+    return `<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;background:${colours[sport]||'var(--card2)'};color:#fff;margin-left:6px;">${sport}</span>`;
+  };
+
+  const planBadge = (plan) => {
+    if (plan === 'business') return `<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;background:var(--gold);color:var(--navy);margin-left:4px;">BUSINESS</span>`;
+    if (plan === 'pro') return `<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;background:#9c27b0;color:#fff;margin-left:4px;">PRO</span>`;
+    return '';
+  };
+
+  const compRow = (c) => {
+    const isActive = currentCompId === c.id;
+    const joined = myCompIds.includes(c.id);
+    const actionBtn = joined
+      ? (isActive
+          ? '<span class="result-badge badge-win" style="font-size:12px;">✓ Active</span>'
+          : `<button class="btn" style="font-size:12px;padding:6px 12px;" onclick="switchComp('${c.id}')">Switch →</button>`)
+      : `<button class="btn btn-outline" style="font-size:12px;padding:6px 12px;" onclick="joinComp('${c.id}')">Join →</button>`;
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);">
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;font-size:15px;display:flex;align-items:center;flex-wrap:wrap;gap:4px;">
+          ${escHtml(c.name)}${sportBadge(c.sport)}${planBadge(c.plan)}
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;">${c.memberCount} tipper${c.memberCount!==1?'s':''}</div>
+      </div>
+      <div style="flex-shrink:0;">${actionBtn}</div>
+    </div>`;
+  };
+
+  const mySection = myComps.length ? `
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--green);margin-bottom:8px;">My Competitions</div>
+    ${myComps.map(compRow).join('')}
+    ${otherComps.length ? '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:16px 0 8px;">Other Competitions</div>' + otherComps.map(compRow).join('') : ''}
+  ` : (allCompsList.length ? allCompsList.map(compRow).join('') : '<div style="color:var(--muted);padding:16px 0;text-align:center;">No competitions found</div>');
+
+  el('comp-leaderboard').innerHTML = mySection;
 }
 
 async function switchComp(compId) { await loadComp(compId); toast('Switched competition!'); }
@@ -970,11 +991,12 @@ async function joinComp(compId) {
 async function createComp() {
   const name = el('new-comp-name').value.trim();
   const code = el('new-comp-code').value.trim().toLowerCase();
+  const sport = el('new-comp-sport')?.value || 'AFL';
   if (!name||!code) { toast('Enter a comp name and join code',true); return; }
   el('create-comp-btn').textContent = 'Creating…';
   try {
     const compId = 'comp_'+Date.now();
-    await setDoc(doc(db,'comps',compId),{ name, joinCode:code, ownerId:currentUser.uid, ownerName:userProfile.name, createdAt:serverTimestamp() });
+    await setDoc(doc(db,'comps',compId),{ name, joinCode:code, ownerId:currentUser.uid, ownerName:userProfile.name, createdAt:serverTimestamp(), plan:'free', sport, businessName:'', businessLogo:'', businessContact:'', businessAbout:'', roundSponsor:null, memberLimit:50 });
     const compIds = [...(userProfile.compIds||[]), compId];
     await updateDoc(doc(db,'users',currentUser.uid),{compIds, lastCompId:compId});
     userProfile.compIds = compIds;
@@ -1043,6 +1065,17 @@ function calcScoresForUsers(userIds) {
 }
 window.calcScoresForUsers = calcScoresForUsers;
 
+// ─── SPORT TERMINOLOGY ────────────────────────────────────────
+function sportTerm(key) {
+  const sport = currentComp?.sport || 'AFL';
+  const terms = {
+    AFL: { round: 'Round', rounds: 'Rounds', match: 'Match', matches: 'Matches', tips: 'Tips', tipping: 'Tipping', results: 'Results' },
+    NFL: { round: 'Week', rounds: 'Weeks', match: 'Game', matches: 'Games', tips: 'Picks', tipping: 'Picking', results: 'Results' },
+    NRL: { round: 'Round', rounds: 'Rounds', match: 'Match', matches: 'Matches', tips: 'Tips', tipping: 'Tipping', results: 'Results' },
+  };
+  return (terms[sport] || terms.AFL)[key] || key;
+}
+
 // ─── LEADERBOARD ─────────────────────────────────────────────
 function renderLeaderboard() {
   if (!currentCompId) { showPage('mycomps'); return; }
@@ -1076,6 +1109,12 @@ function renderLeaderboard() {
     el('prize-input-second').value = prizes.second||'';
     el('prize-input-third').value = prizes.third||'';
     if (el('prize-input-payment')) el('prize-input-payment').value = prizes.paymentInfo||'';
+    if (el('biz-name-input')) el('biz-name-input').value = currentComp.businessName||'';
+    if (el('biz-logo-input')) el('biz-logo-input').value = currentComp.businessLogo||'';
+    if (el('biz-contact-input')) el('biz-contact-input').value = currentComp.businessContact||'';
+    if (el('biz-about-input')) el('biz-about-input').value = currentComp.businessAbout||'';
+    if (el('round-sponsor-input')) el('round-sponsor-input').value = currentComp.roundSponsor?.name||'';
+    if (el('round-sponsor-logo-input')) el('round-sponsor-logo-input').value = currentComp.roundSponsor?.logo||'';
   }
 
   el('comp-stats').innerHTML = `
@@ -1279,6 +1318,21 @@ let pendingTips = {};
 function renderTipsPage() {
   if (!currentUser) return;
   document.querySelectorAll('#page-tips .scoring-legend-container').forEach(c => { c.innerHTML = scoringLegendHTML(); });
+  // Update tips page title for sport
+  const tipsTitle = el('tips-page-title');
+  if (tipsTitle) tipsTitle.textContent = sportTerm('tips').toUpperCase();
+  // Show round sponsor if set
+  const sponsor = currentComp?.roundSponsor;
+  const sponsorBanner = el('round-sponsor-banner');
+  if (sponsor && sponsor.name && sponsorBanner) {
+    sponsorBanner.style.display = 'flex';
+    const nameEl = el('round-sponsor-name');
+    if (nameEl) nameEl.textContent = sponsor.name;
+    const logoWrap = el('round-sponsor-logo-wrap');
+    if (logoWrap) logoWrap.innerHTML = sponsor.logo ? `<img src="${escHtml(sponsor.logo)}" style="height:48px;width:auto;border-radius:8px;object-fit:contain;" onerror="this.style.display='none'"/>` : '';
+  } else if (sponsorBanner) {
+    sponsorBanner.style.display = 'none';
+  }
   const rsel = el('tip-round-select');
   rsel.innerHTML = rounds.filter(r=>(r.matches||[]).length>0).map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
   if (!rsel.onchange) rsel.onchange = () => { resetAutosaveLabel(); renderTipMatches(); };
@@ -1640,6 +1694,15 @@ function renderAdmin(){
   const isSiteAdmin = currentUser?.uid===SITE_ADMIN_UID||userProfile?.isAdmin;
   if (isSiteAdmin) renderAdminEditTips();
   if(!isSiteAdmin) return;
+  // Load admin moderation ack state
+  if (currentCompId && allComps[currentCompId]) {
+    const ackBox = el('admin-moderation-ack');
+    const ackStatus = el('admin-ack-status');
+    if (ackBox) ackBox.checked = !!allComps[currentCompId].adminAck;
+    if (ackStatus && allComps[currentCompId].adminAck) {
+      ackStatus.innerHTML = '<span style="color:var(--green);">✓ Previously acknowledged.</span>';
+    }
+  }
   renderAdminUsers();
   renderAdminRoundsList();
   populateAdminRoundSelects();
@@ -1678,6 +1741,16 @@ function renderAdminUsers(){
       </div>
     </div>`).join('')||'<div style="color:var(--muted);">No users yet.</div>';
 }
+async function saveAdminAck() {
+  if (!currentCompId) return;
+  const checked = el('admin-moderation-ack')?.checked;
+  await updateDoc(doc(db,'comps',currentCompId),{ adminAck: checked, adminAckBy: currentUser.uid, adminAckAt: serverTimestamp() });
+  const status = el('admin-ack-status');
+  if (status) status.innerHTML = checked
+    ? '<span style="color:var(--green);">✓ Acknowledged — thank you for taking this seriously.</span>'
+    : '<span style="color:var(--muted);">Acknowledgement removed.</span>';
+}
+
 async function toggleAdmin(uid,currentlyAdmin){
   if(!confirm(currentlyAdmin?'Remove admin?':'Make admin?')) return;
   await updateDoc(doc(db,'users',uid),{isAdmin:!currentlyAdmin});
@@ -1694,7 +1767,8 @@ async function addRound(){
   const name = nameInput ? nameInput.value.trim() : '';
   if(!name){toast('Enter a round name first',true);return;}
   const id='round_'+Date.now(), num=rounds.length+1;
-  await setDoc(doc(db,'rounds',id),{name,order:num,matches:[]});
+  const season = new Date().getFullYear().toString();
+  await setDoc(doc(db,'rounds',id),{name,order:num,matches:[],season});
   if(nameInput) nameInput.value='';
   toast(`${name} added!`);
 }
@@ -1930,7 +2004,8 @@ async function addRoundFromMgmt() {
   const name = nameInput ? nameInput.value.trim() : '';
   if(!name){toast('Enter a round name first',true);return;}
   const id='round_'+Date.now(), num=rounds.length+1;
-  await setDoc(doc(db,'rounds',id),{name,order:num,matches:[]});
+  const season = new Date().getFullYear().toString();
+  await setDoc(doc(db,'rounds',id),{name,order:num,matches:[],season});
   if(nameInput) nameInput.value='';
   toast(name+' added!');
 }
@@ -2138,6 +2213,23 @@ async function savePrizes() {
   const prizes = { entry: el('prize-input-entry').value.trim(), first: el('prize-input-first').value.trim(), second: el('prize-input-second').value.trim(), third: el('prize-input-third').value.trim(), paymentInfo: el('prize-input-payment').value.trim() };
   await updateDoc(doc(db,'comps',currentCompId),{prizes});
   currentComp.prizes = prizes; renderLeaderboard(); toast('Prize money updated! 🏆');
+}
+
+async function saveBusinessSettings() {
+  if (!currentCompId||!currentComp) return;
+  if (!currentUser || currentComp.ownerId !== currentUser.uid) return;
+  const businessName = el('biz-name-input')?.value.trim()||'';
+  const businessLogo = el('biz-logo-input')?.value.trim()||'';
+  const businessContact = el('biz-contact-input')?.value.trim()||'';
+  const businessAbout = el('biz-about-input')?.value.trim()||'';
+  const sponsorName = el('round-sponsor-input')?.value.trim()||'';
+  const sponsorLogo = el('round-sponsor-logo-input')?.value.trim()||'';
+  const roundSponsor = sponsorName ? { name: sponsorName, logo: sponsorLogo } : null;
+  await updateDoc(doc(db,'comps',currentCompId),{businessName,businessLogo,businessContact,businessAbout,roundSponsor});
+  currentComp.businessName=businessName; currentComp.businessLogo=businessLogo;
+  currentComp.businessContact=businessContact; currentComp.businessAbout=businessAbout;
+  currentComp.roundSponsor=roundSponsor;
+  toast('Business settings saved! 🏢');
 }
 
 async function togglePaid(uid, currentlyPaid) {
@@ -2792,6 +2884,13 @@ function showReportCard() {
         <div style="font-size:12px;color:#333;font-style:italic;line-height:1.5;">"${teacherComment}"</div>
       </div>
 
+      <!-- Sponsor credit -->
+      ${(function(){
+        const sp = currentComp?.roundSponsor;
+        if (!sp || !sp.name) return '';
+        const logoHtml = sp.logo ? '<img src="' + escHtml(sp.logo) + '" style="height:28px;width:auto;border-radius:4px;object-fit:contain;" onerror="this.style.display=\'none\'"/>' : '';
+        return '<div style="margin:0 24px 10px;padding:8px 12px;background:#f0ebe0;border-radius:4px;display:flex;align-items:center;gap:8px;border:1px solid #e0d8c8;">' + logoHtml + '<div style="font-size:10px;color:#888;line-height:1.4;">This coach\'s report was proudly sponsored by <strong style="color:#555;">' + escHtml(sp.name) + '</strong></div></div>';
+      })()}
       <!-- Footer -->
       <div style="background:#ede8dc;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #c8b89a;">
         <button onclick="dismissReportCard()" style="background:none;border:1px solid #999;color:#555;font-family:'DM Sans',sans-serif;font-size:12px;padding:6px 14px;border-radius:4px;cursor:pointer;">Dismiss</button>
@@ -3143,6 +3242,97 @@ function checkForMentions(messages) {
   });
 }
 
+// ─── QR FLYER GENERATOR ──────────────────────────────────────
+function generateFlyer() {
+  if (!currentComp || !currentCompId) { toast('Load a competition first', true); return; }
+  const compName = currentComp.name || 'Our Tipping Comp';
+  const joinCode = currentComp.joinCode || '';
+  const sport = currentComp.sport || 'AFL';
+  const siteUrl = 'https://roughietips.com.au';
+  const inviteUrl = siteUrl + '?join=' + encodeURIComponent(joinCode);
+  const bizName = currentComp.businessName || '';
+  const bizLogo = currentComp.businessLogo || '';
+  const bizContact = currentComp.businessContact || '';
+  const bizAbout = currentComp.businessAbout || '';
+  const sportEmoji = sport === 'NFL' ? '🏈' : '🏉';
+
+  // Generate QR code using free QR API
+  const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(inviteUrl);
+
+  // Build flyer as string concatenation to avoid nested template/script issues
+  const bizSection = bizName
+    ? '<div class="flyer-biz">' +
+      (bizLogo ? '<img src="' + bizLogo + '" alt="logo" style="height:40px;width:auto;border-radius:6px;"/>' : '') +
+      '<div><div class="flyer-biz-name">' + bizName + '</div>' +
+      (bizContact ? '<div class="flyer-biz-contact">' + bizContact + '</div>' : '') +
+      (bizAbout ? '<div class="flyer-biz-contact" style="margin-top:4px;">' + bizAbout + '</div>' : '') +
+      '</div></div>' : '';
+
+  const flyerHtml = [
+    '<!DOCTYPE html><html><head><meta charset="UTF-8"/>',
+    '<style>',
+    "@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;600;700&display=swap');",
+    '*{box-sizing:border-box;margin:0;padding:0;}',
+    "body{font-family:'DM Sans',sans-serif;background:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;}",
+    '.flyer{width:420px;background:#0a1628;border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.4);}',
+    '.flyer-header{background:linear-gradient(135deg,#00c853,#00a843);padding:24px;text-align:center;}',
+    '.flyer-brand{font-family:"Bebas Neue",sans-serif;font-size:32px;letter-spacing:2px;color:#0a1628;}',
+    '.flyer-sport{font-size:13px;font-weight:700;color:#0a1628;opacity:0.7;letter-spacing:2px;text-transform:uppercase;}',
+    '.flyer-body{padding:24px;}',
+    '.flyer-comp{font-family:"Bebas Neue",sans-serif;font-size:28px;letter-spacing:1px;color:#fff;margin-bottom:6px;line-height:1.1;}',
+    '.flyer-sub{font-size:13px;color:#6b7fa3;margin-bottom:20px;}',
+    '.flyer-how{background:#111e36;border-radius:10px;padding:14px;margin-bottom:20px;}',
+    '.flyer-how-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#00c853;margin-bottom:10px;}',
+    '.flyer-step{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;font-size:13px;color:#e8edf5;}',
+    '.flyer-step-num{width:22px;height:22px;border-radius:50%;background:#00c853;color:#0a1628;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}',
+    '.flyer-qr-section{display:flex;align-items:center;gap:16px;background:#111e36;border-radius:10px;padding:16px;margin-bottom:16px;}',
+    '.flyer-qr-section img{border-radius:8px;border:3px solid #00c853;}',
+    '.flyer-qr-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#00c853;margin-bottom:4px;}',
+    '.flyer-qr-code{font-family:"Bebas Neue",sans-serif;font-size:22px;color:#ffd600;letter-spacing:2px;}',
+    '.flyer-qr-url{font-size:11px;color:#6b7fa3;margin-top:4px;word-break:break-all;}',
+    '.flyer-biz{border-top:1px solid #1e3054;padding-top:16px;display:flex;align-items:center;gap:12px;}',
+    '.flyer-biz img{height:40px;width:auto;border-radius:6px;}',
+    '.flyer-biz-name{font-weight:700;font-size:14px;color:#fff;}',
+    '.flyer-biz-contact{font-size:12px;color:#6b7fa3;margin-top:2px;}',
+    '.flyer-footer{background:#111e36;padding:12px 24px;text-align:center;font-size:11px;color:#6b7fa3;}',
+    '.flyer-footer span{color:#00c853;font-weight:700;}',
+    '</style></head><body>',
+    '<div class="flyer">',
+    '<div class="flyer-header">',
+    '<div class="flyer-brand">' + sportEmoji + ' Roughie Tips</div>',
+    '<div class="flyer-sport">' + sport + ' Tipping Competition</div>',
+    '</div>',
+    '<div class="flyer-body">',
+    '<div class="flyer-comp">' + compName + '</div>',
+    '<div class="flyer-sub">Join our ' + sport + ' tipping competition — back the underdog, earn bonus points!</div>',
+    '<div class="flyer-how">',
+    '<div class="flyer-how-title">How to Join</div>',
+    '<div class="flyer-step"><div class="flyer-step-num">1</div><div>Scan the QR code or visit roughietips.com.au</div></div>',
+    '<div class="flyer-step"><div class="flyer-step-num">2</div><div>Create a free account</div></div>',
+    '<div class="flyer-step"><div class="flyer-step-num">3</div><div>Enter join code: <strong style="color:#ffd600;">' + joinCode.toUpperCase() + '</strong></div></div>',
+    '<div class="flyer-step"><div class="flyer-step-num">4</div><div>Pick your winners every week — roughies earn bonus points!</div></div>',
+    '</div>',
+    '<div class="flyer-qr-section">',
+    '<img src="' + qrUrl + '" width="110" height="110" alt="QR Code"/>',
+    '<div>',
+    '<div class="flyer-qr-label">Scan to Join</div>',
+    '<div class="flyer-qr-code">' + joinCode.toUpperCase() + '</div>',
+    '<div class="flyer-qr-url">' + inviteUrl + '</div>',
+    '</div></div>',
+    bizSection,
+    '</div>',
+    '<div class="flyer-footer">Powered by <span>Roughie Tips</span> · roughietips.com.au</div>',
+    '</div>',
+    '</body></html>'
+  ].join('\n');
+
+  const blob = new Blob([flyerHtml], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, '_blank');
+  if (!win) toast('Please allow popups to generate the flyer', true);
+  else { setTimeout(() => URL.revokeObjectURL(url), 10000); track('flyer_generated'); }
+}
+
 Object.assign(window,{
   doLogin,doRegister,doLogout,doForgotPassword,showPage,showRound,showAdminTab,
   pickTip,saveTips,addRound,addMatch,removeMatch,removeUser,
@@ -3311,6 +3501,7 @@ function track(event, params={}) {
           <button id="nav-contact" onclick="showPage('contact');closeMoreMenu()">CONTACT</button>
           <button id="nav-honours" onclick="showPage('honours');closeMoreMenu()">HONOURS</button>
           <button id="nav-rules" onclick="showPage('rules');closeMoreMenu()">RULES</button>
+          <button id="nav-terms" onclick="showPage('terms');closeMoreMenu()">TERMS & PRIVACY</button>
           <button id="nav-admin" onclick="showPage('admin');closeMoreMenu()" style="display:none;">ADMIN</button>
         </div>
       </div>
@@ -3378,6 +3569,19 @@ function track(event, params={}) {
             <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Payment Instructions (shown to all members)</label>
             <textarea id="prize-input-payment" placeholder="e.g. Please pay entry fee to Roughie Tipper&#10;PayID: 0400 000 000" rows="3" style="width:100%;margin-top:6px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;resize:vertical;line-height:1.5;"></textarea>
           </div>
+          <!-- BUSINESS SETTINGS -->
+          <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+            <div style="font-size:12px;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">🏢 Business Settings</div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div><label style="font-size:11px;color:var(--muted);">Business Name</label><input type="text" id="biz-name-input" placeholder="e.g. The Crown Hotel" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
+              <div><label style="font-size:11px;color:var(--muted);">Business Logo URL</label><input type="url" id="biz-logo-input" placeholder="https://yourbusiness.com/logo.png" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
+              <div><label style="font-size:11px;color:var(--muted);">Contact Details</label><input type="text" id="biz-contact-input" placeholder="e.g. Phone, email or address" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
+              <div><label style="font-size:11px;color:var(--muted);">About Your Business</label><textarea id="biz-about-input" placeholder="Tell tippers a bit about your venue or business…" rows="3" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;resize:vertical;"></textarea></div>
+              <div><label style="font-size:11px;color:var(--muted);">Round Sponsor Name (optional — appears on Tips page & Coach Report)</label><input type="text" id="round-sponsor-input" placeholder="e.g. Hunter Co" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
+              <div><label style="font-size:11px;color:var(--muted);">Round Sponsor Logo URL (optional)</label><input type="url" id="round-sponsor-logo-input" placeholder="https://yourbusiness.com/logo.png" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
+              <button class="btn" style="font-size:13px;padding:9px 18px;align-self:flex-start;" onclick="saveBusinessSettings()">Save Business Settings</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -3386,6 +3590,7 @@ function track(event, params={}) {
       <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
         <button class="btn" style="flex:1;min-width:140px;font-size:14px;padding:12px 16px;display:flex;align-items:center;justify-content:center;gap:8px;" onclick="showReportCardFromButton()">📋 My Round Report Card</button>
         <button class="btn" style="flex:1;min-width:140px;font-size:14px;padding:10px 16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:var(--gold);color:#0a1628;border:none;" onclick="copyInviteLink()"><span>🏉 Invite a Mate</span><span style="font-size:10px;opacity:0.6;font-weight:400;">Unique link to this Comp</span></button>
+        <button class="btn btn-outline" style="flex:1;min-width:140px;font-size:14px;padding:10px 16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;" onclick="generateFlyer()"><span>📄 Print Flyer</span><span style="font-size:10px;opacity:0.6;font-weight:400;">QR code invite poster</span></button>
       </div>
 
       <div class="scoring-legend-container"></div>
@@ -3444,7 +3649,14 @@ function track(event, params={}) {
 
     <!-- MY TIPS -->
     <div class="page" id="page-tips">
-      <div class="section-title">MY <span>TIPS</span></div>
+      <div class="section-title">MY <span id="tips-page-title">TIPS</span></div>
+      <div id="round-sponsor-banner" style="display:none;background:rgba(255,214,0,0.08);border:1px solid rgba(255,214,0,0.3);border-radius:12px;padding:12px 16px;margin-bottom:14px;display:none;align-items:center;gap:12px;">
+        <div style="flex:1;">
+          <div style="font-size:11px;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Round Proudly Brought to You By</div>
+          <div id="round-sponsor-name" style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--text);letter-spacing:1px;"></div>
+        </div>
+        <div id="round-sponsor-logo-wrap" style="flex-shrink:0;"></div>
+      </div>
       <div style="background:rgba(255,214,0,0.08);border:1px solid rgba(255,214,0,0.25);border-radius:12px;padding:12px 16px;margin-bottom:18px;display:flex;align-items:flex-start;gap:10px;">
         <span style="font-size:18px;flex-shrink:0;">📊</span>
         <div style="font-size:13px;color:var(--muted);line-height:1.6;"><strong style="color:var(--gold);">Odds are locked in each Wednesday night</strong> before the round and do not fluctuate.</div>
@@ -3476,16 +3688,92 @@ function track(event, params={}) {
 
     <!-- MY COMPS -->
     <div class="page" id="page-mycomps">
-      <div class="section-title">🏟️ COMP <span>LEADERBOARD</span></div>
-      <div class="section-sub">All competitions ranked by total points · Average score shown per comp</div>
+      <div class="section-title">🏟️ <span>COMPETITIONS</span></div>
+      <div class="section-sub">Find and join competitions or create your own</div>
+
+      <!-- SEARCH -->
+      <div style="position:relative;margin-bottom:16px;">
+        <input type="text" id="comp-search" placeholder="🔍 Search competitions…" oninput="renderMyComps()" style="width:100%;background:var(--card);border:1px solid var(--border);color:var(--text);padding:11px 16px;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;"/>
+      </div>
+
+      <!-- COMP LIST -->
       <div class="card" style="margin-bottom:20px;"><div id="comp-leaderboard"></div></div>
+
+      <!-- CREATE COMP -->
       <div class="card" style="margin-bottom:20px;">
         <div style="font-weight:700;font-size:16px;margin-bottom:6px;">➕ Create a New Competition</div>
         <div style="font-size:13px;color:var(--muted);margin-bottom:16px;">You'll be the admin of this comp and can manage your members.</div>
         <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
           <div class="form-group" style="flex:1;min-width:180px;margin-bottom:0;"><label>Competition Name</label><input type="text" id="new-comp-name" placeholder="e.g. Hamish's Work Comp"/></div>
           <div class="form-group" style="flex:1;min-width:160px;margin-bottom:0;"><label>Join Code</label><input type="text" id="new-comp-code" placeholder="e.g. workmates2026"/></div>
+          <div class="form-group" style="min-width:120px;margin-bottom:0;"><label>Sport</label>
+            <select id="new-comp-sport" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:11px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;width:100%;">
+              <option value="AFL">🏉 AFL</option>
+              <option value="NFL">🏈 NFL</option>
+              <option value="NRL">🏉 NRL</option>
+            </select>
+          </div>
           <button class="btn" id="create-comp-btn" onclick="createComp()" style="margin-bottom:1px;">Create Competition</button>
+        </div>
+      </div>
+
+      <!-- TIER INFO -->
+      <div class="card">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;color:var(--text);margin-bottom:16px;">📦 Competition Tiers</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;">
+
+          <!-- FREE -->
+          <div style="background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:18px;">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--green);letter-spacing:1px;margin-bottom:4px;">FREE</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--text);margin-bottom:12px;">$0</div>
+            <div style="display:flex;flex-direction:column;gap:7px;font-size:13px;color:var(--muted);">
+              <div>✅ Up to 50 members</div>
+              <div>✅ Full tipping & scoring</div>
+              <div>✅ Chat & side bets</div>
+              <div>✅ Leaderboard & results</div>
+              <div>✅ Prize pool display</div>
+              <div style="opacity:0.4;">❌ Unlimited members</div>
+              <div style="opacity:0.4;">❌ Sticker pack</div>
+              <div style="opacity:0.4;">❌ Business branding</div>
+              <div style="opacity:0.4;">❌ QR flyer generator</div>
+            </div>
+            <div style="margin-top:14px;font-size:11px;color:var(--green);font-weight:700;">CURRENTLY ACTIVE FOR ALL</div>
+          </div>
+
+          <!-- PRO -->
+          <div style="background:var(--card2);border:2px solid #9c27b0;border-radius:12px;padding:18px;position:relative;">
+            <div style="position:absolute;top:-10px;right:14px;background:#9c27b0;color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:99px;letter-spacing:1px;">COMING SOON</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:#9c27b0;letter-spacing:1px;margin-bottom:4px;">PRO</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--text);margin-bottom:4px;">$50</div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">per sport · per season</div>
+            <div style="display:flex;flex-direction:column;gap:7px;font-size:13px;color:var(--muted);">
+              <div>✅ Everything in Free</div>
+              <div>✅ Unlimited members</div>
+              <div>✅ Exclusive sticker pack</div>
+              <div style="opacity:0.4;">❌ Business branding</div>
+              <div style="opacity:0.4;">❌ QR flyer generator</div>
+              <div style="opacity:0.4;">❌ TV display mode</div>
+              <div style="opacity:0.4;">❌ Analytics dashboard</div>
+            </div>
+          </div>
+
+          <!-- BUSINESS -->
+          <div style="background:var(--card2);border:2px solid var(--gold);border-radius:12px;padding:18px;position:relative;">
+            <div style="position:absolute;top:-10px;right:14px;background:var(--gold);color:var(--navy);font-size:10px;font-weight:700;padding:3px 10px;border-radius:99px;letter-spacing:1px;">COMING SOON</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gold);letter-spacing:1px;margin-bottom:4px;">BUSINESS</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--text);margin-bottom:4px;">$200</div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">per sport · per season</div>
+            <div style="display:flex;flex-direction:column;gap:7px;font-size:13px;color:var(--muted);">
+              <div>✅ Everything in Pro</div>
+              <div>✅ Business branding</div>
+              <div>✅ QR flyer generator</div>
+              <div>✅ TV display mode</div>
+              <div>✅ Analytics dashboard</div>
+              <div>✅ Email round reminders</div>
+              <div>✅ Round sponsorship option</div>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
@@ -3603,6 +3891,72 @@ function track(event, params={}) {
         </div>
       </div>
     </div>
+    <!-- TERMS OF SERVICE & PRIVACY -->
+    <div class="page" id="page-terms">
+      <div class="section-title">📜 TERMS OF <span>SERVICE</span></div>
+      <div class="section-sub">Please read these terms before using Roughie Tips</div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:14px;">1. Acceptance of Terms</div>
+        <p style="font-size:14px;color:var(--muted);line-height:1.7;">By creating an account and using Roughie Tips you agree to these Terms of Service. If you do not agree, please do not use the platform. These terms may be updated from time to time and continued use of the platform constitutes acceptance of any changes.</p>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:14px;">2. The Service</div>
+        <p style="font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:10px;">Roughie Tips is a sporting tipping competition platform. The platform allows users to create and join tipping competitions, make tips on sporting matches, and compete on leaderboards. Roughie Tips is a game of skill — points are awarded based on correctly predicting match outcomes.</p>
+        <p style="font-size:14px;color:var(--muted);line-height:1.7;">Roughie Tips is not affiliated with, endorsed by, or connected to the AFL, NFL, NRL or any of their clubs or organisations.</p>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:14px;">3. User Accounts</div>
+        <p style="font-size:14px;color:var(--muted);line-height:1.7;">You are responsible for maintaining the confidentiality of your account credentials. You must provide accurate information when registering. You must be 18 years or older to use this platform. One account per person.</p>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:14px;">4. Competition Admin Responsibility</div>
+        <p style="font-size:14px;color:var(--muted);line-height:1.7;">Competition administrators are responsible for the conduct of their competition including ensuring the chat feature is used appropriately. Admins must not permit bullying, harassment, discrimination or inappropriate content. Roughie Tips reserves the right to suspend or terminate competitions or accounts that breach these standards.</p>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:14px;">5. Prize Money & Side Bets</div>
+        <p style="font-size:14px;color:var(--muted);line-height:1.7;">Any prize money within competitions is managed entirely between competition members. Roughie Tips does not collect, hold or distribute prize money. Side bets are informal arrangements between users conducted on an honour system. Roughie Tips accepts no responsibility for any financial disputes between users.</p>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:14px;">6. Intellectual Property</div>
+        <p style="font-size:14px;color:var(--muted);line-height:1.7;">The Roughie Tips name, brand, scoring system, coaching report feature, platform design and all associated content are the intellectual property of Roughie Tips. © 2026 Roughie Tips. All rights reserved. Unauthorised reproduction, copying or redistribution of any part of this platform is strictly prohibited.</p>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:14px;">7. Limitation of Liability</div>
+        <p style="font-size:14px;color:var(--muted);line-height:1.7;">Roughie Tips is provided as-is. We make no guarantees regarding uptime, accuracy of odds or results. To the maximum extent permitted by law, Roughie Tips accepts no liability for any loss or damage arising from use of the platform.</p>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:14px;">8. Governing Law</div>
+        <p style="font-size:14px;color:var(--muted);line-height:1.7;">These terms are governed by the laws of Western Australia, Australia. Any disputes shall be subject to the exclusive jurisdiction of the courts of Western Australia.</p>
+      </div>
+
+      <div class="section-title" style="margin-top:32px;">🔒 PRIVACY <span>POLICY</span></div>
+      <div class="section-sub">How we collect, use and protect your data</div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:14px;">What We Collect</div>
+        <p style="font-size:14px;color:var(--muted);line-height:1.7;">We collect only what you provide: your name, nickname, and email address when you register. We also store your tips, margins, and competition activity as part of running the platform.</p>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:14px;">How We Use Your Data</div>
+        <p style="font-size:14px;color:var(--muted);line-height:1.7;">Your data is used solely to operate the Roughie Tips platform — running competitions, displaying leaderboards, and sending optional email announcements you have opted in to. We never sell, share or use your data for advertising purposes.</p>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:14px;">Data Storage</div>
+        <p style="font-size:14px;color:var(--muted);line-height:1.7;">All data is stored securely via Google Firebase infrastructure. Data is stored on servers located in the United States. By using Roughie Tips you consent to this storage arrangement.</p>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:14px;">Your Rights</div>
+        <p style="font-size:14px;color:var(--muted);line-height:1.7;">You may request deletion of your account and associated data at any time by contacting us via the Contact page. We will action deletion requests within 30 days.</p>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:14px;">Push Notifications</div>
+        <p style="font-size:14px;color:var(--muted);line-height:1.7;">Push notifications are entirely optional. You may revoke permission at any time via your device or browser settings. We use OneSignal to deliver push notifications.</p>
+      </div>
+      <div class="card" style="margin-bottom:32px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:14px;">Contact</div>
+        <p style="font-size:14px;color:var(--muted);line-height:1.7;">For any privacy related enquiries please contact us via the <button onclick="showPage('contact')" style="background:none;border:none;color:var(--green);font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;text-decoration:underline;padding:0;">Contact page</button>.</p>
+      </div>
+    </div>
+
     <!-- ADMIN -->
     <div class="page" id="page-admin">
       <div class="section-title">ADMIN <span>PANEL</span></div>
@@ -3616,7 +3970,18 @@ function track(event, params={}) {
         <button class="admin-tab" id="edit-tips-tab-btn" onclick="showAdminTab('edittips',this)" style="display:none;">✏️ Edit Tips</button>
         <button class="admin-tab" onclick="showAdminTab('activity',this)">📊 Activity</button>
       </div>
-      <div id="admin-users" class="admin-section"><div class="card"><div style="font-weight:600;margin-bottom:14px;">All Registered Users</div><div id="admin-users-list"></div></div></div>
+      <div id="admin-users" class="admin-section">
+        <div class="card" style="margin-bottom:16px;border:1px solid rgba(255,61,61,0.3);background:rgba(255,61,61,0.04);">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--red);letter-spacing:1px;margin-bottom:8px;">⚠️ Admin Responsibility — Chat Moderation</div>
+          <p style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px;">As a competition admin you are responsible for ensuring the chat feature is used appropriately. This includes monitoring for bullying, harassment or inappropriate content and removing messages where necessary. By ticking this box you acknowledge this responsibility.</p>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="checkbox" id="admin-moderation-ack" style="width:18px;height:18px;accent-color:var(--green);cursor:pointer;flex-shrink:0;" onchange="saveAdminAck()"/>
+            <label for="admin-moderation-ack" style="font-size:13px;font-weight:600;cursor:pointer;">I understand and accept my responsibility as a competition admin to moderate the chat.</label>
+          </div>
+          <div id="admin-ack-status" style="margin-top:8px;font-size:12px;color:var(--muted);"></div>
+        </div>
+        <div class="card"><div style="font-weight:600;margin-bottom:14px;">All Registered Users</div><div id="admin-users-list"></div></div>
+      </div>
       <div id="admin-matches" class="admin-section" style="display:none;">
         <div class="card" style="margin-bottom:16px;">
           <div style="font-weight:600;margin-bottom:14px;">Manage Rounds</div>
@@ -3722,8 +4087,10 @@ function track(event, params={}) {
 </div>
 
 <div style="text-align:center;padding:18px 16px 80px;font-size:11px;color:rgba(255,255,255,0.2);">
-  2026 Roughie Tips &middot;
-  <span onclick="document.getElementById('privacy-panel').style.display='block'" style="cursor:pointer;text-decoration:underline;color:rgba(255,255,255,0.3);">Privacy &amp; Legal</span>
+  © 2026 Roughie Tips. All rights reserved. &middot;
+  <span onclick="showPage('terms')" style="cursor:pointer;text-decoration:underline;color:rgba(255,255,255,0.3);">Terms &amp; Privacy</span>
+  &middot;
+  <span onclick="document.getElementById('privacy-panel').style.display='block'" style="cursor:pointer;text-decoration:underline;color:rgba(255,255,255,0.3);">Legal</span>
 </div>
 
 <script>
