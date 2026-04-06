@@ -409,7 +409,7 @@ const auth = getAuth(app);
 // Scoring systems
 // Old system: used for rounds before NEW_SCORING_FROM_ROUND
 // New system: capped at 6pts, tighter bands from Round 5 onwards
-const NEW_SCORING_FROM_ORDER = 5; // rounds with order >= 5 use new system
+const NEW_SCORING_FROM_ORDER = 6; // Opening Round=1, Rounds 1-4=orders 2-5, Round 5=order 6
 
 function pts(odds, roundOrder) {
   if (roundOrder !== undefined && roundOrder >= NEW_SCORING_FROM_ORDER) {
