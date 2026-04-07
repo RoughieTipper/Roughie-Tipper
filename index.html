@@ -597,7 +597,7 @@ function showPage(id) {
     }
     if (el('contact-result')) el('contact-result').style.display = 'none';
   }
-  if(id==='leaderboard') setTimeout(initInstallBanner, 1000);
+  if(id==='leaderboard') { setTimeout(initInstallBanner, 1000); renderHonoursPage(); renderCompHonours(); }
 
 }
 
@@ -954,6 +954,7 @@ async function loadComp(compId) {
   subscribeSideBets();
   updateNavLabels();
   showPage('leaderboard');
+  renderCompHonours();
 }
 
 function populateAvailableSportSeasons() {
