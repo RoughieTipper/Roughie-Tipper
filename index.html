@@ -279,6 +279,11 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
 /* @ mention highlight in chat */
 .chat-mention{color:var(--green);font-weight:700;background:rgba(0,200,83,0.12);border-radius:4px;padding:1px 4px;}
 
+/* ── MODERATION ACK MODAL ── */
+#moderation-ack-modal{position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;padding:20px;}
+#moderation-ack-modal.open{display:flex;}
+.mod-ack-box{background:var(--card);border:1px solid rgba(255,61,61,0.4);border-radius:16px;max-width:460px;width:100%;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,0.6);}
+
 /* ── RESULTS PAGE: texta-style winner circle & loser strikethrough ── */
 .team-winner-circle{position:relative;display:inline;color:#00c853!important;font-weight:800;}
 .team-winner-circle::after{content:'';position:absolute;inset:-6px -11px;border:3.5px solid #00c853;border-radius:50% 44% 56% 47% / 47% 56% 44% 53%;transform:rotate(-2deg);pointer-events:none;opacity:0.9;}
@@ -572,7 +577,7 @@ function showPage(id) {
   const pg = el('page-'+id); if(pg) pg.classList.add('active');
   const bn = el('nav-'+id); if(bn) bn.classList.add('active');
   // Highlight MORE button if active page is in the more menu
-  const morePages = ['contact','honours','rules','terms','admin'];
+  const morePages = ['contact','honours','rules','terms','compsettings','admin'];
   const moreBtn = el('nav-more-btn');
   if (moreBtn) moreBtn.classList.toggle('active', morePages.includes(id));
   closeMoreMenu();
@@ -1072,6 +1077,8 @@ async function joinComp(compId) {
   await loadComp(compId);
 }
 
+let _pendingCompData = null;
+
 async function createComp() {
   const name = el('new-comp-name').value.trim();
   const code = el('new-comp-code').value.trim().toLowerCase();
@@ -1079,6 +1086,15 @@ async function createComp() {
   const [sport, season] = sportSeason.includes('|') ? sportSeason.split('|') : [sportSeason, new Date().getFullYear().toString()];
   if (!name||!code) { toast('Enter a comp name and join code',true); return; }
   if (!sport || sport === '') { toast('Please select a sport and season', true); return; }
+  // Show moderation acknowledgement modal first
+  _pendingCompData = { name, code, sport, season };
+  const modal = el('moderation-ack-modal');
+  const checkbox = el('mod-ack-checkbox');
+  const btn = el('mod-ack-confirm-btn');
+  if (checkbox) checkbox.checked = false;
+  if (btn) { btn.disabled = true; btn.style.background='var(--card2)'; btn.style.color='var(--muted)'; btn.style.cursor='not-allowed'; btn.style.borderColor='var(--border)'; }
+  if (modal) modal.classList.add('open');
+  return; // actual creation happens in confirmModerationAck()
   el('create-comp-btn').textContent = 'Creating…';
   try {
     const compId = 'comp_'+Date.now();
@@ -2298,15 +2314,21 @@ function renderChat(messages){
     ?`<div style="text-align:center;color:var(--muted);padding:32px;font-size:14px;">No messages yet — get the heckling started! 🏉</div>`
     :messages.map(m=>{
       const isMe=m.uid===currentUser?.uid, u=allUsers[m.uid];
+      const isCompAdmin = currentComp?.ownerId === currentUser?.uid;
+      const isSiteAdmin = currentUser?.uid === SITE_ADMIN_UID || userProfile?.isAdmin;
+      const canDelete = isMe || isSiteAdmin || isCompAdmin;
       const displayName=u?(u.nick||u.name):(m.displayName||'Unknown');
       const timeStr=m.ts?.toDate?formatTime(m.ts.toDate()):'';
       const avatarHtml=renderUserAvatar(u, 28);
+      const deleteBtn = canDelete
+        ? `<button onclick="deleteMessage('${m.id}')" title="${isMe?'Delete your message':'Remove (admin)'}" style="background:none;border:none;color:${isMe?'rgba(0,200,83,0.35)':'rgba(255,61,61,0.35)'};font-size:13px;cursor:pointer;padding:0 2px;line-height:1;transition:color .15s;flex-shrink:0;" onmouseover="this.style.color='${isMe?'var(--green)':'var(--red)'}'" onmouseout="this.style.color='${isMe?'rgba(0,200,83,0.35)':'rgba(255,61,61,0.35)'}'">🗑</button>`
+        : '';
       return `<div class="chat-msg ${isMe?'chat-msg-me':''}">
         ${!isMe?avatarHtml:''}
         <div class="chat-bubble ${isMe?'bubble-me':'bubble-them'}">
           ${!isMe?`<div class="chat-sender">${escHtml(displayName)}</div>`:''}
           <div class="chat-text">${renderChatMessage(m.text)}</div>
-          <div class="chat-time">${timeStr}</div>
+          <div class="chat-time" style="display:flex;align-items:center;justify-content:flex-end;gap:6px;">${timeStr}${deleteBtn}</div>
         </div>
         ${isMe?avatarHtml:''}
       </div>`;
@@ -2328,6 +2350,103 @@ async function sendChat(){
   const chatCol = currentCompId ? 'chats/'+currentCompId+'/messages' : 'chat';
   await addDoc(collection(db, ...chatCol.split('/')),{ uid:currentUser.uid, displayName:userProfile?.nick||userProfile?.name||'', text, ts:serverTimestamp() });
 }
+function showCompSettings() {
+  if (!currentComp || !currentCompId) return;
+  // Populate fields
+  const prizes = currentComp.prizes || {};
+  if (el('cs-prize-entry')) el('cs-prize-entry').value = prizes.entry||'';
+  if (el('cs-prize-first')) el('cs-prize-first').value = prizes.first||'';
+  if (el('cs-prize-second')) el('cs-prize-second').value = prizes.second||'';
+  if (el('cs-prize-third')) el('cs-prize-third').value = prizes.third||'';
+  if (el('cs-prize-payment')) el('cs-prize-payment').value = prizes.paymentInfo||'';
+  if (el('cs-biz-name')) el('cs-biz-name').value = currentComp.businessName||'';
+  if (el('cs-biz-logo')) el('cs-biz-logo').value = currentComp.businessLogo||'';
+  if (el('cs-biz-contact')) el('cs-biz-contact').value = currentComp.businessContact||'';
+  if (el('cs-biz-about')) el('cs-biz-about').value = currentComp.businessAbout||'';
+  if (el('cs-sponsor-name')) el('cs-sponsor-name').value = currentComp.roundSponsor?.name||'';
+  if (el('cs-sponsor-logo')) el('cs-sponsor-logo').value = currentComp.roundSponsor?.logo||'';
+  // Populate members list
+  const memberIds = Object.entries(allUsers).filter(([uid,u])=>(u.compIds||[]).includes(currentCompId)).map(([uid,u])=>({uid,name:u.nick||u.name||'Unknown'}));
+  const membersList = el('cs-members-list');
+  if (membersList) {
+    membersList.innerHTML = memberIds.length
+      ? memberIds.map(m => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+          <div style="flex:1;font-size:14px;">${escHtml(m.name)}</div>
+          ${m.uid !== currentUser.uid ? `<button class="btn btn-red" style="font-size:12px;padding:5px 10px;" onclick="removeCompMember('${m.uid}')">Remove</button>` : '<span style="font-size:12px;color:var(--muted);">You (admin)</span>'}
+        </div>`).join('')
+      : '<div style="color:var(--muted);font-size:13px;">No members yet</div>';
+  }
+  const sub = el('comp-settings-sub');
+  if (sub) sub.textContent = currentComp.name || 'Manage your competition';
+  showPage('compsettings');
+}
+
+async function saveCompSettingsPrizes() {
+  if (!currentCompId) return;
+  const prizes = { entry: el('cs-prize-entry')?.value.trim()||'', first: el('cs-prize-first')?.value.trim()||'', second: el('cs-prize-second')?.value.trim()||'', third: el('cs-prize-third')?.value.trim()||'', paymentInfo: el('cs-prize-payment')?.value.trim()||'' };
+  await updateDoc(doc(db,'comps',currentCompId),{prizes});
+  currentComp.prizes = prizes;
+  toast('Prize pool saved! 🏆');
+}
+
+async function saveCompSettings() {
+  if (!currentCompId) return;
+  const businessName = el('cs-biz-name')?.value.trim()||'';
+  const businessLogo = el('cs-biz-logo')?.value.trim()||'';
+  const businessContact = el('cs-biz-contact')?.value.trim()||'';
+  const businessAbout = el('cs-biz-about')?.value.trim()||'';
+  const sponsorName = el('cs-sponsor-name')?.value.trim()||'';
+  const sponsorLogo = el('cs-sponsor-logo')?.value.trim()||'';
+  const roundSponsor = sponsorName ? { name: sponsorName, logo: sponsorLogo } : null;
+  await updateDoc(doc(db,'comps',currentCompId),{businessName,businessLogo,businessContact,businessAbout,roundSponsor});
+  currentComp.businessName=businessName; currentComp.businessLogo=businessLogo;
+  currentComp.businessContact=businessContact; currentComp.businessAbout=businessAbout;
+  currentComp.roundSponsor=roundSponsor;
+  toast('Business settings saved! 🏢');
+}
+
+async function removeCompMember(uid) {
+  if (!currentCompId) return;
+  if (!confirm('Remove this member from the comp?')) return;
+  const userRef = doc(db,'users',uid);
+  const userSnap = await getDoc(userRef);
+  if (!userSnap.exists()) return;
+  const compIds = (userSnap.data().compIds||[]).filter(id => id !== currentCompId);
+  await updateDoc(userRef,{compIds});
+  toast('Member removed');
+  showCompSettings();
+}
+
+function closeModerationAckModal() {
+  const modal = el('moderation-ack-modal');
+  if (modal) modal.classList.remove('open');
+  _pendingCompData = null;
+}
+
+async function confirmModerationAck() {
+  if (!_pendingCompData) return;
+  const { name, code, sport, season } = _pendingCompData;
+  const modal = el('moderation-ack-modal');
+  if (modal) modal.classList.remove('open');
+  _pendingCompData = null;
+  const btn = el('create-comp-btn');
+  if (btn) btn.textContent = 'Creating…';
+  try {
+    const compId = 'comp_'+Date.now();
+    await setDoc(doc(db,'comps',compId),{ name, joinCode:code, ownerId:currentUser.uid, ownerName:userProfile.name, createdAt:serverTimestamp(), plan:'free', sport, season, businessName:'', businessLogo:'', businessContact:'', businessAbout:'', roundSponsor:null, memberLimit:50, adminAck:true, adminAckBy:currentUser.uid, adminAckAt:serverTimestamp() });
+    const compIds = [...(userProfile.compIds||[]), compId];
+    await updateDoc(doc(db,'users',currentUser.uid),{compIds});
+    userProfile.compIds = compIds;
+    allComps[compId] = { name, joinCode:code, ownerId:currentUser.uid, ownerName:userProfile.name, plan:'free', sport, season };
+    toast('Competition created! 🏉');
+    if (el('new-comp-name')) el('new-comp-name').value = '';
+    if (el('new-comp-code')) el('new-comp-code').value = '';
+    renderMyComps();
+    await loadComp(compId);
+  } catch(e) { console.error('Create comp error:', e); toast('Error creating comp',true); }
+  if (btn) btn.textContent = 'Create Competition';
+}
+
 async function savePrizes() {
   if (!currentCompId||!currentComp) return;
   if (!currentUser || currentComp.ownerId !== currentUser.uid) return;
@@ -3480,7 +3599,9 @@ Object.assign(window,{
   showReportCardIfNotWinner,showReportCardFromButton,
   showReportCard,dismissReportCard,shareReportCard,
   generateFlyer,saveBusinessSettings,saveAdminAck,showScoringChangeBanner,
-  renderMyComps,populateAvailableSportSeasons
+  renderMyComps,populateAvailableSportSeasons,
+  confirmModerationAck,closeModerationAckModal,
+  showCompSettings,saveCompSettingsPrizes,saveCompSettings,removeCompMember
 });
 </script>
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-LY7WXRQ24Q"></script>
@@ -3714,6 +3835,7 @@ function track(event, params={}) {
         <button class="btn" style="flex:1;min-width:140px;font-size:14px;padding:12px 16px;display:flex;align-items:center;justify-content:center;gap:8px;" onclick="showReportCardFromButton()">📋 My Round Report Card</button>
         <button class="btn" style="flex:1;min-width:140px;font-size:14px;padding:10px 16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:var(--gold);color:#0a1628;border:none;" onclick="copyInviteLink()"><span>🏉 Invite a Mate</span><span style="font-size:10px;opacity:0.6;font-weight:400;">Unique link to this Comp</span></button>
         <button class="btn btn-outline" style="flex:1;min-width:140px;font-size:14px;padding:10px 16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;" onclick="generateFlyer()"><span>📄 Print Flyer</span><span style="font-size:10px;opacity:0.6;font-weight:400;">QR code invite poster</span></button>
+        <button id="comp-settings-btn" class="btn btn-outline" style="flex:1;min-width:140px;font-size:14px;padding:10px 16px;display:none;flex-direction:column;align-items:center;justify-content:center;gap:3px;" onclick="showCompSettings()"><span>⚙️ Comp Settings</span><span style="font-size:10px;opacity:0.6;font-weight:400;">Manage your competition</span></button>
       </div>
 
       <div class="scoring-legend-container"></div>
@@ -4094,6 +4216,55 @@ function track(event, params={}) {
       </div>
     </div>
 
+    <!-- COMP SETTINGS (for comp owners who aren't site admin) -->
+    <div class="page" id="page-compsettings">
+      <div class="section-title">⚙️ COMP <span>SETTINGS</span></div>
+      <div class="section-sub" id="comp-settings-sub">Manage your competition</div>
+
+      <!-- PRIZE POOL -->
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-weight:700;font-size:16px;margin-bottom:14px;">🏆 Prize Pool</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <div><label style="font-size:11px;color:var(--muted);">Entry $</label><input type="number" id="cs-prize-entry" placeholder="0" style="width:75px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;margin-left:4px;"/></div>
+          <div><label style="font-size:11px;color:var(--muted);">1st $</label><input type="number" id="cs-prize-first" placeholder="0" style="width:75px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;margin-left:4px;"/></div>
+          <div><label style="font-size:11px;color:var(--muted);">2nd $</label><input type="number" id="cs-prize-second" placeholder="0" style="width:75px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;margin-left:4px;"/></div>
+          <div><label style="font-size:11px;color:var(--muted);">3rd $</label><input type="number" id="cs-prize-third" placeholder="0" style="width:75px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;margin-left:4px;"/></div>
+          <button class="btn" style="font-size:13px;padding:8px 16px;" onclick="saveCompSettingsPrizes()">Save</button>
+        </div>
+        <div style="margin-top:12px;">
+          <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Payment Instructions</label>
+          <textarea id="cs-prize-payment" placeholder="e.g. Please pay entry fee to Roughie Tipper&#10;PayID: 0400 000 000" rows="3" style="width:100%;margin-top:6px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;resize:vertical;line-height:1.5;"></textarea>
+        </div>
+      </div>
+
+      <!-- BUSINESS SETTINGS -->
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-weight:700;font-size:16px;margin-bottom:14px;">🏢 Business Settings</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div><label style="font-size:11px;color:var(--muted);">Business Name</label><input type="text" id="cs-biz-name" placeholder="e.g. The Crown Hotel" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
+          <div><label style="font-size:11px;color:var(--muted);">Business Logo URL</label><input type="url" id="cs-biz-logo" placeholder="https://yourbusiness.com/logo.png" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
+          <div><label style="font-size:11px;color:var(--muted);">Contact Details</label><input type="text" id="cs-biz-contact" placeholder="Phone, email or address" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
+          <div><label style="font-size:11px;color:var(--muted);">About Your Business</label><textarea id="cs-biz-about" placeholder="Tell tippers a bit about your venue…" rows="3" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;resize:vertical;"></textarea></div>
+          <div><label style="font-size:11px;color:var(--muted);">Round Sponsor Name</label><input type="text" id="cs-sponsor-name" placeholder="e.g. Hunter Co" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
+          <div><label style="font-size:11px;color:var(--muted);">Round Sponsor Logo URL</label><input type="url" id="cs-sponsor-logo" placeholder="https://yourbusiness.com/logo.png" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
+          <button class="btn" style="font-size:13px;padding:9px 18px;align-self:flex-start;" onclick="saveCompSettings()">Save Business Settings</button>
+        </div>
+      </div>
+
+      <!-- MEMBERS -->
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-weight:700;font-size:16px;margin-bottom:14px;">👥 Members</div>
+        <div id="cs-members-list"></div>
+      </div>
+
+      <!-- CHAT MODERATION -->
+      <div class="card" style="margin-bottom:16px;border:1px solid rgba(255,61,61,0.2);">
+        <div style="font-weight:700;font-size:16px;color:var(--red);margin-bottom:10px;">💬 Chat Moderation</div>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:12px;">As admin you can delete any message from your comp chat. Members can only delete their own messages. You are responsible for maintaining appropriate conduct in your competition.</p>
+        <div style="font-size:12px;color:var(--green);">✓ Moderation responsibility acknowledged at comp creation</div>
+      </div>
+    </div>
+
     <!-- ADMIN -->
     <div class="page" id="page-admin">
       <div class="section-title">ADMIN <span>PANEL</span></div>
@@ -4343,7 +4514,38 @@ window.addEventListener('load', () => {
 
 <!-- REPORT CARD - generated dynamically via JS -->
 
+<!-- MODERATION ACK MODAL -->
+<div id="moderation-ack-modal">
+  <div class="mod-ack-box">
+    <div style="font-size:32px;text-align:center;margin-bottom:12px;">⚠️</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:1px;color:var(--red);text-align:center;margin-bottom:16px;">Admin Responsibility</div>
+    <p style="font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:16px;">As the competition admin you are responsible for ensuring the chat feature is used appropriately. This includes monitoring for and removing any bullying, harassment, discrimination or inappropriate content.</p>
+    <p style="font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:20px;">Roughie Tips reserves the right to suspend competitions or accounts that breach these standards.</p>
+    <div style="display:flex;align-items:flex-start;gap:12px;background:var(--card2);border-radius:10px;padding:14px;margin-bottom:20px;cursor:pointer;" onclick="document.getElementById('mod-ack-checkbox').click()">
+      <input type="checkbox" id="mod-ack-checkbox" style="width:20px;height:20px;accent-color:var(--green);cursor:pointer;flex-shrink:0;margin-top:2px;"/>
+      <label for="mod-ack-checkbox" style="font-size:14px;font-weight:600;color:var(--text);cursor:pointer;line-height:1.5;">I understand and accept my responsibility as a competition admin to moderate the chat and ensure appropriate conduct.</label>
+    </div>
+    <button id="mod-ack-confirm-btn" onclick="confirmModerationAck()" style="width:100%;background:var(--card2);color:var(--muted);border:1px solid var(--border);padding:14px;border-radius:10px;font-family:'DM Sans',sans-serif;font-weight:700;font-size:15px;cursor:not-allowed;transition:all .2s;" disabled>Create Competition</button>
+    <button onclick="closeModerationAckModal()" style="width:100%;background:none;border:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;margin-top:10px;padding:6px;">Cancel</button>
+  </div>
+</div>
+
 <!-- MENTION SUGGESTIONS POPUP -->
+<script>
+document.addEventListener('change', function(e) {
+  if (e.target.id === 'mod-ack-checkbox') {
+    const btn = document.getElementById('mod-ack-confirm-btn');
+    if (btn) {
+      btn.disabled = !e.target.checked;
+      btn.style.background = e.target.checked ? 'var(--green)' : 'var(--card2)';
+      btn.style.color = e.target.checked ? 'var(--navy)' : 'var(--muted)';
+      btn.style.cursor = e.target.checked ? 'pointer' : 'not-allowed';
+      btn.style.borderColor = e.target.checked ? 'var(--green)' : 'var(--border)';
+    }
+  }
+});
+</script>
+
 <div id="mention-suggestions" style="display:none;position:fixed;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.5);z-index:9999;min-width:200px;max-width:320px;"></div>
 </body>
 </html>
