@@ -948,8 +948,35 @@ async function loadComp(compId) {
   showPage('leaderboard');
 }
 
+function populateAvailableSportSeasons() {
+  const sel = el('new-comp-sport');
+  if (!sel) return;
+  // Find unique sport+season combos that have at least one round with matches
+  const available = {};
+  rounds.forEach(r => {
+    if ((r.matches||[]).length === 0) return;
+    const sport = r.sport || 'AFL';
+    const season = r.season || new Date().getFullYear().toString();
+    const key = sport + '_' + season;
+    if (!available[key]) available[key] = { sport, season, key };
+  });
+  const options = Object.values(available).sort((a, b) => {
+    if (a.sport !== b.sport) return a.sport.localeCompare(b.sport);
+    return b.season.localeCompare(a.season);
+  });
+  const sportEmoji = { AFL: '🏉', NFL: '🏈', NRL: '🏉' };
+  if (options.length === 0) {
+    sel.innerHTML = '<option value="" disabled selected>No fixtures uploaded yet</option>';
+  } else {
+    sel.innerHTML = options.map(o =>
+      `<option value="${o.sport}|${o.season}">${sportEmoji[o.sport]||'🏉'} ${o.sport} ${o.season}</option>`
+    ).join('');
+  }
+}
+
 function renderMyComps() {
   if (!userProfile || !allComps) return;
+  populateAvailableSportSeasons();
   const myCompIds = userProfile.compIds || [];
   const searchVal = (el('comp-search')?.value || '').toLowerCase().trim();
 
@@ -957,7 +984,7 @@ function renderMyComps() {
   const allCompsList = Object.entries(allComps)
     .map(([id, c]) => {
       const memberIds = Object.entries(allUsers).filter(([uid,u]) => (u.compIds||[]).includes(id)).map(([uid]) => uid);
-      return { id, name: c.name, sport: c.sport||'AFL', plan: c.plan||'free', ownerName: c.ownerName||'', memberCount: memberIds.length };
+      return { id, name: c.name, sport: c.sport||'AFL', season: c.season||'', plan: c.plan||'free', ownerName: c.ownerName||'', memberCount: memberIds.length };
     })
     .filter(c => !searchVal || c.name.toLowerCase().includes(searchVal))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -965,9 +992,10 @@ function renderMyComps() {
   const myComps = allCompsList.filter(c => myCompIds.includes(c.id));
   const otherComps = allCompsList.filter(c => !myCompIds.includes(c.id));
 
-  const sportBadge = (sport) => {
+  const sportBadge = (sport, season) => {
     const colours = { AFL: '#00c853', NFL: '#0066cc', NRL: '#ff6600' };
-    return `<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;background:${colours[sport]||'var(--card2)'};color:#fff;margin-left:6px;">${sport}</span>`;
+    const seasonStr = season ? ' ' + season : '';
+    return `<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;background:${colours[sport]||'var(--card2)'};color:#fff;margin-left:6px;">${sport}${seasonStr}</span>`;
   };
 
   const planBadge = (plan) => {
@@ -987,7 +1015,7 @@ function renderMyComps() {
     return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);">
       <div style="flex:1;min-width:0;">
         <div style="font-weight:700;font-size:15px;display:flex;align-items:center;flex-wrap:wrap;gap:4px;">
-          ${escHtml(c.name)}${sportBadge(c.sport)}${planBadge(c.plan)}
+          ${escHtml(c.name)}${sportBadge(c.sport, c.season)}${planBadge(c.plan)}
         </div>
         <div style="font-size:12px;color:var(--muted);margin-top:2px;">${c.memberCount} tipper${c.memberCount!==1?'s':''}</div>
       </div>
@@ -1044,12 +1072,14 @@ async function joinComp(compId) {
 async function createComp() {
   const name = el('new-comp-name').value.trim();
   const code = el('new-comp-code').value.trim().toLowerCase();
-  const sport = el('new-comp-sport')?.value || 'AFL';
+  const sportSeason = el('new-comp-sport')?.value || 'AFL|2026';
+  const [sport, season] = sportSeason.includes('|') ? sportSeason.split('|') : [sportSeason, new Date().getFullYear().toString()];
   if (!name||!code) { toast('Enter a comp name and join code',true); return; }
+  if (!sport || sport === '') { toast('Please select a sport and season', true); return; }
   el('create-comp-btn').textContent = 'Creating…';
   try {
     const compId = 'comp_'+Date.now();
-    await setDoc(doc(db,'comps',compId),{ name, joinCode:code, ownerId:currentUser.uid, ownerName:userProfile.name, createdAt:serverTimestamp(), plan:'free', sport, businessName:'', businessLogo:'', businessContact:'', businessAbout:'', roundSponsor:null, memberLimit:50 });
+    await setDoc(doc(db,'comps',compId),{ name, joinCode:code, ownerId:currentUser.uid, ownerName:userProfile.name, createdAt:serverTimestamp(), plan:'free', sport, season, businessName:'', businessLogo:'', businessContact:'', businessAbout:'', roundSponsor:null, memberLimit:50 });
     const compIds = [...(userProfile.compIds||[]), compId];
     await updateDoc(doc(db,'users',currentUser.uid),{compIds, lastCompId:compId});
     userProfile.compIds = compIds;
@@ -3447,7 +3477,7 @@ Object.assign(window,{
   showReportCardIfNotWinner,showReportCardFromButton,
   showReportCard,dismissReportCard,shareReportCard,
   generateFlyer,saveBusinessSettings,saveAdminAck,showScoringChangeBanner,
-  renderMyComps
+  renderMyComps,populateAvailableSportSeasons
 });
 </script>
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-LY7WXRQ24Q"></script>
@@ -3811,12 +3841,11 @@ function track(event, params={}) {
         <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
           <div class="form-group" style="flex:1;min-width:180px;margin-bottom:0;"><label>Competition Name</label><input type="text" id="new-comp-name" placeholder="e.g. Hamish's Work Comp"/></div>
           <div class="form-group" style="flex:1;min-width:160px;margin-bottom:0;"><label>Join Code</label><input type="text" id="new-comp-code" placeholder="e.g. workmates2026"/></div>
-          <div class="form-group" style="min-width:120px;margin-bottom:0;"><label>Sport</label>
+          <div class="form-group" style="min-width:120px;margin-bottom:0;"><label>Sport & Season</label>
             <select id="new-comp-sport" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:11px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;width:100%;">
-              <option value="AFL">🏉 AFL</option>
-              <option value="NFL">🏈 NFL</option>
-              <option value="NRL">🏉 NRL</option>
+              <option value="" disabled>Loading fixtures…</option>
             </select>
+            <div id="new-comp-sport-note" style="font-size:11px;color:var(--muted);margin-top:4px;">Only seasons with an uploaded fixture are shown</div>
           </div>
           <button class="btn" id="create-comp-btn" onclick="createComp()" style="margin-bottom:1px;">Create Competition</button>
         </div>
