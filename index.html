@@ -3860,26 +3860,182 @@ function track(event, params={}) {
   <main>
     <!-- LEADERBOARD PAGE -->
     <div class="page" id="page-leaderboard">
+      <div class="section-title">🏆 <span id="lb-comp-name">LEADERBOARD</span></div>
+      <div class="section-sub" id="lb-comp-sub">Join or create a competition to get started</div>
 
+      <!-- STATS ROW -->
+      <div class="stats-row" id="lb-stats-row" style="display:none;">
+        <div class="stat-card"><div class="stat-label">Your Points</div><div class="stat-val" id="stat-mypts">—</div></div>
+        <div class="stat-card"><div class="stat-label">Your Rank</div><div class="stat-val" id="stat-myrank">—</div></div>
+        <div class="stat-card"><div class="stat-label">Round Score</div><div class="stat-val" id="stat-roundpts">—</div></div>
+        <div class="stat-card"><div class="stat-label">Accuracy</div><div class="stat-val" id="stat-accuracy">—</div></div>
+      </div>
 
+      <!-- ACTION BUTTONS -->
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+        <button class="btn" style="flex:1;min-width:140px;font-size:14px;padding:12px 16px;display:flex;align-items:center;justify-content:center;gap:8px;" onclick="showReportCardFromButton()">📋 My Round Report Card</button>
+        <button class="btn" style="flex:1;min-width:140px;font-size:14px;padding:10px 16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:var(--gold);color:#0a1628;border:none;" onclick="copyInviteLink()"><span>🏉 Invite a Mate</span><span style="font-size:10px;opacity:0.6;font-weight:400;">Unique link to this Comp</span></button>
+        <button class="btn btn-outline" style="flex:1;min-width:140px;font-size:14px;padding:10px 16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;" onclick="generateFlyer()"><span>📄 Print Flyer</span><span style="font-size:10px;opacity:0.6;font-weight:400;">QR code invite poster</span></button>
+        <button id="comp-settings-btn" class="btn btn-outline" style="flex:1;min-width:140px;font-size:14px;padding:10px 16px;display:none;flex-direction:column;align-items:center;justify-content:center;gap:3px;" onclick="showCompSettings()"><span>⚙️ Comp Settings</span><span style="font-size:10px;opacity:0.6;font-weight:400;">Manage your competition</span></button>
+      </div>
 
-      <!-- SITE-WIDE HONOURS BOARD -->
-      <div id="site-honours-section" style="margin-top:8px;">
-        <div class="section-title">🏆 HONOURS <span>BOARD</span></div>
-        <div class="section-sub">The champions who conquered Roughie Tips</div>
-        <div id="site-honours-list"></div>
-        <div id="site-honours-admin" style="display:none;margin-top:16px;">
+      <!-- PRIZE POOL -->
+      <div id="prize-pool-section" style="display:none;margin-bottom:20px;">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+            <div style="font-weight:700;font-size:16px;">🏆 Prize Pool</div>
+            <button id="edit-prize-btn" class="btn btn-outline" style="font-size:12px;padding:6px 12px;display:none;" onclick="togglePrizeEdit()">Edit</button>
+          </div>
+          <div id="prize-display"></div>
+          <div id="prize-edit-section" style="display:none;border-top:1px solid var(--border);padding-top:12px;">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Edit amounts (comp admin only)</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+              <div><label style="font-size:11px;color:var(--muted);">Entry $</label><input type="number" id="prize-input-entry" placeholder="0" style="width:75px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;margin-left:4px;"/></div>
+              <div><label style="font-size:11px;color:var(--muted);">1st $</label><input type="number" id="prize-input-first" placeholder="0" style="width:75px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;margin-left:4px;"/></div>
+              <div><label style="font-size:11px;color:var(--muted);">2nd $</label><input type="number" id="prize-input-second" placeholder="0" style="width:75px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;margin-left:4px;"/></div>
+              <div><label style="font-size:11px;color:var(--muted);">3rd $</label><input type="number" id="prize-input-third" placeholder="0" style="width:75px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;margin-left:4px;"/></div>
+              <button class="btn" style="font-size:13px;padding:8px 16px;" onclick="savePrizes()">Save</button>
+            </div>
+            <div style="margin-top:12px;">
+              <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Payment Instructions (shown to all members)</label>
+              <textarea id="prize-input-payment" placeholder="e.g. Please pay entry fee to Roughie Tipper&#10;PayID: 0400 000 000" rows="3" style="width:100%;margin-top:6px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;resize:vertical;line-height:1.5;"></textarea>
+            </div>
+            <!-- BUSINESS SETTINGS -->
+            <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+              <div style="font-size:12px;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">🏢 Business Settings</div>
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                <div><label style="font-size:11px;color:var(--muted);">Business Name</label><input type="text" id="biz-name-input" placeholder="e.g. The Crown Hotel" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
+                <div><label style="font-size:11px;color:var(--muted);">Business Logo URL</label><input type="url" id="biz-logo-input" placeholder="https://yourbusiness.com/logo.png" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
+                <div><label style="font-size:11px;color:var(--muted);">Contact Details</label><input type="text" id="biz-contact-input" placeholder="e.g. Phone, email or address" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
+                <div><label style="font-size:11px;color:var(--muted);">About Your Business</label><textarea id="biz-about-input" placeholder="Tell tippers a bit about your venue or business…" rows="3" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;resize:vertical;"></textarea></div>
+                <div><label style="font-size:11px;color:var(--muted);">Round Sponsor Name (optional — appears on Tips page & Coach Report)</label><input type="text" id="round-sponsor-input" placeholder="e.g. Hunter Co" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
+                <div><label style="font-size:11px;color:var(--muted);">Round Sponsor Logo URL (optional)</label><input type="url" id="round-sponsor-logo-input" placeholder="https://yourbusiness.com/logo.png" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
+                <button class="btn" style="font-size:13px;padding:9px 18px;align-self:flex-start;" onclick="saveBusinessSettings()">Save Business Settings</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LEADERBOARD TABLE -->
+      <div class="card" style="margin-bottom:20px;">
+        <div style="overflow-x:auto;">
+          <table class="lb-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Tipper</th>
+                <th>Pts</th>
+                <th>⚡</th>
+                <th>Rd Pts</th>
+                <th>Acc%</th>
+                <th>Wins</th>
+                <th>Paid</th>
+                <th style="display:none;"></th>
+              </tr>
+            </thead>
+            <tbody id="lb-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="scoring-legend" style="display:none;"></div>
+
+      <!-- EMOJI KEY -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-top:14px;">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;">Emoji Key</div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;">
+          <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">👑 <span>Leading the comp</span></div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">⭐ <span>Top score this round</span></div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">🔮 <span>Perfect round</span></div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">🥶 <span>Lowest score this round</span></div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">🥄 <span>Last place</span></div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">🥊 <span>Round wins</span></div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">👻 <span>Inactive — missed 2 rounds in a row (still earns full points)</span></div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">💀 <span>Ghost tipper — missed 3+ rounds (capped at 1pt, no roughie bonus)</span></div>
+        </div>
+      </div>
+
+      <!-- CHAT -->
+      <div class="chat-wrap" style="margin-top:20px;">
+        <div class="chat-header">
+          <div class="chat-header-title"><div class="chat-live-dot"></div> Comp Chat</div>
+          <div style="font-size:12px;color:var(--muted);" id="chat-member-count"></div>
+        </div>
+        <div class="chat-emoji-bar" style="padding:10px 14px 0;">
+          <button class="emoji-btn" onclick="insertEmoji('🏉')">🏉</button>
+          <button class="emoji-btn" onclick="insertEmoji('🔥')">🔥</button>
+          <button class="emoji-btn" onclick="insertEmoji('😂')">😂</button>
+          <button class="emoji-btn" onclick="insertEmoji('🤡')">🤡</button>
+          <button class="emoji-btn" onclick="insertEmoji('💀')">💀</button>
+          <button class="emoji-btn" onclick="insertEmoji('🤑')">🤑</button>
+          <button class="emoji-btn" onclick="insertEmoji('👑')">👑</button>
+          <button class="emoji-btn" onclick="insertEmoji('🥄')">🥄</button>
+        </div>
+        <div class="chat-feed" id="chat-feed"></div>
+        <div class="chat-footer">
+          <div class="chat-input-row">
+            <textarea class="chat-input" id="chat-input" rows="1" placeholder="Talk your footy… 🏉  (type @ to tag someone)" onkeydown="chatKeydown(event)" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" maxlength="280"></textarea>
+            <button class="chat-send-btn" onclick="sendChat()">🏉</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SIDE BETS -->
+      <div style="margin-top:20px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;margin-bottom:8px;">🤑 SIDE <span style="color:var(--green);">BETS</span></div>
+        <div style="background:rgba(255,214,0,0.08);border:1px solid rgba(255,214,0,0.2);border-radius:12px;padding:14px 16px;margin-bottom:14px;">
+          <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--card2);border-radius:10px;"><span style="font-size:18px;flex-shrink:0;">🤑</span><div style="font-size:13px;color:var(--muted);line-height:1.65;"><span style="color:var(--text);font-weight:700;">Challenge mates to side bets</span> — a slab, bragging rights, whatever. Zero impact on standings — pure banter.</div></div>
+        </div>
+        <div id="bet-form" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:14px;">
+          <div style="font-weight:700;margin-bottom:12px;">🤝 New Side Bet Challenge</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div><label style="font-size:12px;color:var(--muted);">Challenge who?</label>
+              <select id="bet-target" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"></select></div>
+            <div><label style="font-size:12px;color:var(--muted);">Your bet / challenge</label>
+              <input type="text" id="bet-text" maxlength="120" placeholder="e.g. I bet we beat you by 20+ pts this round" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
+            <div><label style="font-size:12px;color:var(--muted);">Stake (optional)</label>
+              <input type="text" id="bet-stake" maxlength="60" placeholder="Stake e.g. A slab of beers, $20, Bragging rights…" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
+              <button class="btn" style="align-self:flex-start;font-size:13px;padding:9px 20px;" onclick="proposeBet()">🤑 Send Challenge</button>
+            </div>
+          </div>
+          <div id="sidebets-list"><div style="text-align:center;color:var(--muted);padding:20px;font-size:13px;">No side bets yet — someone start one! 👀</div></div>
+        </div>
+      </div>
+
+      <!-- COMP HONOURS BOARD -->
+      <div id="comp-honours-section" style="margin-top:28px;display:none;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;margin-bottom:4px;">🏅 COMP <span style="color:var(--green);">CHAMPIONS</span></div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:16px;">Past winners of this competition</div>
+        <div id="comp-current-leader" style="display:none;margin-bottom:16px;">
+          <div class="card" style="border:1px solid rgba(255,214,0,0.3);background:linear-gradient(135deg,rgba(255,214,0,0.08),rgba(255,214,0,0.03));position:relative;overflow:hidden;">
+            <div style="position:absolute;top:10px;right:14px;background:rgba(0,200,83,0.15);border:1px solid rgba(0,200,83,0.4);border-radius:99px;padding:3px 10px;font-size:10px;font-weight:700;color:var(--green);letter-spacing:1px;">IN PROGRESS</div>
+            <div style="font-size:11px;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">📊 Current Season Leader</div>
+            <div style="display:flex;align-items:center;gap:14px;">
+              <div id="comp-leader-avatar" style="width:48px;height:48px;border-radius:50%;background:var(--card2);border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:var(--gold);flex-shrink:0;overflow:hidden;"></div>
+              <div style="flex:1;min-width:0;">
+                <div id="comp-leader-name" style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--text);letter-spacing:1px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+                <div id="comp-leader-fullname" style="font-size:12px;color:var(--muted);margin-top:1px;"></div>
+                <div style="display:flex;align-items:center;gap:10px;margin-top:2px;">
+                  <div id="comp-leader-pts" style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);"></div>
+                  <div id="comp-leader-season" style="font-size:11px;color:var(--muted);"></div>
+                </div>
+              </div>
+              <div style="font-size:40px;opacity:0.6;">👑</div>
+            </div>
+          </div>
+        </div>
+        <div id="comp-honours-list"></div>
+        <div id="comp-honours-admin" style="display:none;margin-top:16px;">
           <div class="card" style="border:1px solid rgba(255,214,0,0.25);">
             <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--gold);letter-spacing:1px;margin-bottom:14px;">⚙️ Add Past Champion</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-              <div class="form-group" style="margin:0;"><label>Year</label><input type="number" id="hon-year" placeholder="2025" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;"/></div>
-              <div class="form-group" style="margin:0;"><label>Sport</label><select id="hon-sport" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;"><option value="AFL">AFL</option><option value="NRL">NRL</option><option value="NFL">NFL</option><option value="Other">Other</option></select></div>
-              <div class="form-group" style="margin:0;"><label>Nickname</label><input type="text" id="hon-nick" placeholder="e.g. Roughie King" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;"/></div>
-              <div class="form-group" style="margin:0;"><label>Full Name</label><input type="text" id="hon-full" placeholder="e.g. John Smith" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;"/></div>
-              <div class="form-group" style="margin:0;"><label>Total Points</label><input type="number" id="hon-pts" placeholder="e.g. 142" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;"/></div>
-              <div class="form-group" style="margin:0;"><label>Avatar URL (optional)</label><input type="url" id="hon-avatar" placeholder="https://i.imgur.com/…" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;"/></div>
+              <div class="form-group" style="margin:0;"><label>Year</label><input type="number" id="comp-hon-year" placeholder="2025" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;"/></div>
+              <div class="form-group" style="margin:0;"><label>Nickname</label><input type="text" id="comp-hon-nick" placeholder="e.g. Roughie King" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;"/></div>
+              <div class="form-group" style="margin:0;"><label>Full Name</label><input type="text" id="comp-hon-full" placeholder="e.g. John Smith" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;"/></div>
+              <div class="form-group" style="margin:0;"><label>Total Points</label><input type="number" id="comp-hon-pts" placeholder="e.g. 142" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;"/></div>
             </div>
-            <button class="btn" style="width:100%;font-size:13px;" onclick="addHonoursEntry()">+ Engrave on the Board</button>
+            <button class="btn" style="width:100%;font-size:13px;" onclick="addCompHonoursEntry()">+ Engrave on the Board</button>
           </div>
         </div>
       </div>
