@@ -582,7 +582,7 @@ function showPage(id) {
   if (moreBtn) moreBtn.classList.toggle('active', morePages.includes(id));
   closeMoreMenu();
   if(id==='leaderboard') { renderLeaderboard(); track('view_leaderboard'); }
-  if(id==='global') renderGlobalLeaderboard();
+
   if(id==='tips') { renderTipsPage(); track('view_tips'); }
   if(id==='rounds') { renderRoundsPage(); track('view_rounds'); }
   if(id==='admin') renderAdmin();
@@ -597,7 +597,8 @@ function showPage(id) {
     }
     if (el('contact-result')) el('contact-result').style.display = 'none';
   }
-  if(id==='leaderboard') { setTimeout(initInstallBanner, 1000); renderHonoursPage(); renderCompHonours(); }
+  if(id==='leaderboard') { setTimeout(initInstallBanner, 1000); renderCompHonours(); }
+  if(id==='global') { renderGlobalLeaderboard(); renderHonoursPage(); }
 
 }
 
@@ -2837,8 +2838,11 @@ async function renderCompHonours() {
         avatarEl.innerHTML = leaderName[0]?.toUpperCase() || '?';
       }
     }
+    const leaderFullName = leaderUser?.name || '';
     const nameEl = el('comp-leader-name');
     if (nameEl) nameEl.textContent = leaderName;
+    const fullNameEl = el('comp-leader-fullname');
+    if (fullNameEl) fullNameEl.textContent = (leaderFullName && leaderFullName !== leaderName) ? leaderFullName : '';
     const ptsEl = el('comp-leader-pts');
     if (ptsEl) ptsEl.textContent = leaderPts + ' pts';
     const seasonEl = el('comp-leader-season');
@@ -2851,7 +2855,7 @@ async function renderCompHonours() {
   // ── Load past comp honours from Firestore ──
   let entries = [];
   try {
-    const snap = await getDocs(query(collection(db, 'comps', currentCompId, 'honours'), orderBy('year', 'asc')));
+    const snap = await getDocs(query(collection(db, 'comp_honours'), where('compId','==',currentCompId), orderBy('year', 'asc')));
     entries = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch(e) {}
 
@@ -2888,7 +2892,7 @@ async function addCompHonoursEntry() {
   const pts_val = el('comp-hon-pts')?.value.trim();
   if (!year || !nick) { toast('Year and nickname required', true); return; }
   try {
-    await addDoc(collection(db, 'comps', currentCompId, 'honours'), { year: parseInt(year), nick, fullName: full, pts: pts_val ? parseInt(pts_val) : null, addedAt: serverTimestamp() });
+    await addDoc(collection(db, 'comp_honours'), { compId: currentCompId, year: parseInt(year), nick, fullName: full, pts: pts_val ? parseInt(pts_val) : null, addedAt: serverTimestamp() });
     toast('Champion added! 🏆');
     if (el('comp-hon-year')) el('comp-hon-year').value = '';
     if (el('comp-hon-nick')) el('comp-hon-nick').value = '';
@@ -3864,26 +3868,7 @@ function track(event, params={}) {
   <main>
     <!-- LEADERBOARD PAGE -->
     <div class="page" id="page-leaderboard">
-      <!-- SITE-WIDE HONOURS BOARD -->
-      <div id="site-honours-section" style="margin-bottom:28px;">
-        <div class="section-title">🏆 HONOURS <span>BOARD</span></div>
-        <div class="section-sub">The champions who conquered Roughie Tips</div>
-        <div id="site-honours-list"></div>
-        <div id="site-honours-admin" style="display:none;margin-top:16px;">
-          <div class="card" style="border:1px solid rgba(255,214,0,0.25);">
-            <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--gold);letter-spacing:1px;margin-bottom:14px;">⚙️ Add Past Champion</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-              <div class="form-group" style="margin:0;"><label>Year</label><input type="number" id="hon-year" placeholder="2025" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;"/></div>
-              <div class="form-group" style="margin:0;"><label>Sport</label><select id="hon-sport" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;"><option value="AFL">AFL</option><option value="NRL">NRL</option><option value="NFL">NFL</option><option value="Other">Other</option></select></div>
-              <div class="form-group" style="margin:0;"><label>Nickname</label><input type="text" id="hon-nick" placeholder="e.g. Roughie King" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;"/></div>
-              <div class="form-group" style="margin:0;"><label>Full Name</label><input type="text" id="hon-full" placeholder="e.g. John Smith" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;"/></div>
-              <div class="form-group" style="margin:0;"><label>Total Points</label><input type="number" id="hon-pts" placeholder="e.g. 142" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;"/></div>
-              <div class="form-group" style="margin:0;"><label>Avatar URL (optional)</label><input type="url" id="hon-avatar" placeholder="https://i.imgur.com/…" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;"/></div>
-            </div>
-            <button class="btn" style="width:100%;font-size:13px;" onclick="addHonoursEntry()">+ Engrave on the Board</button>
-          </div>
-        </div>
-      </div>
+
       <div id="promo-banner">
         <div id="promo-track">
           <div class="promo-slide"><img src="savebookmark.webp" alt="Promo 1"/></div>
@@ -4034,6 +4019,7 @@ function track(event, params={}) {
               <div id="comp-leader-avatar" style="width:48px;height:48px;border-radius:50%;background:var(--card2);border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:var(--gold);flex-shrink:0;overflow:hidden;"></div>
               <div style="flex:1;min-width:0;">
                 <div id="comp-leader-name" style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--text);letter-spacing:1px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+                <div id="comp-leader-fullname" style="font-size:12px;color:var(--muted);margin-top:1px;"></div>
                 <div style="display:flex;align-items:center;gap:10px;margin-top:2px;">
                   <div id="comp-leader-pts" style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);"></div>
                   <div id="comp-leader-season" style="font-size:11px;color:var(--muted);"></div>
@@ -4065,7 +4051,28 @@ function track(event, params={}) {
     <div class="page" id="page-global">
       <div class="section-title">OVERALL <span>RANKINGS</span></div>
       <div class="section-sub">Every tipper across all competitions ranked by total points</div>
-      <div class="card"><div style="overflow-x:auto;"><table class="lb-table"><thead><tr><th>#</th><th>Tipper</th><th>Total Pts</th><th style="display:none;"></th><th>Last Round</th></tr></thead><tbody id="global-body"></tbody></table></div></div>
+      <div class="card" style="margin-bottom:20px;"><div style="overflow-x:auto;"><table class="lb-table"><thead><tr><th>#</th><th>Tipper</th><th>Total Pts</th><th style="display:none;"></th><th>Last Round</th></tr></thead><tbody id="global-body"></tbody></table></div></div>
+
+      <!-- SITE-WIDE HONOURS BOARD -->
+      <div id="site-honours-section" style="margin-top:8px;">
+        <div class="section-title">🏆 HONOURS <span>BOARD</span></div>
+        <div class="section-sub">The champions who conquered Roughie Tips</div>
+        <div id="site-honours-list"></div>
+        <div id="site-honours-admin" style="display:none;margin-top:16px;">
+          <div class="card" style="border:1px solid rgba(255,214,0,0.25);">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--gold);letter-spacing:1px;margin-bottom:14px;">⚙️ Add Past Champion</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+              <div class="form-group" style="margin:0;"><label>Year</label><input type="number" id="hon-year" placeholder="2025" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;"/></div>
+              <div class="form-group" style="margin:0;"><label>Sport</label><select id="hon-sport" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;"><option value="AFL">AFL</option><option value="NRL">NRL</option><option value="NFL">NFL</option><option value="Other">Other</option></select></div>
+              <div class="form-group" style="margin:0;"><label>Nickname</label><input type="text" id="hon-nick" placeholder="e.g. Roughie King" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;"/></div>
+              <div class="form-group" style="margin:0;"><label>Full Name</label><input type="text" id="hon-full" placeholder="e.g. John Smith" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;"/></div>
+              <div class="form-group" style="margin:0;"><label>Total Points</label><input type="number" id="hon-pts" placeholder="e.g. 142" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;"/></div>
+              <div class="form-group" style="margin:0;"><label>Avatar URL (optional)</label><input type="url" id="hon-avatar" placeholder="https://i.imgur.com/…" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:100%;"/></div>
+            </div>
+            <button class="btn" style="width:100%;font-size:13px;" onclick="addHonoursEntry()">+ Engrave on the Board</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- MY TIPS -->
