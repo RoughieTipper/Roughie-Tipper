@@ -615,8 +615,8 @@ function showPage(id) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
   // Show/hide ladder bottom tabs
-  if (id === 'leaderboard') { showLadderBottomTabs(); }
-  else { hideLadderBottomTabs(); }
+  if (id === 'leaderboard') { window.showLadderBottomTabs && window.showLadderBottomTabs(); }
+  else { window.hideLadderBottomTabs && window.hideLadderBottomTabs(); }
   const pg = el('page-'+id); if(pg) pg.classList.add('active');
   const bn = el('nav-'+id); if(bn) bn.classList.add('active');
   // Highlight MORE button if active page is in the more menu
@@ -997,7 +997,7 @@ async function loadComp(compId) {
   subscribeSideBets();
   updateNavLabels();
   showPage('leaderboard');
-  showLadderPanel('ladder');
+  window.showLadderPanel && window.showLadderPanel('ladder');
   renderCompHonours();
 }
 
@@ -1278,7 +1278,7 @@ function renderLeaderboard() {
   if (payInfo && payDisplay && payText) { payText.textContent = payInfo; payDisplay.style.display = 'block'; }
   else if (payDisplay) { payDisplay.style.display = 'none'; }
   el('prize-edit-section').style.display = isOwner ? 'block' : 'none';
-  updateLadderAdminTab(isOwner);
+  window.updateLadderAdminTab && window.updateLadderAdminTab(isOwner);
   if (isOwner) {
     el('prize-input-entry').value = prizes.entry||'';
     el('prize-input-first').value = prizes.first||'';
@@ -2381,7 +2381,7 @@ function renderChat(messages){
     }).join('');
   if(wasAtBottom||messages.length<=5) feed.scrollTop=feed.scrollHeight;
   // Notify if chat panel not active
-  if(messages.length > 0) { try { notifyNewChat(); } catch(e){} }
+  if(messages.length > 0) { try { window.notifyNewChat && window.notifyNewChat(); } catch(e){} }
   checkForMentions(messages);
 }
 function formatTime(d){
@@ -4689,9 +4689,9 @@ function initRegBadgePicker(){
 let _currentLadderPanel = 'ladder';
 
 const _lbtTitles = {
-  ladder:  { pre: 'COMP',  main: 'LADDER',  sub: 'Live standings for your current competition · Overall rank shown on right' },
+  ladder:  { pre: 'COMP',  main: 'LADDER',  sub: 'Live standings for your current competition' },
   results: { pre: 'ROUND', main: 'RESULTS', sub: 'Browse tips and results per round' },
-  chat:    { pre: "COMP",  main: "CHAT",    sub: "Talk your footy — keep it friendly… or don't 😂" },
+  chat:    { pre: 'COMP',  main: 'CHAT',    sub: 'Talk your footy and call out your mates' },
   history: { pre: 'COMP',  main: 'HISTORY', sub: 'Past champions and current season leader' },
   admin:   { pre: 'COMP',  main: 'ADMIN',   sub: 'Manage prize money, settings and business details' },
 };
@@ -4733,6 +4733,8 @@ function showLadderPanel(panelId) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 window.showLadderPanel = showLadderPanel;
+window.showLadderBottomTabs = showLadderBottomTabs;
+window.hideLadderBottomTabs = hideLadderBottomTabs;
 
 function showLadderBottomTabs() {
   const tabs = document.getElementById('ladder-bottom-tabs');
@@ -4752,7 +4754,7 @@ function _lbtOnShowPage(id) {
   if (id === 'leaderboard') {
     showLadderBottomTabs();
     // Reset to ladder panel each time user navigates to leaderboard from top nav
-    showLadderPanel('ladder');
+    window.showLadderPanel && window.showLadderPanel('ladder');
   } else {
     hideLadderBottomTabs();
   }
