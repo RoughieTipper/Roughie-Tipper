@@ -1750,9 +1750,13 @@ function resetAutosaveLabel() {
 
 // ─── ROUNDS PAGE ─────────────────────────────────────────────
 function renderRoundsPage(){
-  document.querySelectorAll('#lbt-panel-results .scoring-legend-container, #page-rounds .scoring-legend-container').forEach(c => { c.innerHTML = scoringLegendHTML(); });
+  // If results panel not visible yet, defer until it is
+  const panel = document.getElementById('lbt-panel-results');
+  if (!panel) return;
+  document.querySelectorAll('#lbt-panel-results .scoring-legend-container').forEach(c => { c.innerHTML = scoringLegendHTML(); });
   const activeRounds=rounds.filter(r=>(r.matches||[]).length>0);
   const nav=el('round-tabs-nav');
+  if(!nav) return;
   const defaultRound = activeRounds.find(r=>!(r.matches||[]).every(m=>m.winner)) || activeRounds[activeRounds.length-1];
   const defaultIdx = activeRounds.indexOf(defaultRound);
   nav.innerHTML=activeRounds.map((r,i)=>
@@ -4005,6 +4009,7 @@ function track(event, params={}) {
 
       <!-- ══ PANEL: RESULTS ══ -->
       <div class="lbt-panel" id="lbt-panel-results">
+        <div class="scoring-legend-container"></div>
         <div class="round-tabs" id="round-tabs-nav"></div>
         <div id="round-results-content"></div>
       </div><!-- /lbt-panel-results -->
@@ -4715,9 +4720,9 @@ function showLadderPanel(panelId) {
   if (titleEl) titleEl.innerHTML = t.pre + ' <span id="lb-title-span">' + t.main + '</span>';
   if (subEl)   subEl.textContent = t.sub;
 
-  // Results panel — trigger render
+  // Results panel — trigger render after panel becomes visible
   if (panelId === 'results') {
-    renderRoundsPage();
+    setTimeout(function(){ window.renderRoundsPage && window.renderRoundsPage(); }, 50);
   }
 
   // Chat panel — scroll to bottom and clear pip
@@ -4734,6 +4739,7 @@ function showLadderPanel(panelId) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 window.showLadderPanel = showLadderPanel;
+window.renderRoundsPage = renderRoundsPage;
 window.showLadderBottomTabs = showLadderBottomTabs;
 window.hideLadderBottomTabs = hideLadderBottomTabs;
 
