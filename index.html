@@ -3758,6 +3758,11 @@ Object.assign(window,{
   showCompSettings,saveCompSettingsPrizes,saveCompSettings,removeCompMember,
   addCompHonoursEntry,deleteCompHonoursEntry,renderCompHonours
 });
+
+// Listen for results panel being shown
+document.addEventListener('showResultsPanel', function() {
+  setTimeout(function() { renderRoundsPage(); }, 50);
+});
 </script>
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-LY7WXRQ24Q"></script>
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-LY7WXRQ24Q');
@@ -4720,9 +4725,9 @@ function showLadderPanel(panelId) {
   if (titleEl) titleEl.innerHTML = t.pre + ' <span id="lb-title-span">' + t.main + '</span>';
   if (subEl)   subEl.textContent = t.sub;
 
-  // Results panel — trigger render after panel becomes visible
+  // Results panel — dispatch event for module script to handle
   if (panelId === 'results') {
-    setTimeout(function(){ if(window.renderRoundsPage) window.renderRoundsPage(); else setTimeout(function(){ window.renderRoundsPage && window.renderRoundsPage(); }, 500); }, 100);
+    document.dispatchEvent(new CustomEvent('showResultsPanel'));
   }
 
   // Chat panel — scroll to bottom and clear pip
