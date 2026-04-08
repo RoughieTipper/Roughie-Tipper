@@ -352,50 +352,47 @@ const firebaseConfig = {
 
 const SITE_ADMIN_UID = 'CdcjgZWDAKfQQybjqN6fyEH56XZ2';
 
-// ─── EMAIL OCTOPUS ───────────────────────────────────────────
-const EO_API_KEY = 'eo_79f8e6df5d30c9c1665f2148c1976372338d10dec2612b2a93ce2aca85779a38';
-const EO_LIST_ID = '837b6266-2700-11f1-96fb-019a128391e7';
+// ─── EMAIL OCTOPUS (via secure Cloud Functions — API key is server-side only) ──
+const EO_SUBSCRIBE_URL   = 'https://eosubscribe-v7gbqnt7ua-uc.a.run.app';
+const EO_FUNCTIONS_BASE  = 'https://us-central1-roughie-tippers.cloudfunctions.net';
+
+async function getAuthToken() {
+  try {
+    const user = auth.currentUser;
+    if (!user) return null;
+    return await user.getIdToken();
+  } catch(e) { return null; }
+}
 
 async function eoSubscribe(email, firstName, nickname) {
   try {
-    await fetch(`https://emailoctopus.com/api/1.1/lists/${EO_LIST_ID}/contacts`, {
+    const token = await getAuthToken();
+    await fetch(EO_SUBSCRIBE_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        api_key: EO_API_KEY,
-        email_address: email,
-        fields: { FirstName: firstName || '', Nickname: nickname || '' },
-        status: 'SUBSCRIBED'
-      })
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ email, firstName, nickname })
     });
   } catch(e) { console.log('EO subscribe error:', e); }
 }
 
 async function eoUnsubscribe(email) {
   try {
-    // First find the contact by email to get their ID
-    const res = await fetch(`https://emailoctopus.com/api/1.1/lists/${EO_LIST_ID}/contacts?api_key=${EO_API_KEY}&email_address=${encodeURIComponent(email)}`);
-    const data = await res.json();
-    const contact = data.data?.[0];
-    if (!contact) return;
-    await fetch(`https://emailoctopus.com/api/1.1/lists/${EO_LIST_ID}/contacts/${contact.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ api_key: EO_API_KEY, status: 'UNSUBSCRIBED' })
+    const token = await getAuthToken();
+    await fetch(`${EO_FUNCTIONS_BASE}/eoUnsubscribe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ email })
     });
   } catch(e) { console.log('EO unsubscribe error:', e); }
 }
 
 async function eoResubscribe(email) {
   try {
-    const res = await fetch(`https://emailoctopus.com/api/1.1/lists/${EO_LIST_ID}/contacts?api_key=${EO_API_KEY}&email_address=${encodeURIComponent(email)}`);
-    const data = await res.json();
-    const contact = data.data?.[0];
-    if (!contact) return;
-    await fetch(`https://emailoctopus.com/api/1.1/lists/${EO_LIST_ID}/contacts/${contact.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ api_key: EO_API_KEY, status: 'SUBSCRIBED' })
+    const token = await getAuthToken();
+    await fetch(`${EO_FUNCTIONS_BASE}/eoResubscribe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ email })
     });
   } catch(e) { console.log('EO resubscribe error:', e); }
 }
