@@ -929,7 +929,7 @@ function subscribeGlobal() {
     rounds = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.order||0)-(b.order||0));
     window._rounds = rounds;
     if(el('page-tips')?.classList.contains('active')) renderTipsPage();
-    if(el('page-rounds')?.classList.contains('active')) renderRoundsPage();
+    if(el('page-leaderboard')?.classList.contains('active') && window._currentLadderPanel==='results') renderRoundsPage();
     if(el('page-leaderboard')?.classList.contains('active')) renderLeaderboard();
     if(el('page-global')?.classList.contains('active')) renderGlobalLeaderboard();
     if(el('page-mycomps')?.classList.contains('active')) renderMyComps();
@@ -952,7 +952,7 @@ function subscribeGlobal() {
     window._allTips = allTips;
     if(el('page-leaderboard')?.classList.contains('active')) renderLeaderboard();
     if(el('page-global')?.classList.contains('active')) renderGlobalLeaderboard();
-    if(el('page-rounds')?.classList.contains('active')) renderRoundsPage();
+    if(el('page-leaderboard')?.classList.contains('active') && window._currentLadderPanel==='results') renderRoundsPage();
     if(el('page-mycomps')?.classList.contains('active')) renderMyComps();
   });
   unsubFns.push(u2);
@@ -3909,7 +3909,7 @@ function track(event, params={}) {
       <span class="lbt-icon">🏆</span><span>Ladder</span>
     </button>
     <button class="lbt-item" id="lbt-results" onclick="showLadderPanel('results')">
-      <span class="lbt-icon">📅</span><span>Results</span>
+      <span class="lbt-icon">✅</span><span>Results</span>
     </button>
     <button class="lbt-item" id="lbt-chat" onclick="showLadderPanel('chat')">
       <span class="lbt-icon">💬</span><span>Chat</span>
@@ -4005,7 +4005,6 @@ function track(event, params={}) {
 
       <!-- ══ PANEL: RESULTS ══ -->
       <div class="lbt-panel" id="lbt-panel-results">
-        <div class="scoring-legend-container"></div>
         <div class="round-tabs" id="round-tabs-nav"></div>
         <div id="round-results-content"></div>
       </div><!-- /lbt-panel-results -->
@@ -4687,6 +4686,7 @@ function initRegBadgePicker(){
 
 // ── LADDER BOTTOM TABS ───────────────────────────────────────
 let _currentLadderPanel = 'ladder';
+window._currentLadderPanel = 'ladder';
 
 const _lbtTitles = {
   ladder:  { pre: 'COMP',  main: 'LADDER',  sub: 'Live standings for your current competition' },
@@ -4698,6 +4698,7 @@ const _lbtTitles = {
 
 function showLadderPanel(panelId) {
   _currentLadderPanel = panelId;
+  window._currentLadderPanel = panelId;
 
   // Switch panels
   document.querySelectorAll('.lbt-panel').forEach(p => p.classList.remove('active'));
