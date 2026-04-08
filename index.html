@@ -288,11 +288,10 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
   position: fixed;
   bottom: 0; left: 0; right: 0;
   z-index: 150;
-  background: rgba(10,22,40,0.97);
-  border-top: 1px solid var(--border);
-  backdrop-filter: blur(16px);
+  background: linear-gradient(135deg, #c9a800 0%, #ffd600 50%, #c9a800 100%);
+  border-top: 2px solid rgba(255,255,255,0.25);
   padding: 0 0 env(safe-area-inset-bottom, 0px);
-  box-shadow: 0 -4px 24px rgba(0,0,0,0.4);
+  box-shadow: 0 -4px 28px rgba(255,214,0,0.35), 0 -1px 0 rgba(255,255,255,0.15);
 }
 #ladder-bottom-tabs.visible { display: flex; }
 .lbt-item {
@@ -300,28 +299,31 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
   align-items: center; justify-content: center;
   padding: 8px 4px 7px; gap: 3px;
   background: none; border: none;
-  color: rgba(232,237,245,0.4);
+  color: rgba(10,22,40,0.5);
   font-family: 'DM Sans', sans-serif;
-  font-size: 10px; font-weight: 700;
+  font-size: 10px; font-weight: 800;
   letter-spacing: 0.4px; text-transform: uppercase;
-  cursor: pointer; transition: color var(--transition-fast);
+  cursor: pointer; transition: all var(--transition-fast);
   position: relative;
 }
-.lbt-item:hover { color: var(--text); }
-.lbt-item.active { color: var(--green); }
+.lbt-item:hover { color: rgba(10,22,40,0.8); }
+.lbt-item.active {
+  color: var(--navy);
+  background: rgba(255,255,255,0.2);
+  border-radius: 10px;
+}
 .lbt-icon {
   font-size: 20px; line-height: 1;
   transition: transform var(--transition-fast);
 }
 .lbt-item.active .lbt-icon {
-  transform: scale(1.15);
-  filter: drop-shadow(0 0 6px rgba(0,200,83,0.6));
+  transform: scale(1.2);
 }
 .lbt-pip {
   position: absolute; top: 6px; right: calc(50% - 16px);
   width: 7px; height: 7px; border-radius: 50%;
   background: var(--red);
-  border: 2px solid rgba(10,22,40,0.97);
+  border: 2px solid var(--gold);
   display: none;
 }
 .lbt-pip.show { display: block; }
