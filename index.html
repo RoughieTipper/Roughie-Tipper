@@ -1259,7 +1259,7 @@ function renderLeaderboard() {
   if (!currentCompId) { showPage('mycomps'); return; }
   const compNameTitle = document.getElementById('lb-comp-name-title');
   if (compNameTitle && currentComp?.name) {
-    compNameTitle.textContent = '— ' + currentComp.name.toUpperCase();
+    compNameTitle.textContent = ' — ' + currentComp.name.toUpperCase();
   }
   const memberIds = Object.entries(allUsers).filter(([uid,u])=>(u.compIds||[]).includes(currentCompId)).map(([uid])=>uid);
   const scores = calcScoresForUsers(memberIds);
@@ -3950,7 +3950,7 @@ function track(event, params={}) {
 
       <!-- Dynamic title updates per tab -->
       <div id="lb-page-title-wrap">
-        <div class="section-title" id="lb-section-title">COMP <span id="lb-title-span">LADDER</span><span id="lb-comp-name-title" style="color:var(--gold);font-size:0.65em;letter-spacing:1px;display:block;margin-top:-4px;text-shadow:0 0 16px rgba(255,214,0,0.3);"></span></div>
+        <div class="section-title" id="lb-section-title">COMP <span id="lb-title-span">LADDER</span><span id="lb-comp-name-title" style="color:var(--gold);text-shadow:0 0 16px rgba(255,214,0,0.3);"></span></div>
         <div class="section-sub" id="lb-section-sub">Live standings for your current competition · Overall rank shown on right</div>
       </div>
 
@@ -4731,7 +4731,7 @@ function showLadderPanel(panelId) {
   const subEl   = document.getElementById('lb-section-sub');
   if (titleEl) {
     const compName = window._currentComp?.name || '';
-    const compSuffix = compName ? '<span id="lb-comp-name-title" style="color:var(--gold);font-size:0.65em;letter-spacing:1px;display:block;margin-top:-4px;text-shadow:0 0 16px rgba(255,214,0,0.3);">— ' + compName.toUpperCase() + '</span>' : '<span id="lb-comp-name-title"></span>';
+    const compSuffix = compName ? '<span id="lb-comp-name-title" style="color:var(--gold);text-shadow:0 0 16px rgba(255,214,0,0.3);"> — ' + compName.toUpperCase() + '</span>' : '<span id="lb-comp-name-title"></span>';
     titleEl.innerHTML = t.pre + ' <span id="lb-title-span">' + t.main + '</span>' + compSuffix;
   }
   if (subEl) subEl.textContent = t.sub;
