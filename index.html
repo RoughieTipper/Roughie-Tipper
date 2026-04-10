@@ -1397,6 +1397,30 @@ function renderLeaderboard() {
         });
         if (allCorrect && roundMatches.length > 0) emojis.push('🔮');
       }
+      // Bullseye — exact margin on first game of latest round
+      const marginDiff = latestRound ? (s.roundMarginDiffs?.[latestRound.id] ?? null) : null;
+      const firstMatchLatest = latestRound ? (latestRound.matches||[])[0] : null;
+      const firstMatchComplete = firstMatchLatest && firstMatchLatest.winner && firstMatchLatest.actualMargin;
+      const hasBullseye = firstMatchComplete && marginDiff === 0;
+
+      // Wizard — bullseye on first game AND every other game correct
+      if (hasBullseye) {
+        const myTipsForRound = allTips[s.uid] || {};
+        const roundMatchesLatest = latestRound.matches || [];
+        // Check all other games (index 1+) are correct
+        const allOthersCorrect = roundMatchesLatest.slice(1).every(m => {
+          if (!m.winner) return false;
+          const { pick } = getEffectivePick(myTipsForRound, m);
+          if (m.winner === 'Draw') return !!pick;
+          return pick === m.winner;
+        });
+        if (allOthersCorrect && roundMatchesLatest.length > 1) {
+          emojis.push('🧙');
+        } else {
+          emojis.push('🎯');
+        }
+      }
+
       // Ghost / skull for inactive tippers
       const inactiveStatus = getInactiveStatus(s.uid);
       if (inactiveStatus === 'skull') emojis.push('💀');
@@ -1414,7 +1438,7 @@ function renderLeaderboard() {
     const globalRank = globalRankMap[s.uid]||'—';
     const rWins = roundWinCounts[s.uid]||0;
     const emojiBadges = (emojiMap[s.uid]||[]).map(e =>
-      `<span style="font-size:16px;line-height:1;" title="${e==='👑'?'Leading the comp':e==='🥄'?'Last place':e==='⭐'?'Top score this round':e==='🥶'?'Lowest score this round':e==='🔮'?'Perfect round!':e==='👻'?'Inactive — missed 2 rounds in a row (still earning full points)':e==='💀'?'Ghost tipper — missed 3+ rounds (capped at 1pt, no roughie bonus)':''}">${e}</span>`
+      `<span style="font-size:16px;line-height:1;" title="${e==='👑'?'Leading the comp':e==='🥄'?'Last place':e==='⭐'?'Top score this round':e==='🥶'?'Lowest score this round':e==='🔮'?'Perfect round!':e==='👻'?'Inactive — missed 2 rounds in a row (still earning full points)':e==='💀'?'Ghost tipper — missed 3+ rounds (capped at 1pt, no roughie bonus)':e==='🎯'?'Bullseye — exact margin on the first game!':e==='🧙'?'Wizard — exact margin AND every game correct this round!':''}">${e}</span>`
     ).join('');
     const rawAvatar = renderUserAvatar(allUsers[s.uid], 32);
     const avatarHtml = isMe
@@ -4012,6 +4036,8 @@ function track(event, params={}) {
             <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">🥊 <span>Round wins</span></div>
             <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">👻 <span>Inactive — missed 2 rounds in a row (still earns full points)</span></div>
             <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">💀 <span>Ghost tipper — missed 3+ rounds (capped at 1pt per correct tip)</span></div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">🎯 <span>Bullseye — correct team and exact margin on the first game</span></div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">🧙 <span>Wizard — bullseye on the first game AND every other game correct</span></div>
           </div>
         </div>
 
