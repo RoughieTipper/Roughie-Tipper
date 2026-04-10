@@ -990,6 +990,7 @@ async function loadComp(compId) {
   if (!snap.exists()) { showPage('mycomps'); return; }
   currentCompId = compId;
   currentComp = {id:compId,...snap.data()};
+  window._currentComp = currentComp;
   allComps[compId] = snap.data();
   el('comp-banner').style.display = 'flex';
   el('comp-name-display').textContent = currentComp.name;
