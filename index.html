@@ -1256,6 +1256,10 @@ function sportTerm(key) {
 // ─── LEADERBOARD ─────────────────────────────────────────────
 function renderLeaderboard() {
   if (!currentCompId) { showPage('mycomps'); return; }
+  const compNameTitle = document.getElementById('lb-comp-name-title');
+  if (compNameTitle && currentComp?.name) {
+    compNameTitle.textContent = '— ' + currentComp.name.toUpperCase();
+  }
   const memberIds = Object.entries(allUsers).filter(([uid,u])=>(u.compIds||[]).includes(currentCompId)).map(([uid])=>uid);
   const scores = calcScoresForUsers(memberIds);
   const allScores = calcScoresForUsers(Object.keys(allUsers));
@@ -2787,38 +2791,18 @@ function checkRoundWinnerCelebration() {
   localStorage.setItem(celebKey, Date.now().toString());
   document.getElementById('cel-round-label').textContent = (lastRound.name || ('Round ' + (lastRound.order || ''))).toUpperCase();
   document.getElementById('cel-name').textContent = winner.nick || winner.name;
-  const rw = document.getElementById('cel-reactions-wrap');
-  if (rw) rw.style.display = winner.uid === currentUser?.uid ? 'none' : 'block';
-  const rb = document.getElementById('cel-reaction-btns');
-  const cw = document.getElementById('cel-comment-wrap');
-  if (rb) rb.style.display = 'flex';
-  if (cw) cw.style.display = 'none';
   document.getElementById('cel-pts').textContent = bestPts + ' pts this round';
   const avatarEl = document.getElementById('cel-avatar');
   avatarEl.style.backgroundImage = '';
   avatarEl.innerHTML = renderUserAvatar(allUsers[winner.uid], 80);
-  document.getElementById('celebration-overlay').setAttribute('data-winner-uid', winner.uid);
-  document.getElementById('celebration-overlay').setAttribute('data-round-id', lastRound.id);
-  document.getElementById('celebration-overlay').setAttribute('data-winner-name', winner.nick || winner.name);
   document.getElementById('celebration-overlay').style.display = 'flex';
   startConfetti();
 }
 
 function dismissCelebration() {
   document.getElementById('celebration-overlay').style.display = 'none';
-  const rb = document.getElementById('cel-reaction-btns');
-  const cw = document.getElementById('cel-comment-wrap');
-  const ci = document.getElementById('cel-comment-input');
-  if (rb) rb.style.display = 'flex';
-  if (cw) cw.style.display = 'none';
-  if (ci) ci.value = '';
   stopConfetti();
   showReportCard();
-}
-function celebTapToDismiss(e) {
-  const rw = document.getElementById('cel-reactions-wrap');
-  if (rw && rw.contains(e.target)) return;
-  dismissCelebration();
 }
 
 function startConfetti() {
@@ -2838,62 +2822,6 @@ function stopConfetti() {
   if (confettiInterval) { cancelAnimationFrame(confettiInterval); confettiInterval = null; }
   const canvas = document.getElementById('confetti-canvas'); canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
 }
-
-
-// ── CELEBRATION REACTIONS ─────────────────────────────────────
-async function sendCelebReaction(emoji) {
-  const overlay = document.getElementById('celebration-overlay');
-  const winnerUid = overlay.getAttribute('data-winner-uid');
-  const roundId = overlay.getAttribute('data-round-id');
-  const winnerName = overlay.getAttribute('data-winner-name');
-  if (!currentCompId || !currentUser || !winnerUid) return;
-  if (currentUser.uid === winnerUid) return;
-  const myName = userProfile?.nick || userProfile?.name || 'Someone';
-  try {
-    const reactionRef = doc(db, 'comps', currentCompId, 'celreactions', roundId + '_' + currentUser.uid);
-    await setDoc(reactionRef, { fromUid: currentUser.uid, fromName: myName, winnerUid, roundId, emoji, comment: '', ts: serverTimestamp() });
-    localStorage.setItem('celreact_' + currentUser.uid + '_' + roundId, emoji);
-    document.getElementById('cel-comment-wrap').style.display = 'block';
-    document.getElementById('cel-reaction-btns').style.display = 'none';
-    document.getElementById('cel-reacted-label').textContent = emoji + ' Reacted! Add a comment?';
-    toast('Reaction sent to ' + winnerName + '!');
-  } catch(e) { console.error('Reaction error:', e); }
-}
-window.sendCelebReaction = sendCelebReaction;
-
-async function sendCelebComment() {
-  const overlay = document.getElementById('celebration-overlay');
-  const winnerUid = overlay.getAttribute('data-winner-uid');
-  const roundId = overlay.getAttribute('data-round-id');
-  const comment = document.getElementById('cel-comment-input').value.trim();
-  if (!currentCompId || !currentUser) return;
-  try {
-    const reactionRef = doc(db, 'comps', currentCompId, 'celreactions', roundId + '_' + currentUser.uid);
-    await updateDoc(reactionRef, { comment });
-    await postCelebReactionsToChat(roundId, winnerUid, overlay.getAttribute('data-winner-name'));
-    document.getElementById('cel-comment-input').value = '';
-    dismissCelebration();
-  } catch(e) { console.error('Comment error:', e); }
-}
-window.sendCelebComment = sendCelebComment;
-
-async function postCelebReactionsToChat(roundId, winnerUid, winnerName) {
-  if (!currentCompId) return;
-  try {
-    const q = query(collection(db, 'comps', currentCompId, 'celreactions'), where('roundId', '==', roundId));
-    const snap = await getDocs(q);
-    const reactions = snap.docs.map(d => d.data()).filter(r => r.fromUid !== winnerUid);
-    if (reactions.length === 0) return;
-    const groups = {};
-    reactions.forEach(r => { if (!groups[r.emoji]) groups[r.emoji] = []; groups[r.emoji].push(r.fromName); });
-    const emojiLine = Object.entries(groups).map(([e, ns]) => e + ' ' + ns.join(', ')).join(' | ');
-    const comments = reactions.filter(r => r.comment).map(r => '"' + r.comment + '" - ' + r.fromName).join(' | ');
-    const msgText = 'Round reactions for ' + winnerName + '\n' + emojiLine + (comments ? '\n' + comments : '');
-    const msgRef = doc(db, 'chats', currentCompId, 'messages', 'celreact_' + roundId);
-    await setDoc(msgRef, { uid: currentUser.uid, displayName: 'Roughie Tips', text: msgText, ts: serverTimestamp(), isCelebReaction: true });
-  } catch(e) { console.error('Post reactions error:', e); }
-}
-window.postCelebReactionsToChat = postCelebReactionsToChat;
 
 // ─── HONOURS ─────────────────────────────────────────────────
 async function renderHonoursPage() {
@@ -3820,7 +3748,7 @@ Object.assign(window,{
   switchAuthTab,
   downloadCalendarReminder,sendContactMessage,
   addHonoursEntry,deleteHonoursEntry,
-  dismissCelebration,checkRoundWinnerCelebration,celebTapToDismiss,sendCelebReaction,sendCelebComment,postCelebReactionsToChat,
+  dismissCelebration,checkRoundWinnerCelebration,
   renderEditTipsMatches,adminSetTip,adminClearTip,
   eoSubscribe,eoUnsubscribe,eoResubscribe,
   enablePushNotifications,updateNotifStatus,
@@ -4021,7 +3949,7 @@ function track(event, params={}) {
 
       <!-- Dynamic title updates per tab -->
       <div id="lb-page-title-wrap">
-        <div class="section-title" id="lb-section-title">COMP <span id="lb-title-span">LADDER</span></div>
+        <div class="section-title" id="lb-section-title">COMP <span id="lb-title-span">LADDER</span><span id="lb-comp-name-title" style="color:var(--gold);font-size:0.65em;letter-spacing:1px;display:block;margin-top:-4px;text-shadow:0 0 16px rgba(255,214,0,0.3);"></span></div>
         <div class="section-sub" id="lb-section-sub">Live standings for your current competition · Overall rank shown on right</div>
       </div>
 
@@ -4800,8 +4728,12 @@ function showLadderPanel(panelId) {
   const t = _lbtTitles[panelId] || _lbtTitles.ladder;
   const titleEl = document.getElementById('lb-section-title');
   const subEl   = document.getElementById('lb-section-sub');
-  if (titleEl) titleEl.innerHTML = t.pre + ' <span id="lb-title-span">' + t.main + '</span>';
-  if (subEl)   subEl.textContent = t.sub;
+  if (titleEl) {
+    const compName = window._currentComp?.name || '';
+    const compSuffix = compName ? '<span id="lb-comp-name-title" style="color:var(--gold);font-size:0.65em;letter-spacing:1px;display:block;margin-top:-4px;text-shadow:0 0 16px rgba(255,214,0,0.3);">— ' + compName.toUpperCase() + '</span>' : '<span id="lb-comp-name-title"></span>';
+    titleEl.innerHTML = t.pre + ' <span id="lb-title-span">' + t.main + '</span>' + compSuffix;
+  }
+  if (subEl) subEl.textContent = t.sub;
 
   // Results panel — dispatch event for module script to handle
   if (panelId === 'results') {
@@ -4907,7 +4839,7 @@ window.addEventListener('load', () => {
 </script>
 
 <!-- ROUND WINNER CELEBRATION OVERLAY -->
-<div id="celebration-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(10,22,40,0.97);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px;" onclick="celebTapToDismiss(event)">
+<div id="celebration-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(10,22,40,0.97);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px;cursor:pointer;" onclick="dismissCelebration()">
   <canvas id="confetti-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;"></canvas>
   <div style="position:relative;z-index:1;">
     <div style="font-size:56px;margin-bottom:8px;">🏆</div>
@@ -4916,28 +4848,7 @@ window.addEventListener('load', () => {
     <div id="cel-avatar" style="width:80px;height:80px;border-radius:50%;margin:0 auto 16px;background:var(--card2);border:3px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:var(--green);overflow:hidden;"></div>
     <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--text);letter-spacing:1px;" id="cel-name"></div>
     <div style="font-size:15px;color:var(--muted);margin-top:4px;" id="cel-pts"></div>
-    <!-- REACTIONS -->
-    <div id="cel-reactions-wrap" style="margin-top:24px;">
-      <div id="cel-reaction-btns" style="display:flex;flex-direction:column;gap:10px;align-items:center;">
-        <div style="font-size:13px;color:var(--muted);margin-bottom:4px;">React to their round</div>
-        <div style="display:flex;gap:10px;justify-content:center;">
-          <button onclick="sendCelebReaction('👏')" style="background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:22px;cursor:pointer;transition:transform .15s;" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'">&#x1F44F;</button>
-          <button onclick="sendCelebReaction('❤️')" style="background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:22px;cursor:pointer;transition:transform .15s;" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'">&#x2764;&#xFE0F;</button>
-          <button onclick="sendCelebReaction('🦍')" style="background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:22px;cursor:pointer;transition:transform .15s;" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'">&#x1F98D;</button>
-          <button onclick="sendCelebReaction('🤯')" style="background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:22px;cursor:pointer;transition:transform .15s;" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'">&#x1F92F;</button>
-          <button onclick="sendCelebReaction('🤑')" style="background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:22px;cursor:pointer;transition:transform .15s;" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'">&#x1F911;</button>
-        </div>
-      </div>
-      <div id="cel-comment-wrap" style="display:none;margin-top:4px;">
-        <div id="cel-reacted-label" style="font-size:13px;color:var(--green);font-weight:700;margin-bottom:10px;"></div>
-        <textarea id="cel-comment-input" maxlength="120" placeholder="Add a comment... e.g. Absolute fluke mate" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:13px;resize:none;line-height:1.5;" rows="2"></textarea>
-        <div style="display:flex;gap:8px;margin-top:8px;justify-content:center;">
-          <button onclick="sendCelebComment()" style="background:var(--green);color:var(--navy);border:none;padding:9px 20px;border-radius:8px;font-family:'DM Sans',sans-serif;font-weight:700;font-size:13px;cursor:pointer;">Post to Chat</button>
-          <button onclick="dismissCelebration()" style="background:none;border:1px solid var(--border);color:var(--muted);padding:9px 16px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;">Skip</button>
-        </div>
-      </div>
-    </div>
-    <div style="margin-top:16px;font-size:12px;color:var(--muted);opacity:0.5;">Tap anywhere to continue</div>
+    <div style="margin-top:32px;font-size:13px;color:var(--muted);opacity:0.6;">Tap anywhere to continue</div>
   </div>
 </div>
 
