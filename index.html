@@ -4,7 +4,7 @@
 <style>
 :root{
   --navy:#0a1628;--navy2:#112040;--green:#00c853;--green2:#00e676;--gold:#ffd600;--red:#ff3d3d;
-  --text:#e8edf5;--muted:#6b7fa3;--card:#111e36;--card2:#162540;--border:#1e3054;
+  --text:#e8edf5;--muted:#9db4d0;--card:#111e36;--card2:#162540;--border:#1e3054;
   --glow-green:0 0 20px rgba(0,200,83,0.35);
   --glow-gold:0 0 20px rgba(255,214,0,0.35);
   --transition-fast:0.15s cubic-bezier(0.4,0,0.2,1);
@@ -1597,14 +1597,14 @@ function renderTipMatches() {
       </div>
       ${marginInput}
       <div class="match-teams">
-        <div class="team-btn ${hClass}"  onclick="${locked||finished?'':'pickTip(\''+m.id+'\',\''+m.home.replace(/'/g,"\\'")+'\')'}">
+        <div class="team-btn ${hClass}" style="--team-wash:${clubPrimaryColour(m.home)};" onclick="${locked||finished?'':'pickTip(\''+m.id+'\',\''+m.home.replace(/'/g,"\\'")+'\')'}">
           <div class="team-btn-inner"><div class="team-badge-wrap">${clubBadge(m.home,44)}</div><div class="team-name">${escHtml(m.home)}</div></div>
           <div class="odds-pts">${hPts} pt${hPts>1?'s':''}</div>
           <div class="team-odds" style="color:${m.homeOdds<2?'var(--green)':'var(--gold)'}">$${Number(m.homeOdds).toFixed(2)}</div>
           ${m.homeOdds>=2?'<div class="roughie-tag">ROUGHIE</div>':''}
         </div>
         <div class="vs-divider">VS</div>
-        <div class="team-btn ${aClass}"  onclick="${locked||finished?'':'pickTip(\''+m.id+'\',\''+m.away.replace(/'/g,"\\'")+'\')'}">
+        <div class="team-btn ${aClass}" style="--team-wash:${clubPrimaryColour(m.away)};" onclick="${locked||finished?'':'pickTip(\''+m.id+'\',\''+m.away.replace(/'/g,"\\'")+'\')'}">
           <div class="team-btn-inner"><div class="team-badge-wrap">${clubBadge(m.away,44)}</div><div class="team-name">${escHtml(m.away)}</div></div>
           <div class="odds-pts">${aPts} pt${aPts>1?'s':''}</div>
           <div class="team-odds" style="color:${m.awayOdds<2?'var(--green)':'var(--gold)'}">$${Number(m.awayOdds).toFixed(2)}</div>
