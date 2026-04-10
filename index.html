@@ -1597,18 +1597,18 @@ function renderTipMatches() {
       </div>
       ${marginInput}
       <div class="match-teams">
-        <div class="team-btn ${hClass}" style="--team-wash:${clubPrimaryColour(m.home)};" onclick="${locked||finished?'':'pickTip(\''+m.id+'\',\''+m.home.replace(/'/g,"\\'")+'\')'}">
+        <div class="team-btn ${hClass}"  onclick="${locked||finished?'':'pickTip(\''+m.id+'\',\''+m.home.replace(/'/g,"\\'")+'\')'}">
           <div class="team-btn-inner"><div class="team-badge-wrap">${clubBadge(m.home,44)}</div><div class="team-name">${escHtml(m.home)}</div></div>
           <div class="odds-pts">${hPts} pt${hPts>1?'s':''}</div>
           <div class="team-odds" style="color:${m.homeOdds<2?'var(--green)':'var(--gold)'}">$${Number(m.homeOdds).toFixed(2)}</div>
-          ${m.homeOdds>=2.5?'<div class="roughie-tag">ROUGHIE</div>':''}
+          ${m.homeOdds>=2?'<div class="roughie-tag">ROUGHIE</div>':''}
         </div>
         <div class="vs-divider">VS</div>
-        <div class="team-btn ${aClass}" style="--team-wash:${clubPrimaryColour(m.away)};" onclick="${locked||finished?'':'pickTip(\''+m.id+'\',\''+m.away.replace(/'/g,"\\'")+'\')'}">
+        <div class="team-btn ${aClass}"  onclick="${locked||finished?'':'pickTip(\''+m.id+'\',\''+m.away.replace(/'/g,"\\'")+'\')'}">
           <div class="team-btn-inner"><div class="team-badge-wrap">${clubBadge(m.away,44)}</div><div class="team-name">${escHtml(m.away)}</div></div>
           <div class="odds-pts">${aPts} pt${aPts>1?'s':''}</div>
           <div class="team-odds" style="color:${m.awayOdds<2?'var(--green)':'var(--gold)'}">$${Number(m.awayOdds).toFixed(2)}</div>
-          ${m.awayOdds>=2.5?'<div class="roughie-tag">ROUGHIE</div>':''}
+          ${m.awayOdds>=2?'<div class="roughie-tag">ROUGHIE</div>':''}
         </div>
       </div>${earnedDiv}</div>`;
   }).join('')||'<div class="card" style="text-align:center;color:var(--muted);">No matches in this round.</div>';
@@ -1786,11 +1786,11 @@ function showRound(roundId,btn){
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           ${clubBadge(m.home,28)} <span style="font-weight:700;" class="${m.winner&&m.winner!=='Draw'?(m.winner===m.home?'team-winner-circle':'team-loser-strike'):''}">${escHtml(m.home)}</span>
           <span style="color:var(--gold);">$${Number(m.homeOdds).toFixed(2)}</span>
-          ${m.homeOdds>=2.5?'<span class="roughie-tag">R</span>':''}
+          ${m.homeOdds>=2?'<span class="roughie-tag">R</span>':''}
           <span style="color:var(--muted);margin:0 6px;">vs</span>
           ${clubBadge(m.away,28)} <span style="font-weight:700;" class="${m.winner&&m.winner!=='Draw'?(m.winner===m.away?'team-winner-circle':'team-loser-strike'):''}">${escHtml(m.away)}</span>
           <span style="color:var(--gold);">$${Number(m.awayOdds).toFixed(2)}</span>
-          ${m.awayOdds>=2.5?'<span class="roughie-tag">R</span>':''}
+          ${m.awayOdds>=2?'<span class="roughie-tag">R</span>':''}
           <span style="color:var(--muted);font-size:12px;margin-left:6px;">${formatMatchDate(m.date)} ${m.time?'@ '+to12hr(m.time):''} ${m.venue?'· '+escHtml(m.venue):''}</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
