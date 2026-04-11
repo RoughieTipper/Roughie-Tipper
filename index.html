@@ -334,6 +334,30 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
 
 /* Extra bottom padding on leaderboard page when tabs visible */
 #page-leaderboard.has-bottom-tabs { padding-bottom: 72px; }
+
+/* ── AUTH HERO ── */
+#auth-screen{padding:0 0 40px;background-image:
+  radial-gradient(ellipse 80% 40% at 50% -10%,rgba(0,200,83,.15) 0%,transparent 60%),
+  radial-gradient(ellipse 40% 30% at 90% 80%,rgba(255,214,0,.04) 0%,transparent 60%),
+  repeating-linear-gradient(0deg,transparent,transparent 59px,rgba(255,255,255,.015) 60px),
+  repeating-linear-gradient(90deg,transparent,transparent 59px,rgba(255,255,255,.015) 60px);}
+.auth-hero{width:100%;position:relative;overflow:hidden;background:var(--navy);}
+.auth-hero::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,transparent,var(--gold),var(--green),var(--gold),transparent);z-index:2;}
+.auth-hero-glow{position:absolute;bottom:0;left:50%;transform:translateX(-50%);
+  width:80%;height:100px;
+  background:radial-gradient(ellipse,rgba(0,200,83,0.2) 0%,transparent 70%);
+  pointer-events:none;z-index:1;}
+.auth-hero-img{width:100%;display:block;position:relative;z-index:0;
+  mask-image:linear-gradient(to bottom,black 55%,transparent 100%);
+  -webkit-mask-image:linear-gradient(to bottom,black 55%,transparent 100%);
+  filter:drop-shadow(0 8px 24px rgba(0,200,83,0.12));}
+.auth-hero-text{text-align:center;padding:0 20px 20px;position:relative;z-index:2;margin-top:-16px;}
+.auth-hero-slogan{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:2px;
+  color:var(--text);line-height:1.1;margin-bottom:4px;}
+.auth-hero-slogan span{color:var(--green);}
+.auth-hero-sub{font-size:13px;color:var(--gold);font-weight:700;letter-spacing:0.3px;}
+.auth-inner{width:100%;max-width:420px;padding:0 24px;margin:0 auto;}
 </style>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -3824,20 +3848,27 @@ function track(event, params={}) {
 
 <!-- AUTH SCREEN -->
 <div id="auth-screen" style="display:none;">
-  <div style="width:100%;max-width:420px;display:flex;justify-content:flex-end;margin-bottom:10px;">
+
+  <!-- HERO -->
+  <div class="auth-hero">
+    <div class="auth-hero-glow"></div>
+    <img class="auth-hero-img" src="rtgroup.png" alt="Roughie Tips"/>
+    <div class="auth-hero-text">
+      <div class="auth-hero-slogan">Making Football<br>Tipping <span>Fun</span></div>
+      <div class="auth-hero-sub">Free to Join — Create Your Comp Today</div>
+    </div>
+  </div>
+
+  <div class="auth-inner">
+  <!-- USER COUNT -->
+  <div style="display:flex;justify-content:center;margin:14px 0 12px;">
     <div id="auth-user-count" style="display:flex;align-items:center;gap:7px;background:rgba(0,200,83,0.1);border:1px solid rgba(0,200,83,0.25);border-radius:99px;padding:6px 14px;font-size:13px;font-weight:600;color:var(--green);">
       <span style="width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);display:inline-block;animation:pulse 1.5s infinite;flex-shrink:0;"></span>
       <span id="auth-count-num">—</span> tippers registered
     </div>
   </div>
-  <div class="auth-box">
-    <div class="auth-logo">
-      <img src="logocomau.png" alt="Footy Tipping Logo" style="max-width:100%;height:auto;" />
-      <div style="margin-top:10px;">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;color:var(--text);">Footy Tipping Made Fun</div>
-        <div style="font-size:13px;color:var(--green);font-weight:700;margin-top:3px;letter-spacing:0.3px;">Create your comp! 100% Free</div>
-      </div>
-    </div>
+
+  <div class="auth-box" style="padding:28px;">
     <div class="auth-tabs">
       <button class="auth-tab active" onclick="switchAuthTab('login',this)">Log In</button>
       <button class="auth-tab" onclick="switchAuthTab('register',this)">Register</button>
@@ -3867,7 +3898,8 @@ function track(event, params={}) {
       <button class="btn btn-full" id="reg-btn" onclick="doRegister()">Create Account →</button>
     </form></div>
   </div>
-  <div style="width:100%;max-width:420px;margin-top:24px;padding-bottom:40px;">
+  </div><!-- /auth-inner -->
+  <div style="width:100%;max-width:420px;margin-top:24px;padding:0 24px 40px;">
     <div style="text-align:center;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;color:var(--muted);margin-bottom:14px;">📖 HOW IT WORKS</div>
     <div style="display:flex;flex-direction:column;gap:10px;">
       <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;">
