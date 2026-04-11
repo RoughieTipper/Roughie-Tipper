@@ -1174,23 +1174,6 @@ function calcScoresForUsers(userIds) {
     const myTips = allTips[uid]||{};
     let totalPts=0, correct=0, roughieBonus=0, roundPts={}, roundWins={};
     rounds.forEach(r=>{roundPts[r.id]=0; roundWins[r.id]=0;});
-
-    // Pre-calculate per-round skull status based on consecutive misses UP TO that round
-    // This means a risen tipper keeps the skull cap on all rounds they missed,
-    // and only gets full points from the round they returned
-    const completedRoundsOrdered = rounds.filter(r => (r.matches||[]).length > 0 && (r.matches||[]).every(m => m.winner));
-    const roundSkullStatus = {};
-    completedRoundsOrdered.forEach((r, idx) => {
-      // Count consecutive missed rounds ending at this round (looking backwards)
-      let consecutive = 0;
-      for (let i = idx; i >= 0; i--) {
-        const rr = completedRoundsOrdered[i];
-        const hasTipped = (rr.matches||[]).some(m => myTips[m.id]);
-        if (!hasTipped) { consecutive++; } else { break; }
-      }
-      roundSkullStatus[r.id] = consecutive >= 3;
-    });
-
     finishedMatches.forEach(m=>{
       const isDraw = m.winner === 'Draw';
       const { pick } = getEffectivePick(myTips, m);
@@ -1200,12 +1183,13 @@ function calcScoresForUsers(userIds) {
       const p = isDraw ? 1 : pts(m.winner===m.home?m.homeOdds:m.awayOdds, roundOrder);
       const winOdds = isDraw ? 0 : (m.winner===m.home?m.homeOdds:m.awayOdds);
       const isGen = myTips.hasOwnProperty('gen_'+m.id) && !!myTips['gen_'+m.id];
-      // Use per-round skull status so risen tippers keep cap on missed rounds
-      const isSkull = roundSkullStatus[m.roundId] === true;
+      // Skull tippers (3+ missed rounds in a row) capped at 1pt, no roughie bonus
+      // Ghost tippers (2 missed rounds) still get full points including roughie bonus
+      const isSkull = getInactiveStatus(uid) === 'skull';
       const effectiveP = isSkull ? 1 : p;
       totalPts+=effectiveP; correct++;
       if(!isDraw && winOdds>=2.0 && !isGen && !isSkull) roughieBonus+=(effectiveP-1);
-      if(roundPts[m.roundId]!==undefined) roundPts[m.roundId]+=effectiveP;
+      if(roundPts[m.roundId]!==undefined) roundPts[m.roundId]+=p;
       if(roundWins[m.roundId]!==undefined) roundWins[m.roundId]++;
     });
     const tipped = lockedMatches.length;
@@ -1238,23 +1222,22 @@ window.calcScoresForUsers = calcScoresForUsers;
 
 // ─── INACTIVE TIPPER DETECTION ───────────────────────────────
 function getInactiveStatus(uid) {
+  // Count consecutive rounds with zero tips saved (auto-away doesn't count as tipping)
   const completedRounds = rounds.filter(r => (r.matches||[]).length > 0 && (r.matches||[]).every(m => m.winner));
   if (completedRounds.length === 0) return null;
   const myTips = allTips[uid] || {};
   let consecutive = 0;
+  // Check from most recent round backwards
   for (let i = completedRounds.length - 1; i >= 0; i--) {
     const r = completedRounds[i];
     const hasTipped = (r.matches||[]).some(m => myTips[m.id]);
-    if (!hasTipped) { consecutive++; } else { break; }
-  }
-  if (consecutive >= 3) {
-    const openRound = rounds.find(r => (r.matches||[]).length > 0 && !(r.matches||[]).every(m => m.winner));
-    if (openRound) {
-      const tippedInOpen = (openRound.matches||[]).some(m => myTips[m.id]);
-      if (tippedInOpen) return 'risen';
+    if (!hasTipped) {
+      consecutive++;
+    } else {
+      break;
     }
-    return 'skull';
   }
+  if (consecutive >= 3) return 'skull';
   if (consecutive >= 2) return 'ghost';
   return null;
 }
@@ -1442,7 +1425,6 @@ function renderLeaderboard() {
       const inactiveStatus = getInactiveStatus(s.uid);
       if (inactiveStatus === 'skull') emojis.push('💀');
       else if (inactiveStatus === 'ghost') emojis.push('👻');
-      else if (inactiveStatus === 'risen') emojis.push('🫀');
 
       emojiMap[s.uid] = emojis;
     });
@@ -1456,7 +1438,7 @@ function renderLeaderboard() {
     const globalRank = globalRankMap[s.uid]||'—';
     const rWins = roundWinCounts[s.uid]||0;
     const emojiBadges = (emojiMap[s.uid]||[]).map(e =>
-      `<span style="font-size:16px;line-height:1;" title="${e==='👑'?'Leading the comp':e==='🥄'?'Last place':e==='⭐'?'Top score this round':e==='🥶'?'Lowest score this round':e==='🔮'?'Perfect round!':e==='👻'?'Inactive — missed 2 rounds in a row (still earning full points)':e==='💀'?'DED — missed 3+ rounds (capped at 1pt on away tips)':e==='🎯'?'Bullseye — exact margin on the first game!':e==='🧙'?'Wizard — exact margin AND every game correct this round!':e==='🫀'?"There's a pulse! Bonus tips apply!":''}">${e}</span>`
+      `<span style="font-size:16px;line-height:1;" title="${e==='👑'?'Leading the comp':e==='🥄'?'Last place':e==='⭐'?'Top score this round':e==='🥶'?'Lowest score this round':e==='🔮'?'Perfect round!':e==='👻'?'Inactive — missed 2 rounds in a row (still earning full points)':e==='💀'?'Ghost tipper — missed 3+ rounds (capped at 1pt, no roughie bonus)':e==='🎯'?'Bullseye — exact margin on the first game!':e==='🧙'?'Wizard — exact margin AND every game correct this round!':''}">${e}</span>`
     ).join('');
     const rawAvatar = renderUserAvatar(allUsers[s.uid], 32);
     const avatarHtml = isMe
@@ -4053,8 +4035,7 @@ function track(event, params={}) {
             <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">🥄 <span>Last place</span></div>
             <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">🥊 <span>Round wins</span></div>
             <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">👻 <span>Inactive — missed 2 rounds in a row (still earns full points)</span></div>
-            <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">💀 <span>DED — missed 3+ rounds (capped at 1pt on away tips)</span></div>
-            <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">🫀 <span>There's a pulse! — bonus tips apply</span></div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">💀 <span>Ghost tipper — missed 3+ rounds (capped at 1pt per correct tip)</span></div>
             <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">🎯 <span>Bullseye — correct team and exact margin on the first game</span></div>
             <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">🧙 <span>Wizard — bullseye on the first game AND every other game correct</span></div>
           </div>
@@ -4112,8 +4093,6 @@ function track(event, params={}) {
       <!-- ══ PANEL: HISTORY ══ -->
       <div class="lbt-panel" id="lbt-panel-history">
         <div id="comp-honours-section">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;margin-bottom:4px;">🏅 COMP <span style="color:var(--green);">CHAMPIONS</span></div>
-          <div style="font-size:13px;color:var(--muted);margin-bottom:16px;">Past winners of this competition</div>
           <div id="comp-current-leader" style="display:none;margin-bottom:16px;">
             <div class="card" style="border:1px solid rgba(255,214,0,0.3);background:linear-gradient(135deg,rgba(255,214,0,0.08),rgba(255,214,0,0.03));position:relative;overflow:hidden;">
               <div style="position:absolute;top:10px;right:14px;background:rgba(0,200,83,0.15);border:1px solid rgba(0,200,83,0.4);border-radius:99px;padding:3px 10px;font-size:10px;font-weight:700;color:var(--green);letter-spacing:1px;">IN PROGRESS</div>
