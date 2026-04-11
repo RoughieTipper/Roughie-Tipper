@@ -1586,7 +1586,7 @@ function renderTipMatches() {
         earnedDiv=`<div style="text-align:center;margin-top:10px;"><span class="result-badge badge-pending">🤝 Draw — +1pt</span></div>`;
       } else {
         earnedDiv=sel===m.winner
-          ?`<div style="text-align:center;margin-top:10px;"><span class="result-badge badge-win">✓ +${pts(winOdds)} pts earned${isGenerated?' (no roughie points)':''}</span>${genNote}</div>`
+          ?`<div style="text-align:center;margin-top:10px;"><span class="result-badge badge-win">✓ +${pts(winOdds,roundOrder)} pts earned${isGenerated?' (no roughie points)':''}</span>${genNote}</div>`
           :`<div style="text-align:center;margin-top:10px;"><span class="result-badge badge-loss">✗ Incorrect</span>${genNote}</div>`;
       }
     } else if(isGenerated && !finished) {
@@ -2117,8 +2117,8 @@ function renderAdminResults(){
         </div>
         <select id="result-${m.id}" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;min-width:220px;">
           <option value="">-- Pick Winner --</option>
-          <option value="${m.home}" ${m.winner===m.home?'selected':''}>${escHtml(m.home)} ($${Number(m.homeOdds).toFixed(2)} → ${pts(m.homeOdds)}pt${pts(m.homeOdds)>1?'s':''})</option>
-          <option value="${m.away}" ${m.winner===m.away?'selected':''}>${escHtml(m.away)} ($${Number(m.awayOdds).toFixed(2)} → ${pts(m.awayOdds)}pt${pts(m.awayOdds)>1?'s':''})</option>
+          <option value="${m.home}" ${m.winner===m.home?'selected':''}>${escHtml(m.home)} ($${Number(m.homeOdds).toFixed(2)} → ${pts(m.homeOdds,round?.order||1)}pt${pts(m.homeOdds,round?.order||1)>1?'s':''})</option>
+          <option value="${m.away}" ${m.winner===m.away?'selected':''}>${escHtml(m.away)} ($${Number(m.awayOdds).toFixed(2)} → ${pts(m.awayOdds,round?.order||1)}pt${pts(m.awayOdds,round?.order||1)>1?'s':''})</option>
           <option value="Draw" ${m.winner==='Draw'?'selected':''}>🤝 Draw — everyone gets 1pt</option>
         </select>
         ${idx===0?`<div style="display:flex;align-items:center;gap:8px;">
@@ -3197,7 +3197,8 @@ function showReportCard() {
   const maxPossible = finishedMatches.reduce((sum, m) => {
     if (m.winner === 'Draw') return sum + 1;
     const winOdds = m.winner === m.home ? m.homeOdds : m.awayOdds;
-    return sum + pts(winOdds);
+    const mRoundOrder = rounds.find(r => r.id === m.roundId)?.order || 1;
+    return sum + pts(winOdds, mRoundOrder);
   }, 0);
   const scorePct = maxPossible > 0 ? roundPts / maxPossible : 0;
 
@@ -4093,6 +4094,8 @@ function track(event, params={}) {
       <!-- ══ PANEL: HISTORY ══ -->
       <div class="lbt-panel" id="lbt-panel-history">
         <div id="comp-honours-section">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;margin-bottom:4px;">🏅 COMP <span style="color:var(--green);">CHAMPIONS</span></div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:16px;">Past winners of this competition</div>
           <div id="comp-current-leader" style="display:none;margin-bottom:16px;">
             <div class="card" style="border:1px solid rgba(255,214,0,0.3);background:linear-gradient(135deg,rgba(255,214,0,0.08),rgba(255,214,0,0.03));position:relative;overflow:hidden;">
               <div style="position:absolute;top:10px;right:14px;background:rgba(0,200,83,0.15);border:1px solid rgba(0,200,83,0.4);border-radius:99px;padding:3px 10px;font-size:10px;font-weight:700;color:var(--green);letter-spacing:1px;">IN PROGRESS</div>
