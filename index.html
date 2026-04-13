@@ -1042,7 +1042,7 @@ async function loadComp(compId) {
   subscribeChat();
   subscribeSideBets();
   updateNavLabels();
-  showPage('leaderboard');
+  showPage('tips');
   window.showLadderPanel && window.showLadderPanel('ladder');
   renderCompHonours();
 }
@@ -3990,11 +3990,10 @@ function track(event, params={}) {
       </div>
     </div>
     <div class="logo-center">
-      <img src="logocomau.png" alt="Roughie Tips" class="main-logo" />
+      <img src="rtgroup.png" alt="Roughie Tips" class="main-logo" />
       <span class="season-badge">AFL 2026</span>
     </div>
     <nav>
-      <button id="nav-leaderboard" onclick="showPage('leaderboard')">LADDER</button>
       <button id="nav-tips" onclick="showPage('tips')">MY TIPS</button>
       <button id="nav-rounds" style="display:none;"></button>
       <button id="nav-mycomps" onclick="showPage('mycomps')">COMPS</button>
