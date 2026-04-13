@@ -740,7 +740,7 @@ onAuthStateChanged(auth, async user => {
         el('user-display').textContent = userProfile.nick || userProfile.name;
         updateHeaderAvatar(userProfile);
         const isSiteAdmin = user.uid === SITE_ADMIN_UID || userProfile.isAdmin;
-        el('nav-admin').style.display = isSiteAdmin ? 'inline-flex' : 'none';
+        el('nav-admin').style.display = user.uid === SITE_ADMIN_UID ? 'inline-flex' : 'none';
         subscribeGlobal();
         setTimeout(checkRoundWinnerCelebration, 3000);
         setTimeout(showNotifResetBanner, 5000);
@@ -826,7 +826,7 @@ async function checkEmailVerified() {
           el('user-display').textContent = userProfile.nick || userProfile.name;
           updateHeaderAvatar(userProfile);
           const isSiteAdmin = user.uid === SITE_ADMIN_UID || userProfile.isAdmin;
-          el('nav-admin').style.display = isSiteAdmin ? 'inline-flex' : 'none';
+          el('nav-admin').style.display = user.uid === SITE_ADMIN_UID ? 'inline-flex' : 'none';
           subscribeGlobal();
           setTimeout(checkRoundWinnerCelebration, 3000);
         setTimeout(showNotifResetBanner, 5000);
