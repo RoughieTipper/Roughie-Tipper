@@ -350,6 +350,7 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
 
 /* Extra bottom padding on leaderboard page when tabs visible */
 #page-leaderboard.has-bottom-tabs { padding-bottom: 72px; }
+#page-tips.has-bottom-tabs { padding-bottom: 72px; }
 
 /* ── AUTH HERO ── */
 #auth-screen{padding:0 0 40px;background-image:
@@ -660,7 +661,7 @@ function showPage(id) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
   // Show/hide ladder bottom tabs
-  if (id === 'leaderboard') { window.showLadderBottomTabs && window.showLadderBottomTabs(); }
+  if (id === 'leaderboard' || id === 'tips') { window.showLadderBottomTabs && window.showLadderBottomTabs(); }
   else { window.hideLadderBottomTabs && window.hideLadderBottomTabs(); }
   const pg = el('page-'+id); if(pg) pg.classList.add('active');
   const bn = el('nav-'+id); if(bn) bn.classList.add('active');
@@ -4261,7 +4262,7 @@ function track(event, params={}) {
     </div>
 
     <!-- MY TIPS -->
-    <div class="page" id="page-tips">
+    <div class="page has-bottom-tabs" id="page-tips">
       <div class="section-title">MY <span id="tips-page-title">TIPS</span></div>
       <div id="round-sponsor-banner" style="display:none;background:rgba(255,214,0,0.08);border:1px solid rgba(255,214,0,0.3);border-radius:12px;padding:12px 16px;margin-bottom:14px;display:none;align-items:center;gap:12px;">
         <div style="flex:1;">
@@ -4812,6 +4813,15 @@ const _lbtTitles = {
 function showLadderPanel(panelId) {
   _currentLadderPanel = panelId;
   window._currentLadderPanel = panelId;
+
+  // If we're on the tips page, switch to leaderboard page first (panels live there)
+  if (!document.getElementById('page-leaderboard')?.classList.contains('active')) {
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+    const pg = document.getElementById('page-leaderboard');
+    if (pg) pg.classList.add('active');
+    renderLeaderboard && renderLeaderboard();
+  }
 
   // Switch panels
   document.querySelectorAll('.lbt-panel').forEach(p => p.classList.remove('active'));
