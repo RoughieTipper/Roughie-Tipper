@@ -148,6 +148,8 @@ tr:hover .rank-3{box-shadow:0 0 12px rgba(205,127,50,0.5);transform:scale(1.1);}
 .team-btn:not(.locked):hover .team-badge-wrap{transform:scale(1.1);}
 .team-btn.selected .team-badge-wrap{transform:scale(1.06);}
 .team-name{font-weight:800;font-size:13px;line-height:1.2;letter-spacing:0.1px;text-align:left;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.team-name .mobile-abbr{display:none;}
+.team-name .full-name{display:inline;}
 .team-odds{font-size:13px;color:var(--muted);margin-top:3px;}
 .odds-pts{font-family:'Bebas Neue',sans-serif;font-size:22px;font-weight:400;color:var(--green);margin-top:4px;letter-spacing:1px;transition:text-shadow var(--transition-fast);}
 .team-btn:hover .odds-pts,.team-btn.selected .odds-pts{text-shadow:0 0 14px rgba(0,200,83,0.8);color:var(--green2);}
@@ -230,6 +232,20 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
   .chat-bubble{max-width:88%;}
   .lb-table{min-width:520px;}
   .lb-table th:nth-child(9),.lb-table td:nth-child(9){display:none;}
+  /* ── SLIM MATCH CARDS ON MOBILE ── */
+  .match-card{padding:8px 10px 8px 14px;margin-bottom:7px;border-radius:10px;}
+  .match-meta{font-size:10px;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .match-teams{gap:5px;}
+  .team-btn{padding:7px 5px;border-radius:9px;border-width:1.5px;}
+  .team-btn-inner{gap:5px;margin-bottom:3px;}
+  .team-badge-wrap img,.team-badge-wrap svg{width:28px !important;height:28px !important;}
+  .team-name{font-size:11px;line-height:1.15;-webkit-line-clamp:1;}
+  .team-name .mobile-abbr{display:inline;}
+  .team-name .full-name{display:none;}
+  .odds-pts{font-size:16px;margin-top:2px;}
+  .team-odds{font-size:10px;}
+  .roughie-tag{font-size:8px;padding:1px 5px;margin-top:2px;}
+  .vs-divider{font-size:11px;}
 }
 /* Badge picker bottom sheet */
 #badge-sheet-overlay{position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,0);transition:background .25s;pointer-events:none;}
@@ -581,6 +597,9 @@ function el(id) { return document.getElementById(id); }
 function escHtml(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+const AFL_ABBR={'Adelaide Crows':'ADEL','Brisbane Lions':'BRIS','Carlton':'CARL','Collingwood':'COLL','Essendon':'ESS','Fremantle':'FRE','Geelong Cats':'GEEL','Gold Coast Suns':'GCS','GWS Giants':'GWS','Greater Western Sydney':'GWS','Hawthorn':'HAW','Melbourne':'MELB','North Melbourne':'NM','Port Adelaide':'PORT','Richmond':'RICH','St Kilda':'STK','Sydney Swans':'SYD','West Coast Eagles':'WCE','Western Bulldogs':'WB','Brisbane':'BRIS','Gold Coast':'GCS','North':'NM','Bulldogs':'WB','Giants':'GWS','Eagles':'WCE','Swans':'SYD','Lions':'BRIS','Cats':'GEEL','Crows':'ADEL','Dockers':'FRE','Bombers':'ESS','Magpies':'COLL','Blues':'CARL','Tigers':'RICH','Saints':'STK','Power':'PORT','Demons':'MELB','Hawks':'HAW','Suns':'GCS'};
+function teamAbbr(name){if(AFL_ABBR[name])return AFL_ABBR[name];for(const[k,v]of Object.entries(AFL_ABBR)){if(name.includes(k)||k.includes(name))return v;}return name.replace(/\s+/g,' ').trim().slice(0,4).toUpperCase();}
+function teamNameHtml(name){return `<span class="full-name">${escHtml(name)}</span><span class="mobile-abbr">${escHtml(teamAbbr(name))}</span>`;}
 function sanitiseNick(n){
   return (n||'').replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27FF}\u{2300}-\u{23FF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA9F}]/gu, '').trim();
 }
@@ -1670,14 +1689,14 @@ function renderTipMatches() {
       ${marginInput}
       <div class="match-teams">
         <div class="team-btn ${hClass}"  onclick="${locked||finished?'':'pickTip(\''+m.id+'\',\''+m.home.replace(/'/g,"\\'")+'\')'}">
-          <div class="team-btn-inner"><div class="team-badge-wrap">${clubBadge(m.home,44)}</div><div class="team-name">${escHtml(m.home)}</div></div>
+          <div class="team-btn-inner"><div class="team-badge-wrap">${clubBadge(m.home,44)}</div><div class="team-name">${teamNameHtml(m.home)}</div></div>
           <div class="odds-pts">${hPts} pt${hPts>1?'s':''}</div>
           <div class="team-odds" style="color:${m.homeOdds<2.5?'var(--green)':'var(--gold)'}">$${Number(m.homeOdds).toFixed(2)}</div>
           ${m.homeOdds>=2.5?'<div class="roughie-tag">ROUGHIE</div>':''}
         </div>
         <div class="vs-divider">VS</div>
         <div class="team-btn ${aClass}"  onclick="${locked||finished?'':'pickTip(\''+m.id+'\',\''+m.away.replace(/'/g,"\\'")+'\')'}">
-          <div class="team-btn-inner"><div class="team-badge-wrap">${clubBadge(m.away,44)}</div><div class="team-name">${escHtml(m.away)}</div></div>
+          <div class="team-btn-inner"><div class="team-badge-wrap">${clubBadge(m.away,44)}</div><div class="team-name">${teamNameHtml(m.away)}</div></div>
           <div class="odds-pts">${aPts} pt${aPts>1?'s':''}</div>
           <div class="team-odds" style="color:${m.awayOdds<2.5?'var(--green)':'var(--gold)'}">$${Number(m.awayOdds).toFixed(2)}</div>
           ${m.awayOdds>=2.5?'<div class="roughie-tag">ROUGHIE</div>':''}
@@ -3971,7 +3990,7 @@ function track(event, params={}) {
       </div>
     </div>
     <div class="logo-center">
-      <img src="rtgroup.png" alt="Roughie Tips" class="main-logo" />
+      <img src="logocomau.png" alt="Roughie Tips" class="main-logo" />
       <span class="season-badge">AFL 2026</span>
     </div>
     <nav>
