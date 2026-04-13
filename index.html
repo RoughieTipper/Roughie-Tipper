@@ -1973,7 +1973,7 @@ async function saveProfile(){
 
 function previewAvatar(url){ /* legacy no-op */ }
 
-  // Site admin functions moved to admin-site.js
+// Site admin functions are in admin-site.js
 // ─── CELEBRATION ──────────────────────────────────────────────
 let confettiInterval = null;
 
@@ -2943,22 +2943,18 @@ function generateFlyer() {
 }
 
 Object.assign(window,{
-  doLogin,doRegister,doLogout,doForgotPassword,showPage,showRound,showAdminTab,
-  pickTip,saveTips,addRound,addMatch,removeMatch,removeUser,
-  shareRoundResult,copyInviteLink,
-  saveResult,removeRound,renderAdminMatchesList,renderAdminResults,
-  renderAdminRoundsList,addRoundFromMgmt,promptRenameRound,moveRound,
-  saveJoinCode,sendChat,chatKeydown,insertEmoji,deleteMessage,
-  toggleAdmin,saveProfile,previewAvatar,
-  joinComp,autoJoinFromInvite,createComp,switchComp,deleteComp,renderAdminComps,
-  togglePaid,savePrizes,pickMargin,toggleEditMatch,saveMatchEdit,moveMatch,
+  doLogin,doRegister,doLogout,doForgotPassword,showPage,showRound,
+  pickTip,saveTips,copyInviteLink,
+  sendChat,chatKeydown,insertEmoji,deleteMessage,
+  saveProfile,previewAvatar,
+  joinComp,autoJoinFromInvite,createComp,switchComp,deleteComp,
+  savePrizes,pickMargin,toggleEditMatch,saveMatchEdit,moveMatch,
   proposeBet,acceptBet,declineBet,deleteBet,showBetNotification,showBetResponseNotification,
   triggerInstall,dismissInstall,
   switchAuthTab,
   downloadCalendarReminder,sendContactMessage,
-  addHonoursEntry,deleteHonoursEntry,
+  addHonoursEntry,
   dismissCelebration,checkRoundWinnerCelebration,
-  renderEditTipsMatches,adminSetTip,adminClearTip,
   eoSubscribe,eoUnsubscribe,eoResubscribe,
   enablePushNotifications,updateNotifStatus,
   resubscribeNotifications,dismissNotifBanner,showNotifResetBanner,
@@ -2967,7 +2963,7 @@ Object.assign(window,{
   openBadgeSheet,closeBadgeSheet,saveBadgeFromSheet,
   showReportCardIfNotWinner,showReportCardFromButton,
   showReportCard,dismissReportCard,shareReportCard,
-  generateFlyer,saveBusinessSettings,saveAdminAck,showScoringChangeBanner,
+  generateFlyer,saveBusinessSettings,showScoringChangeBanner,
   renderMyComps,populateAvailableSportSeasons,
   confirmModerationAck,closeModerationAckModal,
   showCompSettings,saveCompSettingsPrizes,saveCompSettings,removeCompMember,
@@ -3734,7 +3730,7 @@ function track(event, params={}) {
       </div>
     </div>
 
-    <!-- page-admin moved to admin-site.js -->
+    <!-- page-admin is in admin-site.js -->
   </main>
 </div>
 
