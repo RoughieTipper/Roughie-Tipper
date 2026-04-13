@@ -1,6 +1,132 @@
-// ─── ADMIN SITE — roughietips site-admin-only functions ─────────────────────
-// Included via <script src="admin-site.js"> in index.html
-// All functions here are guarded by SITE_ADMIN_UID checks
+// ── Inject page-admin HTML into the DOM (site admin only) ───────────────────
+(function injectAdminPanel() {
+  const placeholder = document.querySelector('[data-admin-panel-placeholder]');
+  const main = document.querySelector('main') || document.getElementById('app-shell');
+  if (!main || document.getElementById('page-admin')) return;
+  const div = document.createElement('div');
+  div.innerHTML = `<!-- ADMIN -->
+    <div class="page" id="page-admin">
+      <div class="section-title">ADMIN <span>PANEL</span></div>
+      <div class="section-sub">Site admin only — manage matches, results and all competitions</div>
+      <div class="admin-tabs">
+        <button class="admin-tab active" onclick="showAdminTab('users',this)">👥 Users</button>
+        <button class="admin-tab" onclick="showAdminTab('matches',this)">🏉 Matches</button>
+        <button class="admin-tab" onclick="showAdminTab('results',this)">✅ Results</button>
+        <button class="admin-tab" onclick="showAdminTab('comps',this)">🏟️ Comps</button>
+        <button class="admin-tab" onclick="showAdminTab('settings',this)">🔑 Settings</button>
+        <button class="admin-tab" id="edit-tips-tab-btn" onclick="showAdminTab('edittips',this)" style="display:none;">✏️ Edit Tips</button>
+        <button class="admin-tab" onclick="showAdminTab('activity',this)">📊 Activity</button>
+      </div>
+      <div id="admin-users" class="admin-section">
+        <div class="card" style="margin-bottom:16px;border:1px solid rgba(255,61,61,0.3);background:rgba(255,61,61,0.04);">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--red);letter-spacing:1px;margin-bottom:8px;">⚠️ Admin Responsibility — Chat Moderation</div>
+          <p style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px;">As a competition admin you are responsible for ensuring the chat feature is used appropriately. This includes monitoring for bullying, harassment or inappropriate content and removing messages where necessary. By ticking this box you acknowledge this responsibility.</p>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="checkbox" id="admin-moderation-ack" style="width:18px;height:18px;accent-color:var(--green);cursor:pointer;flex-shrink:0;" onchange="saveAdminAck()"/>
+            <label for="admin-moderation-ack" style="font-size:13px;font-weight:600;cursor:pointer;">I understand and accept my responsibility as a competition admin to moderate the chat.</label>
+          </div>
+          <div id="admin-ack-status" style="margin-top:8px;font-size:12px;color:var(--muted);"></div>
+        </div>
+        <div class="card"><div style="font-weight:600;margin-bottom:14px;">All Registered Users</div><div id="admin-users-list"></div></div>
+      </div>
+      <div id="admin-matches" class="admin-section" style="display:none;">
+        <div class="card" style="margin-bottom:16px;">
+          <div style="font-weight:600;margin-bottom:14px;">Manage Rounds</div>
+          <div id="admin-rounds-list" style="margin-bottom:14px;"></div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:14px;">
+            <input type="text" id="new-round-name-mgmt" placeholder="e.g. Opening Round, Round 1…" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;min-width:200px;flex:1;"/>
+            <button class="btn btn-outline" onclick="addRoundFromMgmt()" style="font-size:13px;padding:7px 14px;">+ Add Round</button>
+          </div>
+        </div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+            <div style="font-weight:600;">Add Match</div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <label style="color:var(--muted);font-size:13px;">Round:</label>
+              <select id="admin-match-round" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;"></select>
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                <input type="text" id="new-round-name" placeholder="e.g. Round 1…" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;min-width:180px;"/>
+                <button class="btn btn-outline" onclick="addRound()" style="font-size:13px;padding:7px 14px;">+ Add Round</button>
+              </div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 90px 1fr 90px 120px auto;gap:10px;align-items:center;">
+            <input type="text" id="nm-home" placeholder="Collingwood" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
+            <input type="number" id="nm-home-odds" placeholder="1.60" step="0.01" min="1" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
+            <input type="text" id="nm-away" placeholder="Carlton" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
+            <input type="number" id="nm-away-odds" placeholder="2.40" step="0.01" min="1" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
+            <input type="date" id="nm-date" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
+            <div style="display:flex;gap:4px;align-items:center;">
+              <input type="text" id="nm-time" placeholder="7:30" maxlength="5" oninput="formatTimeInput12(this)" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 8px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:60px;"/>
+              <select id="nm-ampm" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 4px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"><option value="PM">PM</option><option value="AM">AM</option></select>
+            </div>
+            <input type="text" id="nm-venue" placeholder="e.g. MCG" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
+            <button class="btn" onclick="addMatch()">+ Add</button>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+            <div style="font-weight:600;">Matches</div>
+            <select id="admin-view-round" onchange="renderAdminMatchesList()" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;"></select>
+          </div>
+          <div id="admin-matches-list"></div>
+        </div>
+      </div>
+      <div id="admin-results" class="admin-section" style="display:none;">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div style="font-weight:600;">Enter Results</div>
+            <select id="admin-results-round" onchange="renderAdminResults()" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;"></select>
+          </div>
+          <div id="admin-results-form"></div>
+        </div>
+      </div>
+      <div id="admin-comps" class="admin-section" style="display:none;"><div class="card"><div style="font-weight:600;margin-bottom:14px;">All Competitions</div><div id="admin-comps-list"></div></div></div>
+      <div id="admin-edittips" class="admin-section" style="display:none;">
+        <div class="card">
+          <div style="font-weight:700;font-size:16px;margin-bottom:4px;">✏️ Edit Tips for a User</div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:16px;">Override tips for users who had trouble entering.</div>
+          <div style="display:flex;flex-direction:column;gap:12px;max-width:500px;">
+            <div class="form-group" style="margin-bottom:0;"><label>Select User</label><select id="et-user" onchange="renderEditTipsMatches()" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;width:100%;"></select></div>
+            <div class="form-group" style="margin-bottom:0;"><label>Select Round</label><select id="et-round" onchange="renderEditTipsMatches()" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;width:100%;"></select></div>
+          </div>
+          <div id="et-matches" style="margin-top:20px;"></div>
+        </div>
+      </div>
+      <div id="admin-activity" class="admin-section" style="display:none;">
+        <div class="card">
+          <div style="font-weight:700;font-size:16px;margin-bottom:4px;">📊 Tipping Activity</div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:20px;">Who has and hasn't submitted tips for the current open round</div>
+          <div id="activity-content"><div style="color:var(--muted);">Loading...</div></div>
+        </div>
+      </div>
+      <div id="admin-settings" class="admin-section" style="display:none;">
+        <div class="card">
+          <div style="font-weight:600;margin-bottom:16px;">🔑 Site Join Code</div>
+          <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:16px;">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">Current Code</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--gold);letter-spacing:3px;" id="current-join-code">Loading…</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <input type="text" id="new-join-code" placeholder="New join code" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;text-transform:uppercase;"/>
+            <button class="btn" onclick="saveJoinCode()">Update Code</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  // Insert before </main> equivalent — append to main's parent
+  const appShell = document.getElementById('app-shell');
+  if (appShell) {
+    const mainEl = appShell.querySelector('main');
+    if (mainEl) mainEl.appendChild(div.firstElementChild);
+  }
+})();
+
+// ─── ADMIN-SITE.JS ───────────────────────────────────────────────────────────
+// Site-admin-only functions and HTML for Roughie Tips
+// Loaded via <script src="admin-site.js"></script> in index.html
+// All destructive functions are guarded by SITE_ADMIN_UID checks
+// =============================================================================
 
 // ─── ADMIN ───────────────────────────────────────────────────
 function renderAdmin(){
