@@ -34,6 +34,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--navy);color:var(--text);m
 .form-group label{font-size:13px;color:var(--muted);font-weight:500;}
 .form-group input{background:var(--card2);border:1px solid var(--border);color:var(--text);padding:11px 14px;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;transition:all var(--transition-fast);}
 .form-group input:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(0,200,83,0.12);}
+.form-group select:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(0,200,83,0.12);}
+.form-group select option{background:var(--card2);color:var(--text);}
 .btn{background:var(--green);color:var(--navy);border:none;padding:12px 22px;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;transition:all var(--transition-fast);font-family:'DM Sans',sans-serif;display:inline-flex;align-items:center;gap:6px;position:relative;overflow:hidden;}
 .btn::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,0.15) 0%,transparent 60%);opacity:0;transition:opacity var(--transition-fast);}
 .btn:hover{background:var(--green2);transform:translateY(-2px);box-shadow:var(--glow-green);}
@@ -707,6 +709,7 @@ function showPage(id) {
   const moreBtn = el('nav-more-btn');
   if (moreBtn) moreBtn.classList.toggle('active', morePages.includes(id));
   closeMoreMenu();
+  trackPage(id);
   if(id==='leaderboard') { renderLeaderboard(); track('view_leaderboard'); }
   if(id==='global') { renderGlobalLeaderboard(); renderHonoursPage(); }
   if(id==='tips') { renderTipsPage(); track('view_tips'); }
@@ -770,6 +773,8 @@ onAuthStateChanged(auth, async user => {
       if (snap && snap.exists()) {
         userProfile = snap.data();
         window._userProfile = userProfile;
+        // Set GA user properties for segmentation
+        try { gtag('set','user_properties',{continent:userProfile.continent||'not_set',is_admin:userProfile.isAdmin?'true':'false'}); gtag('set',{user_id:user.uid}); } catch(e) {}
         el('auth-screen').style.display = 'none';
         el('app-shell').style.display = 'block';
         el('user-display').textContent = userProfile.nick || userProfile.name;
@@ -945,6 +950,7 @@ async function doRegister() {
   const name=el('reg-name').value.trim(), nick=el('reg-nick').value.trim();
   const email=el('reg-email').value.trim(), pass=el('reg-pass').value;
   const badgeTeam = el('reg-badge-hidden')?.value.trim() || '';
+  const continent = el('reg-continent')?.value || '';
   if(!name||!email||!pass){toast('Fill in all required fields',true);return;}
   if(pass.length<6){toast('Password must be at least 6 characters',true);return;}
   el('reg-btn').textContent = 'Registering…';
@@ -967,7 +973,7 @@ async function doRegister() {
     for(let i=0;i<3;i++){
       try {
         await setDoc(doc(db,'users',cred.user.uid),{
-          name, nick:nick||'', email, isAdmin, avatar:'', badgeTeam: badgeTeam||'', compIds:[], lastCompId:null, joinedAt:serverTimestamp(), emailSubscribed:true
+          name, nick:nick||'', email, isAdmin, avatar:'', badgeTeam: badgeTeam||'', continent: continent||'', compIds:[], lastCompId:null, joinedAt:serverTimestamp(), emailSubscribed:true
         });
         written=true;
         // Subscribe to EmailOctopus
@@ -984,7 +990,7 @@ async function doRegister() {
     isRegistering = false;
     if(!written) toast('Account created — please log in',true);
     else {
-      track('sign_up', { method: 'email' });
+      track('sign_up', { method: 'email', continent: continent||'not_set' });
       // Show email verification screen instead of entering app
       el('auth-screen').style.display = 'none';
       el('verify-email-screen').style.display = 'flex';
@@ -3952,10 +3958,15 @@ document.addEventListener('showResultsPanel', function() {
 });
 </script>
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-LY7WXRQ24Q"></script>
-<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-LY7WXRQ24Q');
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-LY7WXRQ24Q',{send_page_view:false});
 function track(event, params={}) {
   try { gtag('event', event, params); } catch(e) {}
-}</script>
+}
+// Track virtual page views when navigating between sections
+function trackPage(pageName) {
+  try { gtag('event','page_view',{page_title:pageName,page_location:window.location.href+'#'+pageName}); } catch(e) {}
+}
+</script>
 </head>
 <body>
 
@@ -3999,6 +4010,20 @@ function track(event, params={}) {
       <div class="form-group"><label>Nickname (optional)</label><input type="text" id="reg-nick" placeholder="e.g. Jakeo" autocomplete="nickname"/></div>
       <div class="form-group"><label>Email *</label><input type="email" id="reg-email" placeholder="you@email.com" autocomplete="email"/></div>
       <div class="form-group"><label>Password *</label><input type="password" id="reg-pass" placeholder="Min 6 characters" autocomplete="new-password"/></div>
+      <div class="form-group">
+        <label>Where are you from? <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Lets us know where our tippers are from around the world 🌍</div>
+        <select id="reg-continent" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:11px 14px;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;width:100%;transition:all var(--transition-fast);appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%239db4d0' d='M6 8L0 0h12z'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 14px center;">
+          <option value="">— Select your continent —</option>
+          <option value="Africa">🌍 Africa</option>
+          <option value="Antarctica">🧊 Antarctica</option>
+          <option value="Asia">🌏 Asia</option>
+          <option value="Europe">🌍 Europe</option>
+          <option value="North America">🌎 North America</option>
+          <option value="Oceania">🌏 Oceania</option>
+          <option value="South America">🌎 South America</option>
+        </select>
+      </div>
       <div class="form-group">
         <label>Your Club Badge <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
         <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Pick your AFL or NFL team — shows next to your name on the leaderboard</div>
