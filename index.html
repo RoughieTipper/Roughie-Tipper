@@ -326,12 +326,13 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
   border-top: 2px solid rgba(255,255,255,0.25);
   padding: 0 0 env(safe-area-inset-bottom, 0px);
   box-shadow: 0 -4px 28px rgba(255,214,0,0.35), 0 -1px 0 rgba(255,255,255,0.15);
+  overflow: hidden;
 }
 #ladder-bottom-tabs.visible { display: flex; }
 .lbt-item {
-  flex: 1; display: flex; flex-direction: column;
+  flex: 1; min-width: 0; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  padding: 8px 4px 7px; gap: 3px;
+  padding: 8px 2px 7px; gap: 3px;
   background: none; border: none;
   color: rgba(10,22,40,0.5);
   font-family: 'DM Sans', sans-serif;
@@ -339,6 +340,7 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
   letter-spacing: 0.4px; text-transform: uppercase;
   cursor: pointer; transition: all var(--transition-fast);
   position: relative;
+  overflow: hidden;
 }
 .lbt-item:hover { color: rgba(10,22,40,0.8); }
 .lbt-item.active {
@@ -2507,11 +2509,12 @@ function renderChat(messages){
       const deleteBtn = canDelete
         ? `<button onclick="deleteMessage('${m.id}')" title="${isMe?'Delete your message':'Remove (admin)'}" style="background:none;border:none;color:${isMe?'rgba(0,200,83,0.35)':'rgba(255,61,61,0.35)'};font-size:13px;cursor:pointer;padding:0 2px;line-height:1;transition:color .15s;flex-shrink:0;" onmouseover="this.style.color='${isMe?'var(--green)':'var(--red)'}'" onmouseout="this.style.color='${isMe?'rgba(0,200,83,0.35)':'rgba(255,61,61,0.35)'}'">🗑</button>`
         : '';
+      const emojiOnly = isEmojiOnly(m.text);
       return `<div class="chat-msg ${isMe?'chat-msg-me':''}">
         ${!isMe?avatarHtml:''}
-        <div class="chat-bubble ${isMe?'bubble-me':'bubble-them'}">
+        <div class="chat-bubble ${isMe?'bubble-me':'bubble-them'}" ${emojiOnly ? 'style="background:none;border:none;box-shadow:none;padding:4px 8px;"' : ''}>
           ${!isMe?`<div class="chat-sender">${escHtml(displayName)}</div>`:''}
-          <div class="chat-text">${renderChatMessage(m.text)}</div>
+          <div class="chat-text" ${emojiOnly ? 'style="font-size:36px;line-height:1.2;letter-spacing:2px;"' : ''}>${renderChatMessage(m.text)}</div>
           <div class="chat-time" style="display:flex;align-items:center;justify-content:flex-end;gap:6px;">${timeStr}${deleteBtn}</div>
         </div>
         ${isMe?avatarHtml:''}
@@ -2931,6 +2934,23 @@ function dismissCelebration() {
   document.getElementById('celebration-overlay').style.display = 'none';
   stopConfetti();
   showReportCard();
+}
+
+async function sendCelebChat(text) {
+  if (!currentUser) return;
+  const chatCol = currentCompId ? 'chats/'+currentCompId+'/messages' : 'chat';
+  await addDoc(collection(db, ...chatCol.split('/')), { uid: currentUser.uid, displayName: userProfile?.nick||userProfile?.name||'', text, ts: serverTimestamp() });
+  notifyNewChat();
+}
+
+async function sendCelebChatText() {
+  const input = document.getElementById('cel-chat-input');
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text || !currentUser) return;
+  if (text.length > 280) { toast('Max 280 characters', true); return; }
+  input.value = '';
+  await sendCelebChat(text);
 }
 
 function startConfetti() {
@@ -3732,6 +3752,13 @@ function insertMention(displayName) {
   input.style.height = input.scrollHeight + 'px';
 }
 
+// Check if a string is emoji-only (supports multi-codepoint emoji)
+function isEmojiOnly(text) {
+  // Strip all emoji and whitespace, if nothing remains → emoji only
+  const stripped = text.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}\uFE0F\u200D\s]/gu, '');
+  return stripped.length === 0 && text.trim().length > 0;
+}
+
 // Render chat messages with @ mentions highlighted and check for tags
 function renderChatMessage(text) {
   // Escape HTML first then highlight mentions
@@ -3749,24 +3776,26 @@ function renderChatMessage(text) {
 // Check incoming chat messages for mentions of current user
 function checkForMentions(messages) {
   if (!currentUser || !userProfile) return;
-  const myNick = userProfile.nick || userProfile.name;
-  const myTag = '@' + myNick;
+  const myNick = (userProfile.nick || userProfile.name || '').trim();
+  if (!myNick) return;
+  const myTagLower = ('@' + myNick).toLowerCase();
   // Only check recent messages (last 20)
   const recent = messages.slice(-20);
   recent.forEach(m => {
     if (m.uid === currentUser.uid) return; // own message
+    if (!m.text) return;
+    // Case-insensitive match
+    if (!m.text.toLowerCase().includes(myTagLower)) return;
     const seenKey = 'mention_seen_' + m.id;
     if (localStorage.getItem(seenKey)) return;
-    if (m.text && m.text.includes(myTag)) {
-      localStorage.setItem(seenKey, '1');
-      const senderName = allUsers[m.uid]?.nick || allUsers[m.uid]?.name || 'Someone';
-      addNotification(
-        'mention_' + m.id,
-        '💬',
-        '<strong>' + escHtml(senderName) + '</strong> mentioned you: <em>' + escHtml(m.text.slice(0, 80)) + (m.text.length > 80 ? '…' : '') + '</em>',
-        () => showPage('leaderboard')
-      );
-    }
+    localStorage.setItem(seenKey, '1');
+    const senderName = allUsers[m.uid]?.nick || allUsers[m.uid]?.name || 'Someone';
+    addNotification(
+      'mention_' + m.id,
+      '💬',
+      '<strong>' + escHtml(senderName) + '</strong> mentioned you in chat: <em>' + escHtml(m.text.slice(0, 80)) + (m.text.length > 80 ? '&#8230;' : '') + '</em>',
+      () => { showPage('leaderboard'); setTimeout(() => showLadderPanel('chat'), 100); }
+    );
   });
 }
 
@@ -3867,7 +3896,7 @@ Object.assign(window,{
   shareRoundResult,copyInviteLink,
   saveResult,removeRound,renderAdminMatchesList,renderAdminResults,
   renderAdminRoundsList,addRoundFromMgmt,promptRenameRound,moveRound,
-  saveJoinCode,sendChat,chatKeydown,insertEmoji,deleteMessage,
+  saveJoinCode,sendChat,chatKeydown,insertEmoji,deleteMessage,sendCelebChat,sendCelebChatText,
   toggleAdmin,saveProfile,previewAvatar,
   joinComp,autoJoinFromInvite,createComp,switchComp,deleteComp,renderAdminComps,
   togglePaid,savePrizes,pickMargin,toggleEditMatch,saveMatchEdit,moveMatch,
@@ -4171,10 +4200,10 @@ function track(event, params={}) {
             <div class="chat-header-title"><span class="chat-live-dot"></span><span style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;">💬 COMP CHAT</span></div>
             <span style="font-size:12px;color:var(--muted);">Keep it friendly… or don't 😂</span>
           </div>
-          <div class="chat-feed" id="chat-feed" style="height:400px;"><div style="text-align:center;color:var(--muted);padding:32px;font-size:14px;">Loading messages…</div></div>
+          <div class="chat-feed" id="chat-feed" style="height:560px;"><div style="text-align:center;color:var(--muted);padding:32px;font-size:14px;">Loading messages…</div></div>
           <div class="chat-footer">
             <div class="chat-emoji-bar">
-              <button class="emoji-btn" onclick="insertEmoji('🔥')">🔥</button><button class="emoji-btn" onclick="insertEmoji('😂')">😂</button><button class="emoji-btn" onclick="insertEmoji('👏')">👏</button><button class="emoji-btn" onclick="insertEmoji('💀')">💀</button><button class="emoji-btn" onclick="insertEmoji('🤡')">🤡</button><button class="emoji-btn" onclick="insertEmoji('😤')">😤</button><button class="emoji-btn" onclick="insertEmoji('🏉')">🏉</button><button class="emoji-btn" onclick="insertEmoji('🎯')">🎯</button><button class="emoji-btn" onclick="insertEmoji('🤑')">🤑</button>
+              <button class="emoji-btn" onclick="insertEmoji('👏')">👏</button><button class="emoji-btn" onclick="insertEmoji('❤️')">❤️</button><button class="emoji-btn" onclick="insertEmoji('🦍')">🦍</button><button class="emoji-btn" onclick="insertEmoji('🤯')">🤯</button><button class="emoji-btn" onclick="insertEmoji('🤑')">🤑</button><button class="emoji-btn" onclick="insertEmoji('🔥')">🔥</button><button class="emoji-btn" onclick="insertEmoji('😂')">😂</button><button class="emoji-btn" onclick="insertEmoji('🏉')">🏉</button>
             </div>
             <div class="chat-input-row">
               <textarea class="chat-input" id="chat-input" rows="1" placeholder="Talk your footy… 🏉  (type @ to tag someone)" onkeydown="chatKeydown(event)" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" maxlength="280"></textarea>
@@ -4982,16 +5011,32 @@ window.addEventListener('load', () => {
 </script>
 
 <!-- ROUND WINNER CELEBRATION OVERLAY -->
-<div id="celebration-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(10,22,40,0.97);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px;cursor:pointer;" onclick="dismissCelebration()">
+<div id="celebration-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(10,22,40,0.97);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px 20px;cursor:pointer;" onclick="dismissCelebration()">
   <canvas id="confetti-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;"></canvas>
-  <div style="position:relative;z-index:1;">
+  <div style="position:relative;z-index:1;width:100%;max-width:420px;">
     <div style="font-size:56px;margin-bottom:8px;">🏆</div>
     <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:3px;color:var(--muted);margin-bottom:4px;" id="cel-round-label">ROUND 1</div>
     <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:var(--green);letter-spacing:2px;margin-bottom:20px;">ROUND WINNER!</div>
     <div id="cel-avatar" style="width:80px;height:80px;border-radius:50%;margin:0 auto 16px;background:var(--card2);border:3px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:var(--green);overflow:hidden;"></div>
     <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--text);letter-spacing:1px;" id="cel-name"></div>
     <div style="font-size:15px;color:var(--muted);margin-top:4px;" id="cel-pts"></div>
-    <div style="margin-top:32px;font-size:13px;color:var(--muted);opacity:0.6;">Tap anywhere to continue</div>
+
+    <!-- Emoji reaction bar -->
+    <div onclick="event.stopPropagation()" style="margin-top:24px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+      <button class="emoji-btn" style="font-size:22px;padding:7px 11px;" onclick="sendCelebChat('👏')">👏</button>
+      <button class="emoji-btn" style="font-size:22px;padding:7px 11px;" onclick="sendCelebChat('❤️')">❤️</button>
+      <button class="emoji-btn" style="font-size:22px;padding:7px 11px;" onclick="sendCelebChat('🦍')">🦍</button>
+      <button class="emoji-btn" style="font-size:22px;padding:7px 11px;" onclick="sendCelebChat('🤯')">🤯</button>
+      <button class="emoji-btn" style="font-size:22px;padding:7px 11px;" onclick="sendCelebChat('🤑')">🤑</button>
+    </div>
+
+    <!-- Quick chat send -->
+    <div onclick="event.stopPropagation()" style="margin-top:12px;display:flex;gap:8px;align-items:center;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:6px 8px;">
+      <input id="cel-chat-input" type="text" maxlength="280" placeholder="Say something to the group…" onkeydown="if(event.key==='Enter'){event.preventDefault();sendCelebChatText();}" style="flex:1;background:none;border:none;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;outline:none;min-width:0;"/>
+      <button onclick="sendCelebChatText()" style="background:var(--green);color:var(--navy);border:none;width:38px;height:38px;border-radius:10px;font-size:18px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;">🏉</button>
+    </div>
+
+    <div style="margin-top:20px;font-size:13px;color:var(--muted);opacity:0.6;">Tap anywhere to continue</div>
   </div>
 </div>
 
