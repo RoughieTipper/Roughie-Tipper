@@ -317,6 +317,10 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
 .team-loser-strike::after{content:'';position:absolute;left:-3px;right:-3px;top:48%;height:3px;background:#ff4d4d;transform:rotate(-1.5deg);border-radius:2px;opacity:0.85;}
 
 /* ── BOTTOM LADDER TABS ── */
+/* Admin tab hidden by default, shown when body has .show-admin-tab */
+#lbt-admin { display: none; }
+body.show-admin-tab #lbt-admin { display: flex; }
+
 #ladder-bottom-tabs {
   display: none;
   position: fixed;
@@ -772,8 +776,7 @@ onAuthStateChanged(auth, async user => {
         updateHeaderAvatar(userProfile);
         const isSiteAdmin = user.uid === SITE_ADMIN_UID || userProfile.isAdmin;
         el('nav-admin').style.display = isSiteAdmin ? 'inline-flex' : 'none';
-        // Refresh bottom admin tab now that user profile is confirmed
-        setTimeout(() => window.refreshAdminTabVisibility && window.refreshAdminTabVisibility(), 500);
+        if (isSiteAdmin) document.body.classList.add('show-admin-tab');
         subscribeGlobal();
         setTimeout(checkRoundWinnerCelebration, 3000);
         setTimeout(showNotifResetBanner, 5000);
@@ -1071,8 +1074,12 @@ async function loadComp(compId) {
   currentComp = {id:compId,...snap.data()};
   window._currentComp = currentComp;
   allComps[compId] = snap.data();
-  // Refresh admin tab now that comp ownership is known
-  setTimeout(() => window.refreshAdminTabVisibility && window.refreshAdminTabVisibility(), 100);
+  // Show admin tab if site admin or comp owner
+  if (currentUser && (currentComp.ownerId === currentUser.uid || userProfile?.isAdmin || currentUser.uid === 'CdcjgZWDAKfQQybjqN6fyEH56XZ2')) {
+    document.body.classList.add('show-admin-tab');
+  } else {
+    document.body.classList.remove('show-admin-tab');
+  }
   el('comp-banner').style.display = 'flex';
   el('comp-name-display').textContent = currentComp.name;
   await updateDoc(doc(db,'users',currentUser.uid),{lastCompId:compId});
@@ -1384,10 +1391,7 @@ function renderLeaderboard() {
   if (payInfo && payDisplay && payText) { payText.textContent = payInfo; payDisplay.style.display = 'block'; }
   else if (payDisplay) { payDisplay.style.display = 'none'; }
   el('prize-edit-section').style.display = isOwner ? 'block' : 'none';
-  // Refresh admin tab — uses window globals so works regardless of script load order
-  if (window.refreshAdminTabVisibility) {
-    window.refreshAdminTabVisibility();
-  }
+  // Admin tab controlled via body.show-admin-tab CSS class (set in loadComp/auth handler)
   if (isOwner) {
     el('prize-input-entry').value = prizes.entry||'';
     el('prize-input-first').value = prizes.first||'';
@@ -4117,7 +4121,7 @@ function track(event, params={}) {
     <button class="lbt-item" id="lbt-history" onclick="showLadderPanel('history')">
       <span class="lbt-icon">🏅</span><span>History</span>
     </button>
-    <button class="lbt-item" id="lbt-admin" onclick="showLadderPanel('admin')" style="display:none;">
+    <button class="lbt-item" id="lbt-admin" onclick="showLadderPanel('admin')">
       <span class="lbt-icon">⚙️</span><span>Admin</span>
     </button>
   </div>
@@ -4976,34 +4980,9 @@ function _lbtOnShowPage(id) {
 // Hook into showPage
 const __showPageOrig = window.showPage;
 
-// Show admin tab for comp owner or site admin
-function updateLadderAdminTab(show) {
-  const adminTab = document.getElementById('lbt-admin');
-  if (adminTab) adminTab.style.display = show ? 'flex' : 'none';
-}
+// Admin tab visibility now controlled via body.show-admin-tab CSS class
+function updateLadderAdminTab() {} // kept for compatibility
 window.updateLadderAdminTab = updateLadderAdminTab;
-
-// Independently re-check admin status on a poll until user data is ready
-// This avoids ALL race conditions between module and regular scripts
-(function() {
-  const SITE_ADMIN_UID = 'CdcjgZWDAKfQQybjqN6fyEH56XZ2';
-  function checkAndShowAdminTab() {
-    const u = window._currentUser;
-    const p = window._userProfile;
-    const comp = window._currentComp;
-    if (!u) return; // not logged in yet
-    const isSiteAdmin = u.uid === SITE_ADMIN_UID || !!p?.isAdmin;
-    const isOwner = comp && u && comp.ownerId === u.uid;
-    updateLadderAdminTab(isSiteAdmin || isOwner);
-  }
-  // Run on load and on a short retry to catch async comp/profile load
-  window.refreshAdminTabVisibility = checkAndShowAdminTab;
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', checkAndShowAdminTab);
-  } else {
-    checkAndShowAdminTab();
-  }
-})();
 
 // Notify new chat — show pip if not on chat panel
 function notifyNewChat() {
