@@ -4959,7 +4959,7 @@ const __showPageOrig = window.showPage;
 // Show admin tab only for comp owner — called from renderLeaderboard
 function updateLadderAdminTab(isOwner) {
   const adminTab = document.getElementById('lbt-admin');
-  if (adminTab) adminTab.style.display = isOwner ? '' : 'none';
+  if (adminTab) adminTab.style.display = isOwner ? 'flex' : 'none';
 }
 window.updateLadderAdminTab = updateLadderAdminTab;
 
