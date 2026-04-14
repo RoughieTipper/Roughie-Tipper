@@ -772,6 +772,8 @@ onAuthStateChanged(auth, async user => {
         updateHeaderAvatar(userProfile);
         const isSiteAdmin = user.uid === SITE_ADMIN_UID || userProfile.isAdmin;
         el('nav-admin').style.display = isSiteAdmin ? 'inline-flex' : 'none';
+        // Refresh bottom admin tab now that user profile is confirmed
+        setTimeout(() => window.refreshAdminTabVisibility && window.refreshAdminTabVisibility(), 500);
         subscribeGlobal();
         setTimeout(checkRoundWinnerCelebration, 3000);
         setTimeout(showNotifResetBanner, 5000);
@@ -1069,6 +1071,8 @@ async function loadComp(compId) {
   currentComp = {id:compId,...snap.data()};
   window._currentComp = currentComp;
   allComps[compId] = snap.data();
+  // Refresh admin tab now that comp ownership is known
+  setTimeout(() => window.refreshAdminTabVisibility && window.refreshAdminTabVisibility(), 100);
   el('comp-banner').style.display = 'flex';
   el('comp-name-display').textContent = currentComp.name;
   await updateDoc(doc(db,'users',currentUser.uid),{lastCompId:compId});
@@ -1380,11 +1384,9 @@ function renderLeaderboard() {
   if (payInfo && payDisplay && payText) { payText.textContent = payInfo; payDisplay.style.display = 'block'; }
   else if (payDisplay) { payDisplay.style.display = 'none'; }
   el('prize-edit-section').style.display = isOwner ? 'block' : 'none';
-  const showAdminTab = isOwner || isSiteAdmin;
-  if (window.updateLadderAdminTab) {
-    window.updateLadderAdminTab(showAdminTab);
-  } else {
-    window._ladderAdminTabPending = showAdminTab;
+  // Refresh admin tab — uses window globals so works regardless of script load order
+  if (window.refreshAdminTabVisibility) {
+    window.refreshAdminTabVisibility();
   }
   if (isOwner) {
     el('prize-input-entry').value = prizes.entry||'';
@@ -4974,25 +4976,32 @@ function _lbtOnShowPage(id) {
 // Hook into showPage
 const __showPageOrig = window.showPage;
 
-// Show admin tab for comp owner or site admin — called from renderLeaderboard
-function updateLadderAdminTab(isOwner) {
+// Show admin tab for comp owner or site admin
+function updateLadderAdminTab(show) {
   const adminTab = document.getElementById('lbt-admin');
-  if (adminTab) adminTab.style.display = isOwner ? 'flex' : 'none';
+  if (adminTab) adminTab.style.display = show ? 'flex' : 'none';
 }
 window.updateLadderAdminTab = updateLadderAdminTab;
 
-// Re-apply admin tab visibility in case renderLeaderboard ran before this script loaded
+// Independently re-check admin status on a poll until user data is ready
+// This avoids ALL race conditions between module and regular scripts
 (function() {
-  function _reapplyAdminTab() {
-    if (window._ladderAdminTabPending !== undefined) {
-      updateLadderAdminTab(window._ladderAdminTabPending);
-      delete window._ladderAdminTabPending;
-    }
+  const SITE_ADMIN_UID = 'CdcjgZWDAKfQQybjqN6fyEH56XZ2';
+  function checkAndShowAdminTab() {
+    const u = window._currentUser;
+    const p = window._userProfile;
+    const comp = window._currentComp;
+    if (!u) return; // not logged in yet
+    const isSiteAdmin = u.uid === SITE_ADMIN_UID || !!p?.isAdmin;
+    const isOwner = comp && u && comp.ownerId === u.uid;
+    updateLadderAdminTab(isSiteAdmin || isOwner);
   }
+  // Run on load and on a short retry to catch async comp/profile load
+  window.refreshAdminTabVisibility = checkAndShowAdminTab;
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', _reapplyAdminTab);
+    document.addEventListener('DOMContentLoaded', checkAndShowAdminTab);
   } else {
-    _reapplyAdminTab();
+    checkAndShowAdminTab();
   }
 })();
 
