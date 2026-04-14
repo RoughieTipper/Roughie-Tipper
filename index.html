@@ -326,21 +326,33 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
   border-top: 2px solid rgba(255,255,255,0.25);
   padding: 0 0 env(safe-area-inset-bottom, 0px);
   box-shadow: 0 -4px 28px rgba(255,214,0,0.35), 0 -1px 0 rgba(255,255,255,0.15);
-  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
 }
 #ladder-bottom-tabs.visible { display: flex; }
 .lbt-item {
-  flex: 1; min-width: 0; display: flex; flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 20%;
+  display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  padding: 8px 2px 7px; gap: 3px;
+  padding: 8px 0 7px; gap: 2px;
   background: none; border: none;
   color: rgba(10,22,40,0.5);
   font-family: 'DM Sans', sans-serif;
-  font-size: 10px; font-weight: 800;
-  letter-spacing: 0.4px; text-transform: uppercase;
+  font-size: 9px; font-weight: 800;
+  letter-spacing: 0.2px; text-transform: uppercase;
   cursor: pointer; transition: all var(--transition-fast);
   position: relative;
+  box-sizing: border-box;
+}
+.lbt-item > span:not(.lbt-icon):not(.lbt-pip) {
+  width: 100%;
+  text-align: center;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 2px;
 }
 .lbt-item:hover { color: rgba(10,22,40,0.8); }
 .lbt-item.active {
@@ -1367,7 +1379,11 @@ function renderLeaderboard() {
   if (payInfo && payDisplay && payText) { payText.textContent = payInfo; payDisplay.style.display = 'block'; }
   else if (payDisplay) { payDisplay.style.display = 'none'; }
   el('prize-edit-section').style.display = isOwner ? 'block' : 'none';
-  window.updateLadderAdminTab && window.updateLadderAdminTab(isOwner);
+  if (window.updateLadderAdminTab) {
+    window.updateLadderAdminTab(isOwner);
+  } else {
+    window._ladderAdminTabPending = isOwner;
+  }
   if (isOwner) {
     el('prize-input-entry').value = prizes.entry||'';
     el('prize-input-first').value = prizes.first||'';
@@ -4956,12 +4972,27 @@ function _lbtOnShowPage(id) {
 // Hook into showPage
 const __showPageOrig = window.showPage;
 
-// Show admin tab only for comp owner — called from renderLeaderboard
+// Show admin tab for comp owner or site admin — called from renderLeaderboard
 function updateLadderAdminTab(isOwner) {
   const adminTab = document.getElementById('lbt-admin');
   if (adminTab) adminTab.style.display = isOwner ? 'flex' : 'none';
 }
 window.updateLadderAdminTab = updateLadderAdminTab;
+
+// Re-apply admin tab visibility in case renderLeaderboard ran before this script loaded
+(function() {
+  function _reapplyAdminTab() {
+    if (window._ladderAdminTabPending !== undefined) {
+      updateLadderAdminTab(window._ladderAdminTabPending);
+      delete window._ladderAdminTabPending;
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _reapplyAdminTab);
+  } else {
+    _reapplyAdminTab();
+  }
+})();
 
 // Notify new chat — show pip if not on chat panel
 function notifyNewChat() {
