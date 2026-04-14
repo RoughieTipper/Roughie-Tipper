@@ -1391,14 +1391,8 @@ function renderLeaderboard() {
   el('prize-second').textContent = prizes.second ? '$'+prizes.second : '—';
   el('prize-third').textContent = prizes.third ? '$'+prizes.third : '—';
   el('prize-entry').textContent = prizes.entry ? '$'+prizes.entry : '—';
-  // Most Rounds
-  const mrWrap = el('prize-most-rounds-wrap');
-  if (prizes.mostRounds) { el('prize-most-rounds').textContent = prizes.mostRounds; if(mrWrap) mrWrap.style.display='block'; }
-  else { if(mrWrap) mrWrap.style.display='none'; }
-  // Perfect Score
-  const psWrap = el('prize-perfect-score-wrap');
-  if (prizes.perfectScore) { el('prize-perfect-score').textContent = prizes.perfectScore; if(psWrap) psWrap.style.display='block'; }
-  else { if(psWrap) psWrap.style.display='none'; }
+  el('prize-most-rounds').textContent = prizes.mostRounds || '—';
+  el('prize-perfect-score').textContent = prizes.perfectScore || '—';
   const payInfo = prizes.paymentInfo || '';
   const payDisplay = el('prize-payment-display');
   const payText = el('prize-payment-text');
@@ -4197,8 +4191,8 @@ function trackPage(pageName) {
           <div style="text-align:center;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">🥇 First</div><div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--gold);" id="prize-first">—</div></div>
           <div style="text-align:center;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">🥈 Second</div><div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#b0b8c8;" id="prize-second">—</div></div>
           <div style="text-align:center;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">🥉 Third</div><div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#cd7f32;" id="prize-third">—</div></div>
-          <div id="prize-most-rounds-wrap" style="display:none;text-align:center;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">🥊 Most Rounds</div><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--green);" id="prize-most-rounds">—</div></div>
-          <div id="prize-perfect-score-wrap" style="display:none;text-align:center;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">🔮 Perfect Score</div><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:#c084fc;" id="prize-perfect-score">—</div></div>
+          <div id="prize-most-rounds-wrap" style="text-align:center;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">🥊 Most Rounds</div><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--green);" id="prize-most-rounds">—</div></div>
+          <div id="prize-perfect-score-wrap" style="text-align:center;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">🔮 Perfect Score</div><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:#c084fc;" id="prize-perfect-score">—</div></div>
         </div>
         <div id="prize-payment-display" style="display:none;background:var(--card2);border-radius:10px;padding:12px 14px;margin-bottom:4px;">
           <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">💳 How to Pay</div>
