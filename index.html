@@ -1393,6 +1393,7 @@ function renderLeaderboard() {
   el('prize-entry').textContent = prizes.entry ? '$'+prizes.entry : '—';
   el('prize-most-rounds').textContent = prizes.mostRounds || '—';
   el('prize-perfect-score').textContent = prizes.perfectScore || '—';
+  el('prize-penalty').textContent = prizes.penalty || '—';
   const payInfo = prizes.paymentInfo || '';
   const payDisplay = el('prize-payment-display');
   const payText = el('prize-payment-text');
@@ -1408,6 +1409,7 @@ function renderLeaderboard() {
     if (el('prize-input-payment')) el('prize-input-payment').value = prizes.paymentInfo||'';
     if (el('prize-input-most-rounds')) el('prize-input-most-rounds').value = prizes.mostRounds||'';
     if (el('prize-input-perfect-score')) el('prize-input-perfect-score').value = prizes.perfectScore||'';
+    if (el('prize-input-penalty')) el('prize-input-penalty').value = prizes.penalty||'';
     if (el('biz-name-input')) el('biz-name-input').value = currentComp.businessName||'';
     if (el('biz-logo-input')) el('biz-logo-input').value = currentComp.businessLogo||'';
     if (el('biz-contact-input')) el('biz-contact-input').value = currentComp.businessContact||'';
@@ -2584,6 +2586,7 @@ function showCompSettings() {
   if (el('cs-prize-payment')) el('cs-prize-payment').value = prizes.paymentInfo||'';
   if (el('cs-prize-most-rounds')) el('cs-prize-most-rounds').value = prizes.mostRounds||'';
   if (el('cs-prize-perfect-score')) el('cs-prize-perfect-score').value = prizes.perfectScore||'';
+  if (el('cs-prize-penalty')) el('cs-prize-penalty').value = prizes.penalty||'';
   if (el('cs-biz-name')) el('cs-biz-name').value = currentComp.businessName||'';
   if (el('cs-biz-logo')) el('cs-biz-logo').value = currentComp.businessLogo||'';
   if (el('cs-biz-contact')) el('cs-biz-contact').value = currentComp.businessContact||'';
@@ -2608,7 +2611,7 @@ function showCompSettings() {
 
 async function saveCompSettingsPrizes() {
   if (!currentCompId) return;
-  const prizes = { entry: el('cs-prize-entry')?.value.trim()||'', first: el('cs-prize-first')?.value.trim()||'', second: el('cs-prize-second')?.value.trim()||'', third: el('cs-prize-third')?.value.trim()||'', paymentInfo: el('cs-prize-payment')?.value.trim()||'', mostRounds: el('cs-prize-most-rounds')?.value.trim()||'', perfectScore: el('cs-prize-perfect-score')?.value.trim()||'' };
+  const prizes = { entry: el('cs-prize-entry')?.value.trim()||'', first: el('cs-prize-first')?.value.trim()||'', second: el('cs-prize-second')?.value.trim()||'', third: el('cs-prize-third')?.value.trim()||'', paymentInfo: el('cs-prize-payment')?.value.trim()||'', mostRounds: el('cs-prize-most-rounds')?.value.trim()||'', perfectScore: el('cs-prize-perfect-score')?.value.trim()||'', penalty: el('cs-prize-penalty')?.value.trim()||'' };
   await updateDoc(doc(db,'comps',currentCompId),{prizes});
   currentComp.prizes = prizes;
   toast('Prize pool saved! 🏆');
@@ -2675,7 +2678,7 @@ async function confirmModerationAck() {
 async function savePrizes() {
   if (!currentCompId||!currentComp) return;
   if (!currentUser || currentComp.ownerId !== currentUser.uid) return;
-  const prizes = { entry: el('prize-input-entry').value.trim(), first: el('prize-input-first').value.trim(), second: el('prize-input-second').value.trim(), third: el('prize-input-third').value.trim(), paymentInfo: el('prize-input-payment').value.trim(), mostRounds: el('prize-input-most-rounds')?.value.trim()||'', perfectScore: el('prize-input-perfect-score')?.value.trim()||'' };
+  const prizes = { entry: el('prize-input-entry').value.trim(), first: el('prize-input-first').value.trim(), second: el('prize-input-second').value.trim(), third: el('prize-input-third').value.trim(), paymentInfo: el('prize-input-payment').value.trim(), mostRounds: el('prize-input-most-rounds')?.value.trim()||'', perfectScore: el('prize-input-perfect-score')?.value.trim()||'', penalty: el('prize-input-penalty')?.value.trim()||'' };
   await updateDoc(doc(db,'comps',currentCompId),{prizes});
   currentComp.prizes = prizes; renderLeaderboard(); toast('Prize money updated! 🏆');
 }
@@ -4191,8 +4194,9 @@ function trackPage(pageName) {
           <div style="text-align:center;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">🥇 First</div><div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--gold);" id="prize-first">—</div></div>
           <div style="text-align:center;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">🥈 Second</div><div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#b0b8c8;" id="prize-second">—</div></div>
           <div style="text-align:center;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">🥉 Third</div><div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#cd7f32;" id="prize-third">—</div></div>
-          <div id="prize-most-rounds-wrap" style="text-align:center;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">🥊 Most Rounds</div><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--green);" id="prize-most-rounds">—</div></div>
-          <div id="prize-perfect-score-wrap" style="text-align:center;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">🔮 Perfect Score</div><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:#c084fc;" id="prize-perfect-score">—</div></div>
+          <div id="prize-most-rounds-wrap" style="text-align:center;max-width:140px;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">🥊 Most Rounds</div><div style="font-size:14px;font-weight:600;color:var(--green);line-height:1.3;margin-top:4px;word-break:break-word;" id="prize-most-rounds">—</div></div>
+          <div id="prize-perfect-score-wrap" style="text-align:center;max-width:140px;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">🔮 Perfect Score</div><div style="font-size:14px;font-weight:600;color:#c084fc;line-height:1.3;margin-top:4px;word-break:break-word;" id="prize-perfect-score">—</div></div>
+          <div id="prize-penalty-wrap" style="text-align:center;max-width:140px;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">🥄 Penalty</div><div style="font-size:14px;font-weight:600;color:var(--red);line-height:1.3;margin-top:4px;word-break:break-word;" id="prize-penalty">—</div></div>
         </div>
         <div id="prize-payment-display" style="display:none;background:var(--card2);border-radius:10px;padding:12px 14px;margin-bottom:4px;">
           <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">💳 How to Pay</div>
@@ -4339,6 +4343,7 @@ function trackPage(pageName) {
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:10px;">
             <div style="flex:1;min-width:180px;"><label style="font-size:11px;color:var(--muted);">🥊 Most Rounds Prize</label><input type="text" id="prize-input-most-rounds" placeholder="e.g. $50 or Free schooner" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
             <div style="flex:1;min-width:180px;"><label style="font-size:11px;color:var(--muted);">🔮 Perfect Score Prize</label><input type="text" id="prize-input-perfect-score" placeholder="e.g. $100 or Free dinner" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
+            <div style="flex:1;min-width:180px;"><label style="font-size:11px;color:var(--muted);">🥄 Penalty (Last Place)</label><input type="text" id="prize-input-penalty" placeholder="e.g. Shout the bar a round" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
             <button class="btn" style="font-size:13px;padding:8px 16px;" onclick="savePrizes()">Save</button>
           </div>
           <div style="margin-top:12px;">
@@ -4712,6 +4717,7 @@ function trackPage(pageName) {
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:10px;">
           <div style="flex:1;min-width:180px;"><label style="font-size:11px;color:var(--muted);">🥊 Most Rounds Prize</label><input type="text" id="cs-prize-most-rounds" placeholder="e.g. $50 or Free schooner" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
           <div style="flex:1;min-width:180px;"><label style="font-size:11px;color:var(--muted);">🔮 Perfect Score Prize</label><input type="text" id="cs-prize-perfect-score" placeholder="e.g. $100 or Free dinner" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
+          <div style="flex:1;min-width:180px;"><label style="font-size:11px;color:var(--muted);">🥄 Penalty (Last Place)</label><input type="text" id="cs-prize-penalty" placeholder="e.g. Shout the bar a round" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
         </div>
         <div style="margin-top:12px;">
           <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Payment Instructions</label>
