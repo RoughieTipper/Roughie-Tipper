@@ -331,12 +331,12 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
 }
 #ladder-bottom-tabs.visible { display: flex; }
 .lbt-item {
-  flex: 1 1 0;
+  flex: 1 1 0%;
+  width: 0;
   min-width: 0;
-  max-width: 20%;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  padding: 8px 0 7px; gap: 2px;
+  padding: 8px 2px 7px; gap: 2px;
   background: none; border: none;
   color: rgba(10,22,40,0.5);
   font-family: 'DM Sans', sans-serif;
@@ -345,6 +345,7 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
   cursor: pointer; transition: all var(--transition-fast);
   position: relative;
   box-sizing: border-box;
+  overflow: hidden;
 }
 .lbt-item > span:not(.lbt-icon):not(.lbt-pip) {
   width: 100%;
@@ -352,7 +353,6 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 0 2px;
 }
 .lbt-item:hover { color: rgba(10,22,40,0.8); }
 .lbt-item.active {
@@ -1368,6 +1368,7 @@ function renderLeaderboard() {
 
   const prizes = currentComp?.prizes||{};
   const isOwner = currentUser && currentComp?.ownerId === currentUser.uid;
+  const isSiteAdmin = currentUser && (currentUser.uid === SITE_ADMIN_UID || userProfile?.isAdmin);
   el('comp-prizes').style.display = 'block';
   el('prize-first').textContent = prizes.first ? '$'+prizes.first : '—';
   el('prize-second').textContent = prizes.second ? '$'+prizes.second : '—';
@@ -1379,10 +1380,11 @@ function renderLeaderboard() {
   if (payInfo && payDisplay && payText) { payText.textContent = payInfo; payDisplay.style.display = 'block'; }
   else if (payDisplay) { payDisplay.style.display = 'none'; }
   el('prize-edit-section').style.display = isOwner ? 'block' : 'none';
+  const showAdminTab = isOwner || isSiteAdmin;
   if (window.updateLadderAdminTab) {
-    window.updateLadderAdminTab(isOwner);
+    window.updateLadderAdminTab(showAdminTab);
   } else {
-    window._ladderAdminTabPending = isOwner;
+    window._ladderAdminTabPending = showAdminTab;
   }
   if (isOwner) {
     el('prize-input-entry').value = prizes.entry||'';
