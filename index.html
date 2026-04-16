@@ -3083,10 +3083,12 @@ async function renderCompHonours() {
     }
     const nameEl = el('comp-leader-name');
     if (nameEl) nameEl.textContent = leaderName;
+    const fullNameEl = el('comp-leader-fullname');
+    if (fullNameEl) fullNameEl.textContent = leaderUser?.name || leaderUser?.fullName || leaderName;
     const ptsEl = el('comp-leader-pts');
     if (ptsEl) ptsEl.textContent = leaderPts + ' pts';
     const seasonEl = el('comp-leader-season');
-    if (seasonEl) seasonEl.textContent = (currentComp?.sport||'AFL') + ' ' + season + ' Season';
+    if (seasonEl) seasonEl.textContent = (currentComp?.sport||'AFL') + ' ' + season;
     leaderCard.style.display = 'block';
   } else if (leaderCard) {
     leaderCard.style.display = 'none';
@@ -4297,17 +4299,14 @@ function trackPage(pageName) {
             <div class="card" style="border:1px solid rgba(255,214,0,0.3);background:linear-gradient(135deg,rgba(255,214,0,0.08),rgba(255,214,0,0.03));position:relative;overflow:hidden;">
               <div style="position:absolute;top:10px;right:14px;background:rgba(0,200,83,0.15);border:1px solid rgba(0,200,83,0.4);border-radius:99px;padding:3px 10px;font-size:10px;font-weight:700;color:var(--green);letter-spacing:1px;">IN PROGRESS</div>
               <div style="font-size:11px;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Current Season Leader</div>
-              <div style="display:flex;align-items:center;gap:14px;">
-                <div id="comp-leader-avatar" style="display:none;"></div>
-                <div style="flex:1;min-width:0;">
-                  <div id="comp-leader-name" style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--text);letter-spacing:1px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
-                  <div style="display:flex;align-items:center;gap:10px;margin-top:2px;">
-                    <div id="comp-leader-pts" style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);"></div>
-                    <div id="comp-leader-season" style="font-size:11px;color:var(--muted);"></div>
-                  </div>
-                </div>
-                <div style="font-size:40px;opacity:0.6;"></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gold);opacity:0.7;margin-bottom:6px;"><span>Year &amp; Sport</span><span>Nickname</span><span>Full Name</span><span>Total Points</span></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px 12px;align-items:center;font-size:14px;">
+                <div id="comp-leader-season" style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--gold);"></div>
+                <div id="comp-leader-name" style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+                <div id="comp-leader-fullname" style="color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+                <div id="comp-leader-pts" style="color:var(--green);font-weight:700;"></div>
               </div>
+              <div id="comp-leader-avatar" style="display:none;"></div>
             </div>
           </div>
           <div id="comp-honours-list"></div>
