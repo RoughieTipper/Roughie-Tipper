@@ -1245,7 +1245,7 @@ async function createComp() {
     userProfile.compIds = compIds;
     el('new-comp-name').value=''; el('new-comp-code').value='';
     track('create_comp');
-    toast('Competition created! 🏉');
+    toast('Competition created!');
     await loadComp(compId);
   } catch(e){ toast('Error: '+e.message,true); }
   el('create-comp-btn').textContent = 'Create Competition';
@@ -1422,7 +1422,7 @@ function renderLeaderboard() {
     <div class="stat-card"><div class="stat-label">Tippers</div><div class="stat-val">${memberIds.length}</div></div>
     <div class="stat-card"><div class="stat-label">Rounds Done</div><div class="stat-val">${completedRounds}/${activeRounds}</div></div>
     <div class="stat-card"><div class="stat-label">Leader</div><div class="stat-val" style="font-size:22px;line-height:1.1;">${scores[0]?.nick||scores[0]?.name||'—'}</div><div class="stat-sub">${scores[0]?.totalPts||0} pts</div></div>
-    <div class="stat-card"><div class="stat-label">Most Roughies 🔥</div><div class="stat-val" style="color:var(--gold);font-size:22px;line-height:1.1;">${topRoughie?.nick||topRoughie?.name||'—'}</div><div class="stat-sub">+${topRoughie?.roughieBonus||0} points</div></div>
+    <div class="stat-card"><div class="stat-label">Most Roughies </div><div class="stat-val" style="color:var(--gold);font-size:22px;line-height:1.1;">${topRoughie?.nick||topRoughie?.name||'—'}</div><div class="stat-sub">+${topRoughie?.roughieBonus||0} points</div></div>
   `;
 
   const completedRoundsList = rounds.filter(r=>(r.matches||[]).length>0&&(r.matches||[]).every(m=>m.winner));
@@ -1607,7 +1607,7 @@ function scoringLegendHTML() {
     [4,'$4.50–$5.49',true],[5,'$5.50–$6.49',true],[6,'$6.50+',true],
   ];
   return `<div class="scoring-card">
-    <div class="scoring-card-title">📊 <span>Scoring System</span> <span style="font-size:11px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;">· Updated from Round 5</span></div>
+    <div class="scoring-card-title"> <span>Scoring System</span> <span style="font-size:11px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;">· Updated from Round 5</span></div>
     <div class="scoring-grid" style="grid-template-columns:repeat(6,1fr);">${newTiers.map(([p,r,roughie])=>`
       <div class="legend-item ${roughie?'roughie':'normal'}">
         <div class="legend-item-icon">${roughie?'⚡':'✅'}</div>
@@ -1838,7 +1838,7 @@ async function saveTips(){
   el('save-tips-btn').style.display='none';
   el('save-tips-btn').textContent='💾 Save My Tips';
   track('tips_saved', { round_id: roundId });
-  toast('Tips saved! 🏉');
+  toast('Tips saved! ');
 }
 
 // ─── AUTOSAVE ────────────────────────────────────────────────
@@ -2533,7 +2533,7 @@ function renderChat(messages){
   const feed=el('chat-feed'); if(!feed) return;
   const wasAtBottom=feed.scrollHeight-feed.scrollTop-feed.clientHeight<60;
   feed.innerHTML=messages.length===0
-    ?`<div style="text-align:center;color:var(--muted);padding:32px;font-size:14px;">No messages yet — get the heckling started! 🏉</div>`
+    ?`<div style="text-align:center;color:var(--muted);padding:32px;font-size:14px;">No messages yet — get the heckling started! </div>`
     :messages.map(m=>{
       const isMe=m.uid===currentUser?.uid, u=allUsers[m.uid];
       const isCompAdmin = currentComp?.ownerId === currentUser?.uid;
@@ -2614,7 +2614,7 @@ async function saveCompSettingsPrizes() {
   const prizes = { entry: el('cs-prize-entry')?.value.trim()||'', first: el('cs-prize-first')?.value.trim()||'', second: el('cs-prize-second')?.value.trim()||'', third: el('cs-prize-third')?.value.trim()||'', paymentInfo: el('cs-prize-payment')?.value.trim()||'', mostRounds: el('cs-prize-most-rounds')?.value.trim()||'', perfectScore: el('cs-prize-perfect-score')?.value.trim()||'', penalty: el('cs-prize-penalty')?.value.trim()||'' };
   await updateDoc(doc(db,'comps',currentCompId),{prizes});
   currentComp.prizes = prizes;
-  toast('Prize pool saved! 🏆');
+  toast('Prize pool saved! ');
 }
 
 async function saveCompSettings() {
@@ -2630,7 +2630,7 @@ async function saveCompSettings() {
   currentComp.businessName=businessName; currentComp.businessLogo=businessLogo;
   currentComp.businessContact=businessContact; currentComp.businessAbout=businessAbout;
   currentComp.roundSponsor=roundSponsor;
-  toast('Business settings saved! 🏢');
+  toast('Business settings saved! ');
 }
 
 async function removeCompMember(uid) {
@@ -2666,7 +2666,7 @@ async function confirmModerationAck() {
     await updateDoc(doc(db,'users',currentUser.uid),{compIds});
     userProfile.compIds = compIds;
     allComps[compId] = { name, joinCode:code, ownerId:currentUser.uid, ownerName:userProfile.name, plan:'free', sport, season };
-    toast('Competition created! 🏉');
+    toast('Competition created! ');
     if (el('new-comp-name')) el('new-comp-name').value = '';
     if (el('new-comp-code')) el('new-comp-code').value = '';
     renderMyComps();
@@ -2680,7 +2680,7 @@ async function savePrizes() {
   if (!currentUser || currentComp.ownerId !== currentUser.uid) return;
   const prizes = { entry: el('prize-input-entry').value.trim(), first: el('prize-input-first').value.trim(), second: el('prize-input-second').value.trim(), third: el('prize-input-third').value.trim(), paymentInfo: el('prize-input-payment').value.trim(), mostRounds: el('prize-input-most-rounds')?.value.trim()||'', perfectScore: el('prize-input-perfect-score')?.value.trim()||'', penalty: el('prize-input-penalty')?.value.trim()||'' };
   await updateDoc(doc(db,'comps',currentCompId),{prizes});
-  currentComp.prizes = prizes; renderLeaderboard(); toast('Prize money updated! 🏆');
+  currentComp.prizes = prizes; renderLeaderboard(); toast('Prize money updated! ');
 }
 
 async function saveBusinessSettings() {
@@ -2697,7 +2697,7 @@ async function saveBusinessSettings() {
   currentComp.businessName=businessName; currentComp.businessLogo=businessLogo;
   currentComp.businessContact=businessContact; currentComp.businessAbout=businessAbout;
   currentComp.roundSponsor=roundSponsor;
-  toast('Business settings saved! 🏢');
+  toast('Business settings saved! ');
 }
 
 async function togglePaid(uid, currentlyPaid) {
@@ -2726,7 +2726,7 @@ async function proposeBet() {
   await addDoc(collection(db,'comps',currentCompId,'sidebets'),{ fromUid: currentUser.uid, fromName: userProfile.nick||userProfile.name, toUid: targetUid, toName: targetUser.nick||targetUser.name, text, stake, status: 'open', createdAt: serverTimestamp() });
   el('bet-text').value=''; el('bet-stake').value=''; el('bet-target').value='';
   track('side_bet_proposed');
-  toast('Challenge sent! 🤑');
+  toast('Challenge sent! ');
 }
 
 async function acceptBet(betId) {
@@ -3501,7 +3501,7 @@ async function shareReportCard(roundName, grade, correct, total, roundPts, rank,
   const cardEl = document.querySelector('#report-card-overlay > div');
   if (!cardEl || typeof html2canvas === 'undefined') {
     // Fallback to text
-    const text = `🏉 Roughie Tips — ${roundName}\n\nReport Card: ${grade}\n${correct}/${total} correct · ${roundPts} pts · #${rank} of ${compTotal}\n\nroughietips.com.au`;
+    const text = ` Roughie Tips — ${roundName}\n\nReport Card: ${grade}\n${correct}/${total} correct · ${roundPts} pts · #${rank} of ${compTotal}\n\nroughietips.com.au`;
     if (navigator.share) navigator.share({ text }).catch(()=>{});
     else navigator.clipboard.writeText(text).then(()=>toast('Copied! 📋'));
     return;
@@ -4022,16 +4022,16 @@ function trackPage(pageName) {
       <div class="form-group"><label>Password *</label><input type="password" id="reg-pass" placeholder="Min 6 characters" autocomplete="new-password"/></div>
       <div class="form-group">
         <label>Where are you from? <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Lets us know where our tippers are from around the world 🌍</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Lets us know where our tippers are from around the world </div>
         <select id="reg-continent" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:11px 14px;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;width:100%;transition:all var(--transition-fast);appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%239db4d0' d='M6 8L0 0h12z'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 14px center;">
           <option value="">— Select your continent —</option>
-          <option value="Africa">🌍 Africa</option>
-          <option value="Antarctica">🧊 Antarctica</option>
-          <option value="Asia">🌏 Asia</option>
-          <option value="Europe">🌍 Europe</option>
-          <option value="North America">🌎 North America</option>
-          <option value="Oceania">🌏 Oceania</option>
-          <option value="South America">🌎 South America</option>
+          <option value="Africa">Africa</option>
+          <option value="Antarctica">Antarctica</option>
+          <option value="Asia">Asia</option>
+          <option value="Europe">Europe</option>
+          <option value="North America">North America</option>
+          <option value="Oceania">Oceania</option>
+          <option value="South America">South America</option>
         </select>
       </div>
       <div class="form-group">
@@ -4189,7 +4189,7 @@ function trackPage(pageName) {
       <div class="lbt-panel active" id="lbt-panel-ladder">
 
         <div id="comp-prizes" style="background:var(--card);border:1px solid rgba(255,214,0,0.3);border-radius:14px;padding:18px 24px;margin-bottom:20px;text-align:center;">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gold);letter-spacing:1px;margin-bottom:14px;">🏆 PRIZE POOL</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gold);letter-spacing:1px;margin-bottom:14px;">💰 PRIZE POOL 💰</div>
         <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:14px;justify-content:center;align-items:flex-start;">
           <div style="text-align:center;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">💰 Entry</div><div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--text);" id="prize-entry">—</div></div>
           <div style="text-align:center;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">🥇 First</div><div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--gold);" id="prize-first">—</div></div>
@@ -4268,7 +4268,7 @@ function trackPage(pageName) {
               <button class="emoji-btn" onclick="insertEmoji('👏')">👏</button><button class="emoji-btn" onclick="insertEmoji('❤️')">❤️</button><button class="emoji-btn" onclick="insertEmoji('🦍')">🦍</button><button class="emoji-btn" onclick="insertEmoji('🤯')">🤯</button><button class="emoji-btn" onclick="insertEmoji('🤑')">🤑</button><button class="emoji-btn" onclick="insertEmoji('🔥')">🔥</button><button class="emoji-btn" onclick="insertEmoji('😂')">😂</button><button class="emoji-btn" onclick="insertEmoji('🏉')">🏉</button>
             </div>
             <div class="chat-input-row">
-              <textarea class="chat-input" id="chat-input" rows="1" placeholder="Talk your footy… 🏉  (type @ to tag someone)" onkeydown="chatKeydown(event)" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" maxlength="280"></textarea>
+              <textarea class="chat-input" id="chat-input" rows="1" placeholder="Talk your footy…   (type @ to tag someone)" onkeydown="chatKeydown(event)" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" maxlength="280"></textarea>
               <button class="chat-send-btn" onclick="sendChat()">🏉</button>
             </div>
           </div>
