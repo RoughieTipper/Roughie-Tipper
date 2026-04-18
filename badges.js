@@ -54,12 +54,33 @@ const NFL_COLOURS = {
   'San Francisco 49ers':   { type:'split-h',  c1:'#AA0000', c2:'#B3995D' },
   'Seattle Seahawks':      { type:'thirds',   c1:'#002244', c2:'#69BE28', c3:'#A5ACAF' },
 };
+// ─── NRL CLUB COLOURS ────────────────────────────────────────
+const NRL_COLOURS = {
+  'Brisbane Broncos':       { type:'split-v',  c1:'#4D0024', c2:'#F4AA00' },
+  'Canberra Raiders':       { type:'split-h',  c1:'#6ABD45', c2:'#FFFFFF' },
+  'Canterbury Bulldogs':    { type:'stripes',  c1:'#002B5C', c2:'#FFFFFF' },
+  'Cronulla Sharks':        { type:'split-h',  c1:'#00A9CE', c2:'#000000' },
+  'Dolphins':               { type:'hoops',    c1:'#CC0033', c2:'#FFFFFF',  c3:'#CC0033' },
+  'Gold Coast Titans':      { type:'sash',     c1:'#009FDF', c2:'#E6C619' },
+  'Manly Sea Eagles':       { type:'thirds-h', c1:'#8B0000', c2:'#FFFFFF',  c3:'#002D72' },
+  'Melbourne Storm':        { type:'split-v',  c1:'#4B006E', c2:'#C8C8C8' },
+  'Newcastle Knights':      { type:'split-v',  c1:'#003B6F', c2:'#C8102E' },
+  'New Zealand Warriors':   { type:'thirds',   c1:'#000000', c2:'#808080',  c3:'#FFFFFF' },
+  'North Queensland Cowboys':{ type:'split-h', c1:'#002B5C', c2:'#F4AA00' },
+  'Parramatta Eels':        { type:'hoops',    c1:'#003B8E', c2:'#FFD200',  c3:'#003B8E' },
+  'Penrith Panthers':       { type:'split-v',  c1:'#1C1338', c2:'#D0D3D4' },
+  'South Sydney Rabbitohs': { type:'stripes',  c1:'#007A3D', c2:'#DC1228' },
+  'St George Illawarra Dragons': { type:'thirds', c1:'#E81018', c2:'#FFFFFF', c3:'#0A3C70' },
+  'Sydney Roosters':        { type:'thirds',   c1:'#002B5C', c2:'#CC0000',  c3:'#FFFFFF' },
+  'Wests Tigers':           { type:'stripes',  c1:'#FF7900', c2:'#000000' },
+};
 const BADGE_GROUPS = [
-  { label: '🏉 AFL Teams', teams: Object.keys(CLUB_COLOURS) },
-  { label: '🏈 NFL Teams', teams: Object.keys(NFL_COLOURS) }
+  { label: '🏉 AFL Teams',  teams: Object.keys(CLUB_COLOURS) },
+  { label: '🏈 NFL Teams',  teams: Object.keys(NFL_COLOURS)  },
+  { label: '🏉 NRL Teams',  teams: Object.keys(NRL_COLOURS)  },
 ];
 function getBadgeColours(teamName) {
-  return CLUB_COLOURS[teamName] || NFL_COLOURS[teamName] || null;
+  return CLUB_COLOURS[teamName] || NFL_COLOURS[teamName] || NRL_COLOURS[teamName] || null;
 }
 function _buildBadgePattern(c, size) {
   let pattern = '';
@@ -225,7 +246,7 @@ function updateHeaderAvatar(userProfile) {
   }
 }
 Object.assign(window, {
-  CLUB_COLOURS, NFL_COLOURS, BADGE_GROUPS,
+  CLUB_COLOURS, NFL_COLOURS, NRL_COLOURS, BADGE_GROUPS,
   getBadgeColours, teamBadge, clubBadge, clubPrimaryColour,
   renderUserAvatar, renderBadgePicker, selectBadge,
   updateProfileBadgePreview, updateRegBadgePreview, updateHeaderAvatar
