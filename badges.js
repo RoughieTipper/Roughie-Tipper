@@ -114,7 +114,7 @@ function _buildBadgePattern(c, size) {
     case 'tri-top':
       // Solid background with a downward-pointing triangle in the top third
       pattern = `<rect x="0" y="0" width="${size}" height="${size}" fill="${c.c1}"/>
-        <polygon points="0,0 ${size},0 ${size*0.5},${size*0.42}" fill="${c.c2}"/>`;
+        <polygon points="0,0 ${size},0 ${size*0.5},${size*0.5}" fill="${c.c2}"/>`;
       break;
     default:
       pattern = `<rect x="0" y="0" width="${size}" height="${size}" fill="${c.c1}"/>`;
