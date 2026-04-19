@@ -63,7 +63,7 @@ const NRL_COLOURS = {
   'Dolphins':                    { type:'hoops',    c1:'#CC0033', c2:'#FFFFFF',  c3:'#CC0033' },
   'Gold Coast Titans':           { type:'sash',     c1:'#009FDF', c2:'#E6C619' },
   'Manly Sea Eagles':            { type:'thirds-h', c1:'#8B0000', c2:'#FFFFFF',  c3:'#002D72' },
-  'Melbourne Storm':             { type:'split-h',  c1:'#632390', c2:'#F9B019'   c3:'#0E2752' },
+  'Melbourne Storm':             { type:'split-h',  c1:'#632390', c2:'#F9B019',  c3:'#0E2752' },
   'Newcastle Knights':           { type:'split-v',  c1:'#003B6F', c2:'#C8102E' },
   'New Zealand Warriors':        { type:'thirds',   c1:'#000000', c2:'#808080',  c3:'#FFFFFF' },
   'North Queensland Cowboys':    { type:'tri-top',  c1:'#002B5C', c2:'#F4AA00' },
@@ -88,7 +88,7 @@ function _buildBadgePattern(c, size) {
     case 'carlton': {
       pattern = `
         <rect x="0" y="0" width="${size}" height="${size}" fill="${c.c1}"/>
-        <circle cx="${size/2}" cy="${size/2}" r="${size/2 - size*0.08}" fill="none" stroke="#FFFFFF" stroke-width="${size*0.1}"/>
+        <circle cx="${size/2}" cy="${size/2}" r="${size/2 - size*0.04}" fill="none" stroke="#FFFFFF" stroke-width="${size*0.05}"/>
       `;
       break;
     }
