@@ -10,7 +10,7 @@ const CLUB_COLOURS = {
   'Gold Coast Suns':   { type:'split-h', c1:'#FFD200', c2:'#E8261A'  },
   'GWS Giants':        { type:'split-h', c1:'#333333', c2:'#F47920'  },
   'Hawthorn':          { type:'stripes', c1:'#4D2004', c2:'#FBBF15'  },
-  'Melbourne':         { type:'split-v', c1:'#CC2031', c2:'#003C71'  },
+  'Melbourne':         { type:'tri-top', c1:'#003C71', c2:'#CC2031'  },
   'North Melbourne':   { type:'stripes', c1:'#003087', c2:'#FFFFFF',  thin:true },
   'Port Adelaide':     { type:'split-h', c1:'#008AAB', c2:'#000000'  },
   'Richmond':          { type:'sash',    c1:'#000000', c2:'#FFD200'  },
@@ -54,33 +54,12 @@ const NFL_COLOURS = {
   'San Francisco 49ers':   { type:'split-h',  c1:'#AA0000', c2:'#B3995D' },
   'Seattle Seahawks':      { type:'thirds',   c1:'#002244', c2:'#69BE28', c3:'#A5ACAF' },
 };
-// ─── NRL CLUB COLOURS ────────────────────────────────────────
-const NRL_COLOURS = {
-  'Brisbane Broncos':            { type:'split-v',  c1:'#4D0024', c2:'#F4AA00' },
-  'Canberra Raiders':            { type:'split-h',  c1:'#6ABD45', c2:'#FFFFFF' },
-  'Canterbury Bulldogs':         { type:'stripes',  c1:'#002B5C', c2:'#FFFFFF' },
-  'Cronulla Sharks':             { type:'split-h',  c1:'#00A9CE', c2:'#000000' },
-  'Dolphins':                    { type:'hoops',    c1:'#CC0033', c2:'#FFFFFF',  c3:'#CC0033' },
-  'Gold Coast Titans':           { type:'sash',     c1:'#009FDF', c2:'#E6C619' },
-  'Manly Sea Eagles':            { type:'thirds-h', c1:'#8B0000', c2:'#FFFFFF',  c3:'#002D72' },
-  'Melbourne Storm':             { type:'split-v',  c1:'#4B006E', c2:'#C8C8C8' },
-  'Newcastle Knights':           { type:'split-v',  c1:'#003B6F', c2:'#C8102E' },
-  'New Zealand Warriors':        { type:'thirds',   c1:'#000000', c2:'#808080',  c3:'#FFFFFF' },
-  'North Queensland Cowboys':    { type:'split-h',  c1:'#002B5C', c2:'#F4AA00' },
-  'Parramatta Eels':             { type:'hoops',    c1:'#003B8E', c2:'#FFD200',  c3:'#003B8E' },
-  'Penrith Panthers':            { type:'split-v',  c1:'#1C1338', c2:'#D0D3D4' },
-  'South Sydney Rabbitohs':      { type:'stripes',  c1:'#007A3D', c2:'#DC1228' },
-  'St George Illawarra Dragons': { type:'thirds',   c1:'#E81018', c2:'#FFFFFF',  c3:'#0A3C70' },
-  'Sydney Roosters':             { type:'thirds',   c1:'#002B5C', c2:'#CC0000',  c3:'#FFFFFF' },
-  'Wests Tigers':                { type:'stripes',  c1:'#FF7900', c2:'#000000' },
-};
 const BADGE_GROUPS = [
-  { key: 'afl', label: '🏉 AFL', teams: Object.keys(CLUB_COLOURS) },
-  { key: 'nfl', label: '🏈 NFL', teams: Object.keys(NFL_COLOURS)  },
-  { key: 'nrl', label: '🏉 NRL', teams: Object.keys(NRL_COLOURS)  },
+  { label: '🏉 AFL Teams', teams: Object.keys(CLUB_COLOURS) },
+  { label: '🏈 NFL Teams', teams: Object.keys(NFL_COLOURS) }
 ];
 function getBadgeColours(teamName) {
-  return CLUB_COLOURS[teamName] || NFL_COLOURS[teamName] || NRL_COLOURS[teamName] || null;
+  return CLUB_COLOURS[teamName] || NFL_COLOURS[teamName] || null;
 }
 function _buildBadgePattern(c, size) {
   let pattern = '';
@@ -132,6 +111,11 @@ function _buildBadgePattern(c, size) {
         <rect x="0" y="${size*0.55}" width="${size}" height="${size*0.22}" fill="${c.c2}"/>
         <rect x="0" y="${size*0.77}" width="${size}" height="${size*0.23}" fill="${c.c3||c.c1}"/>`;
       break;
+    case 'tri-top':
+      // Solid background with a downward-pointing triangle in the top third
+      pattern = `<rect x="0" y="0" width="${size}" height="${size}" fill="${c.c1}"/>
+        <polygon points="0,0 ${size},0 ${size*0.5},${size*0.42}" fill="${c.c2}"/>`;
+      break;
     default:
       pattern = `<rect x="0" y="0" width="${size}" height="${size}" fill="${c.c1}"/>`;
   }
@@ -170,34 +154,15 @@ function renderUserAvatar(user, size=32) {
 function renderBadgePicker(containerId, selectedTeam, onSelect) {
   const container = document.getElementById(containerId);
   if (!container) return;
-  // Determine initial active league — prefer the league of the already-selected team
-  let initialKey = BADGE_GROUPS[0].key;
-  if (selectedTeam) {
-    const match = BADGE_GROUPS.find(g => g.teams.includes(selectedTeam));
-    if (match) initialKey = match.key;
-  }
-  // Build toggle pill bar
-  const toggleId = containerId + '-league-toggle';
-  const panelId  = containerId + '-league-panel';
-  let toggleHtml = `<div id="${toggleId}" style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;">`;
+  let html = `<div style="display:flex;flex-direction:column;gap:14px;">`;
   BADGE_GROUPS.forEach(group => {
-    const active = group.key === initialKey;
-    toggleHtml += `<button type="button"
-      onclick="_badgePickerSwitch('${containerId}','${group.key}')"
-      id="${toggleId}-${group.key}"
-      style="padding:5px 14px;border-radius:20px;border:2px solid ${active?'var(--green)':'var(--border)'};background:${active?'rgba(0,200,83,0.12)':'var(--card2)'};color:${active?'var(--green)':'var(--muted)'};font-size:12px;font-weight:700;cursor:pointer;transition:all 0.15s;white-space:nowrap;">
-      ${group.label}
-    </button>`;
-  });
-  toggleHtml += `</div>`;
-  // Build all group panels (only active one is visible)
-  let panelsHtml = `<div id="${panelId}">`;
-  BADGE_GROUPS.forEach(group => {
-    panelsHtml += `<div id="${panelId}-${group.key}" style="display:${group.key===initialKey?'flex':'none'};flex-wrap:wrap;gap:8px;">`;
+    html += `<div>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:8px;">${group.label}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">`;
     group.teams.forEach(team => {
       const isSelected = team === selectedTeam;
       const escaped = team.replace(/'/g,"\\'");
-      panelsHtml += `<button type="button" onclick="selectBadge(this,'${containerId}','${escaped}','${containerId}')"
+      html += `<button type="button" onclick="selectBadge(this,'${containerId}','${escaped}','${containerId}')"
         style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:10px;border:2px solid ${isSelected?'var(--green)':'var(--border)'};background:${isSelected?'rgba(0,200,83,0.12)':'var(--card2)'};cursor:pointer;transition:all 0.15s;min-width:0;"
         data-team="${team.replace(/"/g,'&quot;')}"
         data-container="${containerId}">
@@ -205,25 +170,10 @@ function renderBadgePicker(containerId, selectedTeam, onSelect) {
         <span style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px;">${team.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>
       </button>`;
     });
-    panelsHtml += `</div>`;
+    html += `</div></div>`;
   });
-  panelsHtml += `</div>`;
-  container.innerHTML = `<div style="display:flex;flex-direction:column;">` + toggleHtml + panelsHtml + `</div>`;
-}
-function _badgePickerSwitch(containerId, activeKey) {
-  const toggleId = containerId + '-league-toggle';
-  const panelId  = containerId + '-league-panel';
-  BADGE_GROUPS.forEach(group => {
-    const btn   = document.getElementById(toggleId + '-' + group.key);
-    const panel = document.getElementById(panelId  + '-' + group.key);
-    const active = group.key === activeKey;
-    if (btn) {
-      btn.style.borderColor  = active ? 'var(--green)'              : 'var(--border)';
-      btn.style.background   = active ? 'rgba(0,200,83,0.12)'       : 'var(--card2)';
-      btn.style.color        = active ? 'var(--green)'              : 'var(--muted)';
-    }
-    if (panel) panel.style.display = active ? 'flex' : 'none';
-  });
+  html += `</div>`;
+  container.innerHTML = html;
 }
 function selectBadge(btnEl, containerId, teamName, _unused) {
   const container = document.getElementById(containerId);
@@ -280,8 +230,8 @@ function updateHeaderAvatar(userProfile) {
   }
 }
 Object.assign(window, {
-  CLUB_COLOURS, NFL_COLOURS, NRL_COLOURS, BADGE_GROUPS,
+  CLUB_COLOURS, NFL_COLOURS, BADGE_GROUPS,
   getBadgeColours, teamBadge, clubBadge, clubPrimaryColour,
-  renderUserAvatar, renderBadgePicker, _badgePickerSwitch, selectBadge,
+  renderUserAvatar, renderBadgePicker, selectBadge,
   updateProfileBadgePreview, updateRegBadgePreview, updateHeaderAvatar
 });
