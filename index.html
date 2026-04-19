@@ -187,6 +187,14 @@ tr:hover .rank-3{box-shadow:0 0 12px rgba(205,127,50,0.5);transform:scale(1.1);}
 .admin-tabs{display:flex;gap:8px;margin-bottom:24px;border-bottom:1px solid var(--border);padding-bottom:12px;flex-wrap:wrap;}
 .admin-tab{background:none;border:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;padding:8px 14px;border-radius:8px;cursor:pointer;transition:.2s;}
 .admin-tab.active{background:var(--card2);color:var(--green);}
+/* ─── PRO FEATURE LOCK ─────────────────────────────────────── */
+.pro-lock-wrap{position:relative;display:inline-flex;}
+.pro-lock-wrap.block-wrap{display:block;}
+.pro-lock-overlay{position:absolute;inset:-4px;border-radius:12px;background:rgba(10,22,40,0.82);backdrop-filter:blur(3px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;z-index:10;padding:10px;text-align:center;border:1px solid rgba(255,214,0,0.3);}
+.pro-lock-overlay .lock-badge{background:var(--gold);color:var(--navy);font-size:10px;font-weight:800;padding:3px 10px;border-radius:99px;letter-spacing:1px;white-space:nowrap;}
+.pro-lock-overlay .lock-msg{font-size:12px;color:var(--text);line-height:1.4;font-weight:600;}
+.pro-lock-overlay .lock-cta{font-size:11px;color:var(--gold);font-weight:700;text-decoration:underline;cursor:pointer;background:none;border:none;font-family:'DM Sans',sans-serif;}
+/* ─────────────────────────────────────────────────────────── */
 .toast{position:fixed;bottom:28px;right:28px;z-index:999;font-weight:700;padding:14px 22px;border-radius:10px;font-size:14px;transform:translateY(80px);opacity:0;transition:all .3s;box-shadow:0 8px 32px rgba(0,200,83,.3);}
 .toast.show{transform:translateY(0);opacity:1;}
 .chat-wrap{background:linear-gradient(180deg,#0f1e38 0%,var(--card) 100%);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-top:20px;box-shadow:0 8px 32px rgba(0,0,0,0.3);}
@@ -1098,6 +1106,7 @@ async function loadComp(compId) {
   updateNavLabels();
   showPage('tips');
   renderCompHonours();
+  applyProFeatureLocks();
 }
 
 function populateAvailableSportSeasons() {
@@ -1553,6 +1562,12 @@ function renderLeaderboard() {
   }
 
   el('lb-body').innerHTML = scores.map((s,i)=>{
+    // Cache scores for TV display mode
+    window._lastRenderedScores = scores.map(sc => ({
+      uid: sc.uid, name: sc.displayName || sc.name || '', pts: sc.pts,
+      lastRoundPts: latestRound ? (sc.roundPts?.[latestRound.id] ?? '—') : '—',
+      badge: allUsers[sc.uid]?.badgeTeam ? '' : ''
+    }));
     const isMe = s.uid === currentUser?.uid;
     const rank=i+1, rc=rank<=3?`rank-${rank}`:'rank-other', me=isMe;
     const thisRound = latestRound?(s.roundPts[latestRound.id]??'—'):'—';
@@ -2498,15 +2513,69 @@ function renderAdminComps(){
   const comps=Object.entries(allComps);
   el('admin-comps-list').innerHTML=comps.length===0
     ?'<div style="color:var(--muted);">No competitions created yet.</div>'
-    :comps.map(([id,c])=>`
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);">
-        <div>
-          <div style="font-weight:700;">${escHtml(c.name)}</div>
-          <div style="font-size:12px;color:var(--muted);">Created by ${escHtml(c.ownerName||'')} · Code: <span style="color:var(--gold);font-weight:700;">${escHtml(c.joinCode||'')}</span></div>
-          <div style="font-size:12px;color:var(--muted);">Members: ${Object.values(allUsers).filter(u=>(u.compIds||[]).includes(id)).length}</div>
+    :comps.map(([id,c])=>{
+      const isPro = c.proLeague === true;
+      const isRoundSponsor = c.roundSponsorAccess === true;
+      const memberCount = Object.values(allUsers).filter(u=>(u.compIds||[]).includes(id)).length;
+      const proBadge = isPro ? `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:var(--gold);color:var(--navy);margin-left:4px;">PRO LEAGUE</span>` : '';
+      const rsBadge = isRoundSponsor ? `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:#9c27b0;color:#fff;margin-left:4px;">ROUND SPONSOR</span>` : '';
+      return `
+      <div style="padding:14px 0;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:700;font-size:15px;display:flex;align-items:center;flex-wrap:wrap;gap:4px;">${escHtml(c.name)}${proBadge}${rsBadge}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px;">Created by ${escHtml(c.ownerName||'')} · Code: <span style="color:var(--gold);font-weight:700;">${escHtml(c.joinCode||'')}</span></div>
+            <div style="font-size:12px;color:var(--muted);">Members: ${memberCount}</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;flex-shrink:0;">
+            <button class="btn btn-outline" style="font-size:11px;padding:5px 12px;${isPro?'border-color:var(--gold);color:var(--gold);':''}" onclick="toggleCompProLeague('${id}',${isPro})">${isPro ? '⭐ Pro League ON' : '☆ Enable Pro League'}</button>
+            <button class="btn btn-outline" style="font-size:11px;padding:5px 12px;${isRoundSponsor?'border-color:#9c27b0;color:#c084fc;':''}" onclick="toggleCompRoundSponsor('${id}',${isRoundSponsor})">${isRoundSponsor ? '🏟️ Round Sponsor ON' : '🏟️ Enable Round Sponsor'}</button>
+            <button class="btn btn-red" style="font-size:11px;padding:5px 12px;" onclick="deleteComp('${id}')">Delete</button>
+          </div>
         </div>
-        <button class="btn btn-red" style="font-size:12px;padding:5px 12px;" onclick="deleteComp('${id}')">Delete</button>
-      </div>`).join('');
+      </div>`;
+    }).join('');
+}
+async function toggleCompProLeague(compId, currentValue) {
+  const newVal = !currentValue;
+  try {
+    await updateDoc(doc(db,'comps',compId),{ proLeague: newVal });
+    if (allComps[compId]) allComps[compId].proLeague = newVal;
+    if (currentCompId === compId && currentComp) { currentComp.proLeague = newVal; applyProFeatureLocks(); }
+    toast(newVal ? '⭐ Pro League enabled!' : 'Pro League disabled');
+    renderAdminComps();
+  } catch(e) { toast('Error: '+e.message, true); }
+}
+async function toggleCompRoundSponsor(compId, currentValue) {
+  const newVal = !currentValue;
+  try {
+    await updateDoc(doc(db,'comps',compId),{ roundSponsorAccess: newVal });
+    if (allComps[compId]) allComps[compId].roundSponsorAccess = newVal;
+    if (currentCompId === compId && currentComp) { currentComp.roundSponsorAccess = newVal; applyProFeatureLocks(); }
+    toast(newVal ? '🏟️ Round Sponsor access enabled!' : 'Round Sponsor access disabled');
+    renderAdminComps();
+  } catch(e) { toast('Error: '+e.message, true); }
+}
+function applyProFeatureLocks() {
+  const isPro = currentComp?.proLeague === true;
+  // QR Flyer lock
+  const flyerOverlay = el('flyer-lock-overlay');
+  if (flyerOverlay) flyerOverlay.style.display = isPro ? 'none' : 'flex';
+  // TV Mode lock
+  const tvOverlay = el('tv-lock-overlay');
+  if (tvOverlay) tvOverlay.style.display = isPro ? 'none' : 'flex';
+  // Business settings lock (comp admin panel)
+  const bizOverlay = el('biz-settings-lock-overlay');
+  if (bizOverlay) bizOverlay.style.display = isPro ? 'none' : 'flex';
+  // Business settings lock (comp settings page)
+  const csBizOverlay = el('cs-biz-settings-lock-overlay');
+  if (csBizOverlay) csBizOverlay.style.display = isPro ? 'none' : 'flex';
+  // Pro features teaser card in admin panel
+  const teaser = el('pro-features-teaser');
+  if (teaser) teaser.style.display = isPro ? 'none' : 'block';
+  // Pro League badge in comp banner
+  const proBadge = el('comp-pro-badge');
+  if (proBadge) proBadge.style.display = isPro ? 'inline' : 'none';
 }
 async function deleteComp(compId){
   if(!confirm('Delete this competition? Members will lose access to it.')) return;
@@ -4001,6 +4070,62 @@ function generateFlyer() {
   else { setTimeout(() => URL.revokeObjectURL(url), 10000); track('flyer_generated'); }
 }
 
+// ─── TV DISPLAY MODE ─────────────────────────────────────────
+function launchTVMode() {
+  if (!currentComp || !currentCompId) { toast('Load a competition first', true); return; }
+  // Build a self-contained TV leaderboard display
+  const scores = window._lastRenderedScores || [];
+  const compName = currentComp.name || 'Tipping Comp';
+  const sport = currentComp.sport || 'AFL';
+  const sportEmoji = sport === 'NFL' ? '🏈' : '🏉';
+  const rows = scores.slice(0,20).map((s,i) => {
+    const rankClass = i===0?'gold':i===1?'silver':i===2?'bronze':'';
+    const rankStyle = i===0?'background:#ffd600;color:#0a1628;':i===1?'background:#b0b8c8;color:#0a1628;':i===2?'background:#cd7f32;color:#fff;':'background:rgba(255,255,255,0.08);color:#9db4d0;';
+    return `<tr>
+      <td style="padding:14px 18px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;font-weight:700;font-size:15px;${rankStyle}">${i+1}</span></td>
+      <td style="padding:14px 18px;font-weight:700;font-size:18px;color:#e8edf5;">${s.name||''}${s.badge?` <span style="font-size:18px;">${s.badge}</span>`:''}</td>
+      <td style="padding:14px 18px;font-family:'Bebas Neue',sans-serif;font-size:28px;color:#00c853;">${s.pts||0}</td>
+      <td style="padding:14px 18px;font-size:14px;color:#9db4d0;">${s.lastRoundPts!==undefined?s.lastRoundPts:'—'} last rnd</td>
+    </tr>`;
+  }).join('');
+  const tvHtml = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>${compName} — Roughie Tips TV</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:#0a1628;color:#e8edf5;font-family:'DM Sans',sans-serif;min-height:100vh;padding:32px;
+      background-image:radial-gradient(ellipse 80% 40% at 50% -10%,rgba(0,200,83,.12) 0%,transparent 60%);}
+    .tv-header{text-align:center;margin-bottom:32px;}
+    .tv-logo{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px;color:#00c853;margin-bottom:4px;}
+    .tv-comp{font-family:'Bebas Neue',sans-serif;font-size:56px;letter-spacing:2px;color:#fff;line-height:1.1;}
+    .tv-sub{font-size:16px;color:#9db4d0;margin-top:6px;}
+    table{width:100%;border-collapse:collapse;max-width:900px;margin:0 auto;}
+    thead th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#9db4d0;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,0.1);}
+    tbody tr{border-bottom:1px solid rgba(255,255,255,0.05);transition:background .2s;}
+    tbody tr:hover{background:rgba(255,255,255,0.03);}
+    .tv-footer{text-align:center;margin-top:40px;font-size:13px;color:rgba(255,255,255,0.25);}
+    .tv-footer span{color:#00c853;}
+  </style>
+  <meta http-equiv="refresh" content="60"/>
+  </head><body>
+  <div class="tv-header">
+    <div class="tv-logo">${sportEmoji} ROUGHIE TIPS</div>
+    <div class="tv-comp">${compName}</div>
+    <div class="tv-sub">${sport} ${currentComp.season||''} Season · Live Leaderboard</div>
+  </div>
+  <table>
+    <thead><tr><th>#</th><th>Tipper</th><th>Points</th><th>Last Round</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="4" style="text-align:center;padding:40px;color:#9db4d0;">No scores yet</td></tr>'}</tbody>
+  </table>
+  <div class="tv-footer">Powered by <span>Roughie Tips</span> · roughietips.com.au · Auto-refreshes every 60 seconds</div>
+  </body></html>`;
+  const blob = new Blob([tvHtml], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, '_blank');
+  if (!win) toast('Please allow popups for TV Display Mode', true);
+  else { setTimeout(() => URL.revokeObjectURL(url), 30000); track('tv_mode_launched'); }
+}
+
 Object.assign(window,{
   doLogin,doRegister,doLogout,doForgotPassword,showPage,showRound,showAdminTab,
   pickTip,saveTips,addRound,addMatch,removeMatch,removeUser,
@@ -4030,7 +4155,8 @@ Object.assign(window,{
   renderMyComps,populateAvailableSportSeasons,
   confirmModerationAck,closeModerationAckModal,
   showCompSettings,saveCompSettingsPrizes,saveCompSettings,removeCompMember,
-  addCompHonoursEntry,deleteCompHonoursEntry,renderCompHonours
+  addCompHonoursEntry,deleteCompHonoursEntry,renderCompHonours,
+  toggleCompProLeague,toggleCompRoundSponsor,applyProFeatureLocks,launchTVMode
 });
 
 // Listen for results panel being shown
@@ -4234,6 +4360,7 @@ function trackPage(pageName) {
   <div id="comp-banner">
     <span class="comp-label">Viewing:</span>
     <span id="comp-name-display"></span>
+    <span id="comp-pro-badge" style="display:none;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:var(--gold);color:var(--navy);margin-left:6px;">⭐ PRO LEAGUE</span>
     <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;margin-left:8px;" onclick="showPage('mycomps')">Switch Comp</button>
   </div>
 
@@ -4281,7 +4408,22 @@ function trackPage(pageName) {
         <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
           <button class="btn" style="flex:1;min-width:140px;font-size:14px;padding:12px 16px;display:flex;align-items:center;justify-content:center;gap:8px;" onclick="showReportCardFromButton()">📋 My Round Report Card</button>
           <button class="btn" style="flex:1;min-width:140px;font-size:14px;padding:10px 16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:var(--gold);color:#0a1628;border:none;" onclick="copyInviteLink()"><span>🏉 Invite a Mate</span><span style="font-size:10px;opacity:0.6;font-weight:400;">Unique link to this Comp</span></button>
-          <button class="btn btn-outline" style="flex:1;min-width:140px;font-size:14px;padding:10px 16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;" onclick="generateFlyer()"><span>📄 Print Flyer</span><span style="font-size:10px;opacity:0.6;font-weight:400;">QR code invite poster</span></button>
+          <div class="pro-lock-wrap block-wrap" id="flyer-btn-wrap" style="flex:1;min-width:140px;">
+            <button class="btn btn-outline" style="width:100%;font-size:14px;padding:10px 16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;" onclick="generateFlyer()"><span>📄 Print Flyer</span><span style="font-size:10px;opacity:0.6;font-weight:400;">QR code invite poster</span></button>
+            <div class="pro-lock-overlay" id="flyer-lock-overlay">
+              <span class="lock-badge">🔓 CURRENTLY FREE</span>
+              <span class="lock-msg">Pro League Feature</span>
+              <button class="lock-cta" onclick="showPage('contact')">Contact us to unlock →</button>
+            </div>
+          </div>
+          <div class="pro-lock-wrap block-wrap" id="tv-btn-wrap" style="flex:1;min-width:140px;">
+            <button class="btn btn-outline" style="width:100%;font-size:14px;padding:10px 16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;" onclick="launchTVMode()"><span>📺 TV Display Mode</span><span style="font-size:10px;opacity:0.6;font-weight:400;">Venue leaderboard screen</span></button>
+            <div class="pro-lock-overlay" id="tv-lock-overlay">
+              <span class="lock-badge">🔓 CURRENTLY FREE</span>
+              <span class="lock-msg">Pro League Feature</span>
+              <button class="lock-cta" onclick="showPage('contact')">Contact us to unlock →</button>
+            </div>
+          </div>
           <button id="comp-settings-btn" class="btn btn-outline" style="flex:1;min-width:140px;font-size:14px;padding:10px 16px;display:none;flex-direction:column;align-items:center;justify-content:center;gap:3px;" onclick="showCompSettings()"><span>⚙️ Comp Settings</span><span style="font-size:10px;opacity:0.6;font-weight:400;">Manage your competition</span></button>
         </div>
 
@@ -4386,6 +4528,26 @@ function trackPage(pageName) {
 
       <!-- ══ PANEL: ADMIN (comp owner only) ══ -->
       <div class="lbt-panel" id="lbt-panel-admin">
+
+        <!-- PRO LEAGUE FEATURES TEASER (shown when not pro, hidden when pro) -->
+        <div id="pro-features-teaser" style="background:rgba(255,214,0,0.05);border:1px solid rgba(255,214,0,0.3);border-radius:14px;padding:16px 20px;margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="font-size:24px;">⭐</span>
+            <div>
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--gold);letter-spacing:1px;">PRO LEAGUE FEATURES AVAILABLE</div>
+              <div style="font-size:12px;color:var(--muted);">These features are currently free — just ask us to unlock them for your comp!</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+            <span style="background:rgba(255,214,0,0.12);border:1px solid rgba(255,214,0,0.3);border-radius:8px;padding:6px 12px;font-size:12px;color:var(--gold);">🎟️ Exclusive sticker pack for round winners</span>
+            <span style="background:rgba(255,214,0,0.12);border:1px solid rgba(255,214,0,0.3);border-radius:8px;padding:6px 12px;font-size:12px;color:var(--gold);">🏢 Brand advertising on the comp ladder</span>
+            <span style="background:rgba(255,214,0,0.12);border:1px solid rgba(255,214,0,0.3);border-radius:8px;padding:6px 12px;font-size:12px;color:var(--gold);">📄 QR flyer generator</span>
+            <span style="background:rgba(255,214,0,0.12);border:1px solid rgba(255,214,0,0.3);border-radius:8px;padding:6px 12px;font-size:12px;color:var(--gold);">📺 TV display mode for your venue</span>
+            <span style="background:rgba(255,214,0,0.12);border:1px solid rgba(255,214,0,0.3);border-radius:8px;padding:6px 12px;font-size:12px;color:var(--gold);">👥 Unlimited members</span>
+          </div>
+          <button onclick="showPage('contact')" class="btn" style="font-size:13px;padding:9px 20px;background:var(--gold);color:var(--navy);">✉️ Contact Us to Unlock for Free</button>
+        </div>
+
         <div id="prize-edit-section" style="background:var(--card);border:1px solid rgba(255,214,0,0.3);border-radius:14px;padding:18px 24px;margin-bottom:16px;">
           <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--gold);letter-spacing:1px;margin-bottom:14px;">💰 Prize Money & Settings</div>
                     <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Edit amounts (comp admin only)</div>
@@ -4408,14 +4570,21 @@ function trackPage(pageName) {
           <!-- BUSINESS SETTINGS -->
           <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
             <div style="font-size:12px;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">🏢 Business Settings</div>
-            <div style="display:flex;flex-direction:column;gap:10px;">
-              <div><label style="font-size:11px;color:var(--muted);">Business Name</label><input type="text" id="biz-name-input" placeholder="e.g. The Crown Hotel" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
-              <div><label style="font-size:11px;color:var(--muted);">Business Logo URL</label><input type="url" id="biz-logo-input" placeholder="https://yourbusiness.com/logo.png" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
-              <div><label style="font-size:11px;color:var(--muted);">Contact Details</label><input type="text" id="biz-contact-input" placeholder="e.g. Phone, email or address" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
-              <div><label style="font-size:11px;color:var(--muted);">About Your Business</label><textarea id="biz-about-input" placeholder="Tell tippers a bit about your venue or business…" rows="3" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;resize:vertical;"></textarea></div>
-              <div><label style="font-size:11px;color:var(--muted);">Round Sponsor Name (optional — appears on Tips page & Coach Report)</label><input type="text" id="round-sponsor-input" placeholder="e.g. Hunter Co" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
-              <div><label style="font-size:11px;color:var(--muted);">Round Sponsor Logo URL (optional)</label><input type="url" id="round-sponsor-logo-input" placeholder="https://yourbusiness.com/logo.png" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
-              <button class="btn" style="font-size:13px;padding:9px 18px;align-self:flex-start;" onclick="saveBusinessSettings()">Save Business Settings</button>
+            <div class="pro-lock-wrap block-wrap" id="biz-settings-lock-wrap" style="border-radius:12px;">
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                <div><label style="font-size:11px;color:var(--muted);">Business Name</label><input type="text" id="biz-name-input" placeholder="e.g. The Crown Hotel" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
+                <div><label style="font-size:11px;color:var(--muted);">Business Logo URL</label><input type="url" id="biz-logo-input" placeholder="https://yourbusiness.com/logo.png" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
+                <div><label style="font-size:11px;color:var(--muted);">Contact Details</label><input type="text" id="biz-contact-input" placeholder="e.g. Phone, email or address" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
+                <div><label style="font-size:11px;color:var(--muted);">About Your Business</label><textarea id="biz-about-input" placeholder="Tell tippers a bit about your venue or business…" rows="3" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;resize:vertical;"></textarea></div>
+                <div><label style="font-size:11px;color:var(--muted);">Round Sponsor Name (optional — appears on Tips page &amp; Coach Report)</label><input type="text" id="round-sponsor-input" placeholder="e.g. Hunter Co" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
+                <div><label style="font-size:11px;color:var(--muted);">Round Sponsor Logo URL (optional)</label><input type="url" id="round-sponsor-logo-input" placeholder="https://yourbusiness.com/logo.png" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
+                <button class="btn" style="font-size:13px;padding:9px 18px;align-self:flex-start;" onclick="saveBusinessSettings()">Save Business Settings</button>
+              </div>
+              <div class="pro-lock-overlay" id="biz-settings-lock-overlay" style="border-radius:10px;">
+                <span class="lock-badge">🔓 CURRENTLY FREE</span>
+                <span class="lock-msg">Pro League Feature<br><span style="font-size:11px;font-weight:400;color:var(--muted);">Brand advertising on the comp ladder</span></span>
+                <button class="lock-cta" onclick="showPage('contact')">Contact us to unlock →</button>
+              </div>
             </div>
           </div>
         </div>
@@ -4516,62 +4685,55 @@ function trackPage(pageName) {
 
       <!-- TIER INFO -->
       <div class="card">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;color:var(--text);margin-bottom:16px;">📦 Competition Tiers</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;color:var(--text);margin-bottom:6px;">📦 Competition Plans</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:18px;">Everything is currently free — Pro League features are available on request. <button onclick="showPage('contact')" style="background:none;border:none;color:var(--green);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;text-decoration:underline;padding:0;">Hit us up</button> to unlock yours!</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;">
 
           <!-- FREE -->
-          <div style="background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:18px;">
+          <div style="background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:20px;">
             <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--green);letter-spacing:1px;margin-bottom:4px;">FREE</div>
-            <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--text);margin-bottom:12px;">$0</div>
-            <div style="display:flex;flex-direction:column;gap:7px;font-size:13px;color:var(--muted);">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:var(--text);margin-bottom:12px;">$0</div>
+            <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--muted);">
               <div>✅ Up to 50 members</div>
-              <div>✅ Full tipping & scoring</div>
-              <div>✅ Chat & side bets</div>
-              <div>✅ Leaderboard & results</div>
+              <div>✅ Full tipping &amp; scoring</div>
+              <div>✅ Chat &amp; side bets</div>
+              <div>✅ Leaderboard &amp; results</div>
               <div>✅ Prize pool display</div>
-              <div style="opacity:0.4;">❌ Unlimited members</div>
-              <div style="opacity:0.4;">❌ Sticker pack</div>
-              <div style="opacity:0.4;">❌ Business branding</div>
-              <div style="opacity:0.4;">❌ QR flyer generator</div>
             </div>
-            <div style="margin-top:14px;font-size:11px;color:var(--green);font-weight:700;">CURRENTLY ACTIVE FOR ALL</div>
+            <div style="margin-top:16px;font-size:11px;color:var(--green);font-weight:700;letter-spacing:0.5px;">✓ ACTIVE FOR ALL COMPETITIONS</div>
           </div>
 
-          <!-- PRO -->
-          <div style="background:var(--card2);border:2px solid #9c27b0;border-radius:12px;padding:18px;position:relative;">
-            <div style="position:absolute;top:-10px;right:14px;background:#9c27b0;color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:99px;letter-spacing:1px;">COMING SOON</div>
-            <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:#9c27b0;letter-spacing:1px;margin-bottom:4px;">PRO</div>
-            <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--text);margin-bottom:4px;">$30</div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">per sport · per season</div>
-            <div style="display:flex;flex-direction:column;gap:7px;font-size:13px;color:var(--muted);">
+          <!-- PRO LEAGUE -->
+          <div style="background:var(--card2);border:2px solid var(--gold);border-radius:12px;padding:20px;position:relative;">
+            <div style="position:absolute;top:-10px;right:14px;background:var(--gold);color:var(--navy);font-size:10px;font-weight:700;padding:3px 12px;border-radius:99px;letter-spacing:1px;">🔓 CURRENTLY FREE</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gold);letter-spacing:1px;margin-bottom:4px;">PRO LEAGUE</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:var(--text);margin-bottom:12px;">Ask Us</div>
+            <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--muted);margin-bottom:16px;">
               <div>✅ Everything in Free</div>
               <div>✅ Unlimited members</div>
-              <div>✅ Exclusive sticker pack to hand winners</div>
-              <div style="opacity:0.4;">❌ Business branding</div>
-              <div style="opacity:0.4;">❌ QR flyer generator</div>
-              <div style="opacity:0.4;">❌ TV display mode</div>
-              <div style="opacity:0.4;">❌ Analytics dashboard</div>
-            </div>
-          </div>
-
-          <!-- BUSINESS -->
-          <div style="background:var(--card2);border:2px solid var(--gold);border-radius:12px;padding:18px;position:relative;">
-            <div style="position:absolute;top:-10px;right:14px;background:var(--gold);color:var(--navy);font-size:10px;font-weight:700;padding:3px 10px;border-radius:99px;letter-spacing:1px;">COMING SOON</div>
-            <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gold);letter-spacing:1px;margin-bottom:4px;">BUSINESS</div>
-            <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--text);margin-bottom:4px;">$80</div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">per sport · per season</div>
-            <div style="display:flex;flex-direction:column;gap:7px;font-size:13px;color:var(--muted);">
-              <div>✅ Everything in Pro</div>
-              <div>✅ Business branding</div>
+              <div>✅ Exclusive sticker pack for round winners</div>
+              <div>✅ Brand advertising on the Comp Ladder</div>
               <div>✅ QR flyer generator</div>
               <div>✅ TV display mode for your venue</div>
-              <div>✅ Analytics dashboard</div>
-              <div>✅ Email round reminders</div>
-              <div>✅ Sponsor a round for the entire comp.</div>
             </div>
+            <button onclick="showPage('contact')" class="btn" style="width:100%;background:var(--gold);color:var(--navy);font-size:13px;padding:10px;">✉️ Contact Us to Unlock Free</button>
           </div>
 
         </div>
+
+        <!-- ROUND SPONSOR ADD-ON -->
+        <div style="margin-top:16px;background:rgba(255,214,0,0.05);border:1px solid rgba(255,214,0,0.25);border-radius:12px;padding:18px;position:relative;">
+          <div style="position:absolute;top:-10px;right:14px;background:var(--gold);color:var(--navy);font-size:10px;font-weight:700;padding:3px 12px;border-radius:99px;letter-spacing:1px;">🔓 CURRENTLY FREE</div>
+          <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;">
+            <div style="font-size:32px;flex-shrink:0;">🏟️</div>
+            <div style="flex:1;min-width:200px;">
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--gold);letter-spacing:1px;margin-bottom:4px;">Round Sponsor — Site-Wide Add-On</div>
+              <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:12px;">Pro League competitions have the option to become a round sponsor for the <strong style="color:var(--text);">entire Roughie Tips site</strong> — your brand featured on the Tips page and Coach Reports for every single tipper across all competitions for that round.</div>
+              <button onclick="showPage('contact')" class="btn btn-outline" style="font-size:13px;padding:8px 18px;border-color:var(--gold);color:var(--gold);">✉️ Ask About Round Sponsorship</button>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -4783,14 +4945,21 @@ function trackPage(pageName) {
       <!-- BUSINESS SETTINGS -->
       <div class="card" style="margin-bottom:16px;">
         <div style="font-weight:700;font-size:16px;margin-bottom:14px;">🏢 Business Settings</div>
-        <div style="display:flex;flex-direction:column;gap:10px;">
-          <div><label style="font-size:11px;color:var(--muted);">Business Name</label><input type="text" id="cs-biz-name" placeholder="e.g. The Crown Hotel" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
-          <div><label style="font-size:11px;color:var(--muted);">Business Logo URL</label><input type="url" id="cs-biz-logo" placeholder="https://yourbusiness.com/logo.png" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
-          <div><label style="font-size:11px;color:var(--muted);">Contact Details</label><input type="text" id="cs-biz-contact" placeholder="Phone, email or address" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
-          <div><label style="font-size:11px;color:var(--muted);">About Your Business</label><textarea id="cs-biz-about" placeholder="Tell tippers a bit about your venue…" rows="3" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;resize:vertical;"></textarea></div>
-          <div><label style="font-size:11px;color:var(--muted);">Round Sponsor Name</label><input type="text" id="cs-sponsor-name" placeholder="e.g. Hunter Co" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
-          <div><label style="font-size:11px;color:var(--muted);">Round Sponsor Logo URL</label><input type="url" id="cs-sponsor-logo" placeholder="https://yourbusiness.com/logo.png" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
-          <button class="btn" style="font-size:13px;padding:9px 18px;align-self:flex-start;" onclick="saveCompSettings()">Save Business Settings</button>
+        <div class="pro-lock-wrap block-wrap" id="cs-biz-lock-wrap" style="border-radius:10px;">
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div><label style="font-size:11px;color:var(--muted);">Business Name</label><input type="text" id="cs-biz-name" placeholder="e.g. The Crown Hotel" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
+            <div><label style="font-size:11px;color:var(--muted);">Business Logo URL</label><input type="url" id="cs-biz-logo" placeholder="https://yourbusiness.com/logo.png" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
+            <div><label style="font-size:11px;color:var(--muted);">Contact Details</label><input type="text" id="cs-biz-contact" placeholder="Phone, email or address" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
+            <div><label style="font-size:11px;color:var(--muted);">About Your Business</label><textarea id="cs-biz-about" placeholder="Tell tippers a bit about your venue…" rows="3" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;resize:vertical;"></textarea></div>
+            <div><label style="font-size:11px;color:var(--muted);">Round Sponsor Name</label><input type="text" id="cs-sponsor-name" placeholder="e.g. Hunter Co" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
+            <div><label style="font-size:11px;color:var(--muted);">Round Sponsor Logo URL</label><input type="url" id="cs-sponsor-logo" placeholder="https://yourbusiness.com/logo.png" style="width:100%;margin-top:4px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/></div>
+            <button class="btn" style="font-size:13px;padding:9px 18px;align-self:flex-start;" onclick="saveCompSettings()">Save Business Settings</button>
+          </div>
+          <div class="pro-lock-overlay" id="cs-biz-settings-lock-overlay" style="border-radius:10px;">
+            <span class="lock-badge">🔓 CURRENTLY FREE</span>
+            <span class="lock-msg">Pro League Feature<br><span style="font-size:11px;font-weight:400;color:var(--muted);">Brand advertising on the comp ladder</span></span>
+            <button class="lock-cta" onclick="showPage('contact')">Contact us to unlock →</button>
+          </div>
         </div>
       </div>
 
