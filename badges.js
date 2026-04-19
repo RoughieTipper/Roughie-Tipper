@@ -63,7 +63,7 @@ const NRL_COLOURS = {
   'Dolphins':                    { type:'hoops',    c1:'#CC0033', c2:'#FFFFFF',  c3:'#CC0033' },
   'Gold Coast Titans':           { type:'sash',     c1:'#009FDF', c2:'#E6C619' },
   'Manly Sea Eagles':            { type:'thirds-h', c1:'#8B0000', c2:'#FFFFFF',  c3:'#002D72' },
-  'Melbourne Storm':             { type:'split-v',  c1:'#4B006E', c2:'#C8C8C8' },
+  'Melbourne Storm':             { type:'split-h',  c1:'#632390', c2:'#F9B019'   c3:'#0E2752' },
   'Newcastle Knights':           { type:'split-v',  c1:'#003B6F', c2:'#C8102E' },
   'New Zealand Warriors':        { type:'thirds',   c1:'#000000', c2:'#808080',  c3:'#FFFFFF' },
   'North Queensland Cowboys':    { type:'tri-top',  c1:'#002B5C', c2:'#F4AA00' },
