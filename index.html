@@ -3250,10 +3250,12 @@ function sendContactMessage() {
 function openBadgeSheet() {
   // Render badge picker into the sheet
   renderBadgePicker('badge-sheet-picker', userProfile?.badgeTeam || '', null);
-  // Override selectBadge behaviour for sheet context
-  document.querySelectorAll('#badge-sheet-picker button[data-team]').forEach(btn => {
-    btn.onclick = () => saveBadgeFromSheet(btn.dataset.team);
-  });
+  // Use event delegation so clicks work across all league tab panels
+  const picker = document.getElementById('badge-sheet-picker');
+  picker.onclick = (e) => {
+    const btn = e.target.closest('button[data-team]');
+    if (btn) saveBadgeFromSheet(btn.dataset.team);
+  };
   document.getElementById('badge-sheet-overlay').classList.add('open');
   document.getElementById('badge-sheet').classList.add('open');
 }
@@ -4105,10 +4107,10 @@ function trackPage(pageName) {
       </div>
       <div class="form-group">
         <label>Your Club Badge *</label>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Pick your AFL or NFL team — shows next to your name on the leaderboard</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Pick your AFL, NFL or NRL team — shows next to your name on the leaderboard</div>
         <input type="hidden" id="reg-badge-hidden" value=""/>
         <div id="reg-badge-preview" style="display:none;align-items:center;background:rgba(0,200,83,0.08);border:1px solid rgba(0,200,83,0.3);border-radius:8px;padding:8px 12px;margin-bottom:10px;"></div>
-        <div style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--card2);">
+        <div style="border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--card2);">
           <div id="reg-badge-picker"></div>
         </div>
       </div>
@@ -4587,9 +4589,9 @@ function trackPage(pageName) {
         <div class="form-group"><label>Nickname</label><input type="text" id="profile-nick-input" placeholder="Your nickname"/></div>
         <div class="form-group">
           <label>Your Club Badge</label>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Pick your AFL or NFL team — it shows next to your name on the leaderboard</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Pick your AFL, NFL or NRL team — it shows next to your name on the leaderboard</div>
           <input type="hidden" id="profile-badge-hidden" value=""/>
-          <div style="max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;padding:12px;background:var(--card2);"><div id="profile-badge-picker"></div></div>
+          <div style="border:1px solid var(--border);border-radius:10px;padding:12px;background:var(--card2);"><div id="profile-badge-picker"></div></div>
         </div>
         <div style="display:flex;align-items:center;gap:10px;margin-top:8px;padding:14px;background:var(--card2);border-radius:10px;border:1px solid var(--border);">
           <input type="checkbox" id="profile-email-sub" style="width:18px;height:18px;accent-color:var(--green);cursor:pointer;flex-shrink:0;"/>
