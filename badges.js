@@ -63,7 +63,7 @@ const NRL_COLOURS = {
   'Dolphins':                    { type:'hoops',    c1:'#CC0033', c2:'#FFFFFF',  c3:'#CC0033' },
   'Gold Coast Titans':           { type:'sash',     c1:'#009FDF', c2:'#E6C619' },
   'Manly Sea Eagles':            { type:'thirds-h', c1:'#8B0000', c2:'#FFFFFF',  c3:'#002D72' },
-  'Melbourne Storm':             { type:'split-h',  c1:'#632390', c2:'#F9B019',  c3:'#0E2752' },
+  'Melbourne Storm':             { type:'split-h',  c1:'#632390', c2:'#0E2752',  c3:'#F9B019' },
   'Newcastle Knights':           { type:'split-v',  c1:'#003B6F', c2:'#C8102E' },
   'New Zealand Warriors':        { type:'thirds',   c1:'#000000', c2:'#808080',  c3:'#FFFFFF' },
   'North Queensland Cowboys':    { type:'tri-top',  c1:'#002B5C', c2:'#F4AA00' },
@@ -73,7 +73,7 @@ const NRL_COLOURS = {
   'St George Illawarra Dragons': { type:'thirds',   c1:'#E81018', c2:'#FFFFFF',  c3:'#0A3C70' },
   'Sydney Roosters':             { type:'thirds',   c1:'#002B5C', c2:'#CC0000',  c3:'#FFFFFF' },
   'Wests Tigers':                { type:'stripes',  c1:'#FF7900', c2:'#000000' },
-};
+}; 
 const BADGE_GROUPS = [
   { key: 'afl', label: '🏉 AFL', teams: Object.keys(CLUB_COLOURS) },
   { key: 'nfl', label: '🏈 NFL', teams: Object.keys(NFL_COLOURS)  },
