@@ -190,10 +190,10 @@ tr:hover .rank-3{box-shadow:0 0 12px rgba(205,127,50,0.5);transform:scale(1.1);}
 /* ─── PRO FEATURE LOCK ─────────────────────────────────────── */
 .pro-lock-wrap{position:relative;display:inline-flex;}
 .pro-lock-wrap.block-wrap{display:block;}
-.pro-lock-overlay{position:absolute;inset:-4px;border-radius:12px;background:rgba(10,22,40,0.82);backdrop-filter:blur(3px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;z-index:10;padding:10px;text-align:center;border:1px solid rgba(255,214,0,0.3);}
+.pro-lock-overlay{position:absolute;inset:-4px;border-radius:12px;background:rgba(10,22,40,0.55);backdrop-filter:blur(2px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;z-index:10;padding:8px;text-align:center;border:1px solid rgba(255,214,0,0.25);}
 .pro-lock-overlay .lock-badge{background:var(--gold);color:var(--navy);font-size:10px;font-weight:800;padding:3px 10px;border-radius:99px;letter-spacing:1px;white-space:nowrap;}
-.pro-lock-overlay .lock-msg{font-size:12px;color:var(--text);line-height:1.4;font-weight:600;}
-.pro-lock-overlay .lock-cta{font-size:11px;color:var(--gold);font-weight:700;text-decoration:underline;cursor:pointer;background:none;border:none;font-family:'DM Sans',sans-serif;}
+.pro-lock-overlay .lock-msg{font-size:11px;color:var(--text);line-height:1.3;font-weight:700;}
+.pro-lock-overlay .lock-cta{font-size:11px;color:var(--gold);font-weight:700;text-decoration:underline;cursor:pointer;background:none;border:none;font-family:'DM Sans',sans-serif;padding:0;}
 /* ─────────────────────────────────────────────────────────── */
 .toast{position:fixed;bottom:28px;right:28px;z-index:999;font-weight:700;padding:14px 22px;border-radius:10px;font-size:14px;transform:translateY(80px);opacity:0;transition:all .3s;box-shadow:0 8px 32px rgba(0,200,83,.3);}
 .toast.show{transform:translateY(0);opacity:1;}
@@ -4411,16 +4411,14 @@ function trackPage(pageName) {
           <div class="pro-lock-wrap block-wrap" id="flyer-btn-wrap" style="flex:1;min-width:140px;">
             <button class="btn btn-outline" style="width:100%;font-size:14px;padding:10px 16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;" onclick="generateFlyer()"><span>📄 Print Flyer</span><span style="font-size:10px;opacity:0.6;font-weight:400;">QR code invite poster</span></button>
             <div class="pro-lock-overlay" id="flyer-lock-overlay">
-              <span class="lock-badge">🔓 CURRENTLY FREE</span>
-              <span class="lock-msg">Pro League Feature</span>
+              <span class="lock-msg">⭐ Pro League Feature</span>
               <button class="lock-cta" onclick="showPage('contact')">Contact us to unlock →</button>
             </div>
           </div>
           <div class="pro-lock-wrap block-wrap" id="tv-btn-wrap" style="flex:1;min-width:140px;">
             <button class="btn btn-outline" style="width:100%;font-size:14px;padding:10px 16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;" onclick="launchTVMode()"><span>📺 TV Display Mode</span><span style="font-size:10px;opacity:0.6;font-weight:400;">Venue leaderboard screen</span></button>
             <div class="pro-lock-overlay" id="tv-lock-overlay">
-              <span class="lock-badge">🔓 CURRENTLY FREE</span>
-              <span class="lock-msg">Pro League Feature</span>
+              <span class="lock-msg">⭐ Pro League Feature</span>
               <button class="lock-cta" onclick="showPage('contact')">Contact us to unlock →</button>
             </div>
           </div>
