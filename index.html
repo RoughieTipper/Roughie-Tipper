@@ -3998,13 +3998,26 @@ function generateFlyer() {
   const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(inviteUrl);
 
   // Build flyer as string concatenation to avoid nested template/script issues
+  // Business logo: show actual logo if uploaded, otherwise a dashed placeholder
+  const bizLogoHtml = bizLogo
+    ? '<img src="' + bizLogo + '" alt="logo" style="height:48px;width:auto;border-radius:8px;"/>'
+    : '<div style="height:48px;min-width:90px;border:2px dashed #2a4070;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 10px;gap:3px;background:rgba(42,64,112,0.18);">' +
+      '<span style="font-size:15px;">🏢</span>' +
+      '<span style="font-size:7.5px;font-weight:700;color:#3a5a90;text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap;">Your Logo Here</span>' +
+      '</div>';
+
   const bizSection = bizName
     ? '<div class="flyer-biz">' +
-      (bizLogo ? '<img src="' + bizLogo + '" alt="logo" style="height:40px;width:auto;border-radius:6px;"/>' : '') +
+      bizLogoHtml +
       '<div><div class="flyer-biz-name">' + bizName + '</div>' +
       (bizContact ? '<div class="flyer-biz-contact">' + bizContact + '</div>' : '') +
       (bizAbout ? '<div class="flyer-biz-contact" style="margin-top:4px;">' + bizAbout + '</div>' : '') +
-      '</div></div>' : '';
+      '</div></div>'
+    : '<div class="flyer-biz">' +
+      bizLogoHtml +
+      '<div><div class="flyer-biz-name" style="color:#3a5a90;">Your Business Name</div>' +
+      '<div class="flyer-biz-contact">Add your branding with a Pro subscription</div>' +
+      '</div></div>';
 
   const flyerHtml = [
     '<!DOCTYPE html><html><head><meta charset="UTF-8"/>',
@@ -4013,11 +4026,12 @@ function generateFlyer() {
     '*{box-sizing:border-box;margin:0;padding:0;}',
     "body{font-family:'DM Sans',sans-serif;background:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;}",
     '.flyer{width:420px;background:#0a1628;border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.4);}',
-    '.flyer-header{background:linear-gradient(135deg,#00c853,#00a843);padding:24px;text-align:center;}',
-    '.flyer-brand{font-family:"Bebas Neue",sans-serif;font-size:32px;letter-spacing:2px;color:#0a1628;}',
-    '.flyer-sport{font-size:13px;font-weight:700;color:#0a1628;opacity:0.7;letter-spacing:2px;text-transform:uppercase;}',
+    '.flyer-header{background:linear-gradient(160deg,#0a1628 0%,#112040 60%,#0d1f3c 100%);padding:24px 24px 18px;text-align:center;border-bottom:2px solid #00c853;}',
+    '.flyer-header-logo{display:block;width:240px;max-width:88%;height:auto;margin:0 auto 4px;}',
+    '.flyer-sport{font-size:12px;font-weight:700;color:#00c853;letter-spacing:3px;text-transform:uppercase;margin-top:4px;}',
     '.flyer-body{padding:24px;}',
-    '.flyer-comp{font-family:"Bebas Neue",sans-serif;font-size:28px;letter-spacing:1px;color:#fff;margin-bottom:6px;line-height:1.1;}',
+    '.flyer-comp-row{display:flex;align-items:center;gap:12px;margin-bottom:6px;}',
+    '.flyer-comp{font-family:"Bebas Neue",sans-serif;font-size:26px;letter-spacing:1px;color:#fff;line-height:1.1;flex:1;}',
     '.flyer-sub{font-size:13px;color:#6b7fa3;margin-bottom:20px;}',
     '.flyer-how{background:#111e36;border-radius:10px;padding:14px;margin-bottom:20px;}',
     '.flyer-how-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#00c853;margin-bottom:10px;}',
@@ -4037,11 +4051,15 @@ function generateFlyer() {
     '</style></head><body>',
     '<div class="flyer">',
     '<div class="flyer-header">',
-    '<div class="flyer-brand">' + sportEmoji + ' Roughie Tips</div>',
+    '<img class="flyer-header-logo" src="https://raw.githubusercontent.com/roughietips/roughietips/main/rtgroup.png" alt="Roughie Tips" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\';"/>',
+    '<div style="display:none;font-family:\'Bebas Neue\',sans-serif;font-size:30px;letter-spacing:2px;color:#fff;">' + sportEmoji + ' Roughie Tips</div>',
     '<div class="flyer-sport">' + sport + ' Tipping Competition</div>',
     '</div>',
     '<div class="flyer-body">',
+    '<div class="flyer-comp-row">',
     '<div class="flyer-comp">' + compName + '</div>',
+    '<div>' + bizLogoHtml + '</div>',
+    '</div>',
     '<div class="flyer-sub">Join our ' + sport + ' tipping competition — back the underdog, earn bonus points!</div>',
     '<div class="flyer-how">',
     '<div class="flyer-how-title">How to Join</div>',
