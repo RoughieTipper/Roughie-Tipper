@@ -3998,26 +3998,44 @@ function generateFlyer() {
   const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(inviteUrl);
 
   // Build flyer as string concatenation to avoid nested template/script issues
-  // Business logo: show actual logo if uploaded, otherwise a dashed placeholder
+  // Business logo: show actual logo if uploaded, otherwise a dashed text-only placeholder
   const bizLogoHtml = bizLogo
     ? '<img src="' + bizLogo + '" alt="logo" style="height:48px;width:auto;border-radius:8px;"/>'
-    : '<div style="height:48px;min-width:90px;border:2px dashed #2a4070;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 10px;gap:3px;background:rgba(42,64,112,0.18);">' +
-      '<span style="font-size:15px;">🏢</span>' +
-      '<span style="font-size:7.5px;font-weight:700;color:#3a5a90;text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap;">Your Logo Here</span>' +
+    : '<div style="height:48px;min-width:120px;border:2px dashed #2a4070;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 10px;background:rgba(42,64,112,0.18);">' +
+      '<span style="font-size:7px;font-weight:700;color:#3a5a90;text-transform:uppercase;letter-spacing:0.8px;text-align:center;line-height:1.5;">YOUR BUSINESS<br>LOGO HERE</span>' +
       '</div>';
 
-  const bizSection = bizName
-    ? '<div class="flyer-biz">' +
-      bizLogoHtml +
-      '<div><div class="flyer-biz-name">' + bizName + '</div>' +
-      (bizContact ? '<div class="flyer-biz-contact">' + bizContact + '</div>' : '') +
-      (bizAbout ? '<div class="flyer-biz-contact" style="margin-top:4px;">' + bizAbout + '</div>' : '') +
-      '</div></div>'
-    : '<div class="flyer-biz">' +
-      bizLogoHtml +
-      '<div><div class="flyer-biz-name" style="color:#3a5a90;">Your Business Name</div>' +
-      '<div class="flyer-biz-contact">Add your branding with a Pro subscription</div>' +
-      '</div></div>';
+  // Prize money section - pull from comp prizes, only show set values
+  const prizes = currentComp.prizes || {};
+  const prizeRows = [
+    prizes.first       ? { label: '1st Place',        val: '$' + prizes.first }       : null,
+    prizes.second      ? { label: '2nd Place',        val: '$' + prizes.second }      : null,
+    prizes.third       ? { label: '3rd Place',        val: '$' + prizes.third }       : null,
+    prizes.mostRounds  ? { label: 'Most Rounds Won',  val: prizes.mostRounds }        : null,
+    prizes.perfectScore? { label: 'Perfect Score',    val: prizes.perfectScore }      : null,
+  ].filter(Boolean);
+
+  const prizePanelHtml = prizeRows.length
+    ? '<div class="flyer-prize-panel">' +
+      '<div class="flyer-prize-heading">PRIZE POOL</div>' +
+      prizeRows.map(r =>
+        '<div class="flyer-prize-row"><span class="flyer-prize-label">' + r.label + '</span><span class="flyer-prize-val">' + r.val + '</span></div>'
+      ).join('') +
+      '</div>'
+    : '';
+
+  // Bottom section: biz logo left, prize panel right
+  const bizSection = '<div class="flyer-bottom-row">' +
+    '<div class="flyer-biz-col">' +
+    bizLogoHtml +
+    (bizName
+      ? '<div class="flyer-biz-name" style="margin-top:6px;">' + bizName + '</div>' +
+        (bizContact ? '<div class="flyer-biz-contact">' + bizContact + '</div>' : '') +
+        (bizAbout   ? '<div class="flyer-biz-contact">' + bizAbout   + '</div>' : '')
+      : '<div style="margin-top:5px;font-size:10px;color:#2a4070;font-weight:600;">Your Business Name</div>') +
+    '</div>' +
+    prizePanelHtml +
+    '</div>';
 
   const flyerHtml = [
     '<!DOCTYPE html><html><head><meta charset="UTF-8"/>',
@@ -4042,16 +4060,24 @@ function generateFlyer() {
     '.flyer-qr-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#00c853;margin-bottom:4px;}',
     '.flyer-qr-code{font-family:"Bebas Neue",sans-serif;font-size:22px;color:#ffd600;letter-spacing:2px;}',
     '.flyer-qr-url{font-size:11px;color:#6b7fa3;margin-top:4px;word-break:break-all;}',
-    '.flyer-biz{border-top:1px solid #1e3054;padding-top:16px;display:flex;align-items:center;gap:12px;}',
-    '.flyer-biz img{height:40px;width:auto;border-radius:6px;}',
-    '.flyer-biz-name{font-weight:700;font-size:14px;color:#fff;}',
+
+
+
     '.flyer-biz-contact{font-size:12px;color:#6b7fa3;margin-top:2px;}',
+    '.flyer-bottom-row{border-top:1px solid #1e3054;padding-top:16px;display:flex;align-items:flex-start;gap:14px;}',
+    '.flyer-biz-col{display:flex;flex-direction:column;align-items:flex-start;min-width:0;flex:1;}',
+    '.flyer-biz-name{font-weight:700;font-size:13px;color:#fff;}',
+    '.flyer-prize-panel{flex-shrink:0;background:#0f1c35;border:1px solid #1e3054;border-radius:8px;padding:10px 12px;min-width:130px;}',
+    '.flyer-prize-heading{font-family:\"Bebas Neue\",sans-serif;font-size:13px;letter-spacing:1.5px;color:#ffd600;margin-bottom:7px;text-align:center;}',
+    '.flyer-prize-row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px;font-size:11px;}',
+    '.flyer-prize-label{color:#6b7fa3;white-space:nowrap;}',
+    '.flyer-prize-val{color:#00c853;font-weight:700;white-space:nowrap;}',
     '.flyer-footer{background:#111e36;padding:12px 24px;text-align:center;font-size:11px;color:#6b7fa3;}',
     '.flyer-footer span{color:#00c853;font-weight:700;}',
     '</style></head><body>',
     '<div class="flyer">',
     '<div class="flyer-header">',
-    '<img class="flyer-header-logo" src="https://raw.githubusercontent.com/roughietips/roughietips/main/rtgroup.png" alt="Roughie Tips" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\';"/>',
+    '<img class="flyer-header-logo" src="https://raw.githubusercontent.com/RoughieTipper/Roughie-Tipper/main/rtgroup.png" alt="Roughie Tips" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\';"/>',
     '<div style="display:none;font-family:\'Bebas Neue\',sans-serif;font-size:30px;letter-spacing:2px;color:#fff;">' + sportEmoji + ' Roughie Tips</div>',
     '<div class="flyer-sport">' + sport + ' Tipping Competition</div>',
     '</div>',
