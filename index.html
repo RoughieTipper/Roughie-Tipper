@@ -1570,6 +1570,8 @@ function renderLeaderboard() {
       name: sc.name || sc.displayName || '',
       totalPts: sc.totalPts ?? sc.pts ?? 0,
       lastRoundPts: latestRound ? (sc.roundPts?.[latestRound.id] ?? '—') : '—',
+      roundWins: roundWinCounts[sc.uid] || 0,
+      perfectRounds: perfectRoundCounts[sc.uid] || 0,
       badge: allUsers[sc.uid]?.badgeTeam ? '' : ''
     }));
     const isMe = s.uid === currentUser?.uid;
@@ -4174,6 +4176,8 @@ function launchTVMode() {
       </td>
       <td style="padding:14px 18px;font-family:'Bebas Neue',sans-serif;font-size:34px;color:#00c853;width:110px;">${s.totalPts != null ? s.totalPts : 0}</td>
       <td style="padding:14px 18px;font-size:14px;color:#9db4d0;white-space:nowrap;">${s.lastRoundPts !== undefined && s.lastRoundPts !== '—' ? s.lastRoundPts + ' pts' : '—'} last rnd</td>
+      <td style="padding:14px 18px;text-align:center;font-family:'Bebas Neue',sans-serif;font-size:26px;color:#ffd600;">${s.roundWins || 0}</td>
+      <td style="padding:14px 18px;text-align:center;font-family:'Bebas Neue',sans-serif;font-size:26px;color:#00c853;">${s.perfectRounds || 0}</td>
     </tr>`;
   }).join('');
 
@@ -4234,7 +4238,7 @@ function launchTVMode() {
 
     <!-- Leaderboard table -->
     <table>
-      <thead><tr><th>#</th><th>Tipper</th><th>Points</th><th>Last Round</th></tr></thead>
+      <thead><tr><th>#</th><th>Tipper</th><th>Points</th><th>Last Round</th><th style="text-align:center;">Rnd Wins</th><th style="text-align:center;">Perfect</th></tr></thead>
       <tbody>${rows || '<tr><td colspan="4" style="text-align:center;padding:40px;color:#9db4d0;">No scores yet</td></tr>'}</tbody>
     </table>
 
