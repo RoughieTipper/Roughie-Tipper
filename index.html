@@ -1775,7 +1775,6 @@ function renderTipMatches() {
           ${hOverlay}
           <div class="team-btn-inner"><div class="team-badge-wrap">${clubBadge(m.home,44)}</div><div class="team-name">${teamNameHtml(m.home)}</div></div>
           <div class="odds-pts">${hPts} pt${hPts>1?'s':''}</div>
-          <div class="team-odds" style="color:${m.homeOdds<2.5?'var(--green)':'var(--gold)'}">$${Number(m.homeOdds).toFixed(2)}</div>
           ${m.homeOdds>=2.5?'<div class="roughie-tag">ROUGHIE</div>':''}
         </div>
         <div class="vs-divider">VS</div>
@@ -1783,7 +1782,6 @@ function renderTipMatches() {
           ${aOverlay}
           <div class="team-btn-inner"><div class="team-badge-wrap">${clubBadge(m.away,44)}</div><div class="team-name">${teamNameHtml(m.away)}</div></div>
           <div class="odds-pts">${aPts} pt${aPts>1?'s':''}</div>
-          <div class="team-odds" style="color:${m.awayOdds<2.5?'var(--green)':'var(--gold)'}">$${Number(m.awayOdds).toFixed(2)}</div>
           ${m.awayOdds>=2.5?'<div class="roughie-tag">ROUGHIE</div>':''}
         </div>
       </div>${earnedDiv}</div>`;
