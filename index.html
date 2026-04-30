@@ -157,8 +157,7 @@ tr:hover .rank-3{box-shadow:0 0 12px rgba(205,127,50,0.5);transform:scale(1.1);}
 @keyframes texta-draw{to{stroke-dashoffset:0}}
 /* Result overlays — SVG texta style */
 .result-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:5;}
-.result-overlay svg{width:72px;height:72px;animation:score-pop .35s cubic-bezier(0.34,1.56,0.64,1);}
-@media(max-width:600px){.result-overlay svg{width:52px;height:52px;}}
+.result-overlay svg{position:absolute;inset:0;width:100%;height:100%;}
 .team-btn-inner{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:6px;flex-wrap:nowrap;overflow:hidden;}
 .team-badge-wrap{flex-shrink:0;transition:transform var(--transition-fast);}
 .team-btn:not(.locked):hover .team-badge-wrap{transform:scale(1.1);}
@@ -1768,8 +1767,9 @@ function renderTipMatches() {
     const aClass = finished?(isDraw?'winner-correct':(m.winner===m.away?'winner-correct':(sel===m.away?'winner-wrong':'')))
       :locked?(sel===m.away?'selected locked':'locked'):(sel===m.away?'selected':'');
     // Result overlays — only show on the selected button
-    const textaCircle = `<svg viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg" style="overflow:visible"><ellipse cx="36" cy="36" rx="27" ry="23" stroke="#00c853" stroke-width="4.5" stroke-linecap="round" transform="rotate(-5 36 36)" style="filter:drop-shadow(0 0 10px rgba(0,200,83,0.8));stroke-dasharray:175;stroke-dashoffset:175;animation:texta-draw 0.4s ease-out forwards;"/></svg>`;
-    const textaCross = `<svg viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg" style="overflow:visible"><line x1="15" y1="15" x2="57" y2="57" stroke="#ff3d3d" stroke-width="5.5" stroke-linecap="round" style="filter:drop-shadow(0 0 8px rgba(255,61,61,0.9));stroke-dasharray:59;stroke-dashoffset:59;animation:texta-draw 0.25s ease-out forwards;"/><line x1="57" y1="15" x2="15" y2="57" stroke="#ff3d3d" stroke-width="5.5" stroke-linecap="round" style="filter:drop-shadow(0 0 8px rgba(255,61,61,0.9));stroke-dasharray:59;stroke-dashoffset:59;animation:texta-draw 0.25s 0.2s ease-out forwards;"/></svg>`;
+    // Hand-drawn texta overlays — large, wobbly, fills the button
+    const textaCircle = `<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="overflow:visible;width:100%;height:100%;position:absolute;inset:0;"><path d="M 18,38 C 15,22 28,8 46,6 C 64,4 82,14 88,30 C 94,46 90,66 76,76 C 62,86 38,87 24,77 C 10,67 8,50 13,37 C 16,28 22,19 33,13" stroke="#00c853" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 8px rgba(0,200,83,0.7));stroke-dasharray:310;stroke-dashoffset:310;animation:texta-draw 0.55s ease-out forwards;" fill="none"/></svg>`;
+    const textaCross = `<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="overflow:visible;width:100%;height:100%;position:absolute;inset:0;"><path d="M 18,17 C 24,23 36,35 48,49 C 58,61 70,73 82,84" stroke="#ff3d3d" stroke-width="6.5" stroke-linecap="round" style="filter:drop-shadow(0 0 8px rgba(255,61,61,0.8));stroke-dasharray:100;stroke-dashoffset:100;animation:texta-draw 0.28s ease-out forwards;" fill="none"/><path d="M 82,17 C 74,25 62,37 50,50 C 38,62 26,74 17,84" stroke="#ff3d3d" stroke-width="6.5" stroke-linecap="round" style="filter:drop-shadow(0 0 8px rgba(255,61,61,0.8));stroke-dasharray:100;stroke-dashoffset:100;animation:texta-draw 0.28s 0.22s ease-out forwards;" fill="none"/></svg>`;
     const hOverlay = finished && sel===m.home ? (isDraw || m.winner===m.home ? `<div class="result-overlay">${textaCircle}</div>` : `<div class="result-overlay">${textaCross}</div>`) : '';
     const aOverlay = finished && sel===m.away ? (isDraw || m.winner===m.away ? `<div class="result-overlay">${textaCircle}</div>` : `<div class="result-overlay">${textaCross}</div>`) : '';
     const isPending = pendingTips[m.id]&&pendingTips[m.id]!==saved;
@@ -5706,16 +5706,6 @@ window.addEventListener('load', () => {
           <span class="wn-swipe-arrow">←</span>
           <span>Swipe a locked match card left to reveal</span>
         </div>
-      </div>
-    </div>
-
-    <div class="wn-feature">
-      <div class="wn-feature-icon" style="font-size:22px;margin-top:3px;">
-        <svg viewBox="0 0 36 36" fill="none" width="32" height="32" xmlns="http://www.w3.org/2000/svg" style="overflow:visible;display:block"><ellipse cx="18" cy="18" rx="13" ry="11" stroke="#00c853" stroke-width="2.5" stroke-linecap="round" transform="rotate(-5 18 18)" style="stroke-dasharray:85;stroke-dashoffset:0;"/></svg>
-      </div>
-      <div class="wn-feature-body">
-        <div class="wn-feature-title">Texta-style correct & incorrect markers</div>
-        <div class="wn-feature-desc">When results are in, a hand-drawn green circle appears over your correct pick and a red cross marks the wrong one — no more plain emojis.</div>
       </div>
     </div>
 
