@@ -1777,9 +1777,10 @@ function renderTipMatches() {
     const roundOrder = round?.order || 1;
     const hPts=pts(m.homeOdds,roundOrder), aPts=pts(m.awayOdds,roundOrder), finished=!!m.winner;
     const isDraw = finished && m.winner==='Draw';
-    const hClass = finished?(isDraw?'winner-correct':(m.winner===m.home?'winner-correct':(sel===m.home?'winner-wrong':'')))
+    const userGotItWrong = finished && !isDraw && sel && sel !== m.winner;
+    const hClass = finished?(isDraw?'winner-correct':(m.winner===m.home?(userGotItWrong?'locked':'winner-correct'):(sel===m.home?'winner-wrong':'locked')))
       :locked?(sel===m.home?'selected locked':'locked'):(sel===m.home?'selected':'');
-    const aClass = finished?(isDraw?'winner-correct':(m.winner===m.away?'winner-correct':(sel===m.away?'winner-wrong':'')))
+    const aClass = finished?(isDraw?'winner-correct':(m.winner===m.away?(userGotItWrong?'locked':'winner-correct'):(sel===m.away?'winner-wrong':'locked')))
       :locked?(sel===m.away?'selected locked':'locked'):(sel===m.away?'selected':'');
     // Result overlays — only show on the selected button
     // Hand-drawn texta overlays — fills button without affecting layout
