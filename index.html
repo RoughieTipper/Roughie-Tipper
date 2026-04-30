@@ -154,13 +154,11 @@ tr:hover .rank-3{box-shadow:0 0 12px rgba(205,127,50,0.5);transform:scale(1.1);}
 .team-btn.winner-correct::before{opacity:0 !important;}
 .team-btn.winner-wrong{border-color:var(--red);background:rgba(255,61,61,.2) !important;opacity:.7;}
 .team-btn.winner-wrong::before{opacity:0 !important;}
-/* Result overlays */
+@keyframes texta-draw{to{stroke-dashoffset:0}}
+/* Result overlays — SVG texta style */
 .result-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:5;}
-.result-overlay-tick{font-size:44px;filter:drop-shadow(0 2px 8px rgba(0,200,83,0.7));animation:score-pop .3s ease;}
-.result-overlay-cross{font-size:44px;filter:drop-shadow(0 2px 8px rgba(255,61,61,0.7));animation:score-pop .3s ease;}
-@media(max-width:600px){
-  .result-overlay-tick,.result-overlay-cross{font-size:30px;}
-}
+.result-overlay svg{width:72px;height:72px;animation:score-pop .35s cubic-bezier(0.34,1.56,0.64,1);}
+@media(max-width:600px){.result-overlay svg{width:52px;height:52px;}}
 .team-btn-inner{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:6px;flex-wrap:nowrap;overflow:hidden;}
 .team-badge-wrap{flex-shrink:0;transition:transform var(--transition-fast);}
 .team-btn:not(.locked):hover .team-badge-wrap{transform:scale(1.1);}
@@ -327,9 +325,43 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
 .team-loser-strike{position:relative;display:inline;color:#ff4d4d!important;}
 .team-loser-strike::after{content:'';position:absolute;left:-3px;right:-3px;top:48%;height:3px;background:#ff4d4d;transform:rotate(-1.5deg);border-radius:2px;opacity:0.85;}
 
-/* ── BOTTOM LADDER TABS ── */
-/* Admin tab hidden by default, shown when body has .show-admin-tab */
-#lbt-admin { display: none; }
+/* ── WHATS NEW MODAL ── */
+#whats-new-modal{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);display:none;align-items:flex-end;justify-content:center;padding:0;backdrop-filter:blur(4px);}
+#whats-new-modal.open{display:flex;}
+.whats-new-sheet{background:var(--card);border:1px solid var(--border);border-radius:24px 24px 0 0;width:100%;max-width:520px;padding:28px 24px 40px;animation:sheet-up .35s cubic-bezier(0.34,1.1,0.64,1);max-height:90vh;overflow-y:auto;}
+@keyframes sheet-up{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+.whats-new-pill{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 20px;}
+.whats-new-title{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1.5px;color:var(--text);margin-bottom:4px;}
+.whats-new-title span{color:var(--green);}
+.whats-new-sub{font-size:13px;color:var(--muted);margin-bottom:22px;line-height:1.5;}
+.wn-feature{display:flex;align-items:flex-start;gap:14px;background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:10px;}
+.wn-feature-icon{font-size:28px;flex-shrink:0;line-height:1;margin-top:1px;}
+.wn-feature-body{}
+.wn-feature-title{font-weight:700;font-size:14px;color:var(--text);margin-bottom:3px;}
+.wn-feature-desc{font-size:13px;color:var(--muted);line-height:1.5;}
+.wn-swipe-demo{display:flex;align-items:center;gap:6px;margin-top:8px;padding:8px 12px;background:var(--navy);border-radius:8px;font-size:12px;color:var(--muted);}
+.wn-swipe-arrow{font-size:16px;animation:swipe-bounce 1.5s ease-in-out infinite;}
+
+.match-card-outer{position:relative;overflow:hidden;border-radius:14px;margin-bottom:12px;}
+.match-card-inner{position:relative;z-index:1;transition:transform 0.32s cubic-bezier(0.4,0,0.2,1);will-change:transform;cursor:default;}
+.match-card-inner.swiped{transform:translateX(-100%);}
+.match-reveal-panel{position:absolute;inset:0;z-index:0;background:var(--card2);border:1px solid var(--border);border-radius:14px;overflow-y:auto;padding:16px 18px;}
+.swipe-hint{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-top:8px;opacity:0.7;pointer-events:none;user-select:none;}
+.swipe-hint-arrow{animation:swipe-bounce 1.8s ease-in-out infinite;}
+@keyframes swipe-bounce{0%,100%{transform:translateX(0)}50%{transform:translateX(-5px)}}
+.tips-group-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(30,48,84,0.5);}
+.tips-group-row:last-child{border-bottom:none;}
+.tips-group-team{font-weight:700;font-size:13px;white-space:nowrap;min-width:90px;}
+.tips-group-tippers{display:flex;flex-wrap:wrap;gap:6px;}
+.tipper-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;background:var(--card);border:1px solid var(--border);}
+.tipper-chip.chip-me{border-color:var(--green);color:var(--green);background:rgba(0,200,83,0.08);}
+.tipper-chip .chip-rank{font-family:'Bebas Neue',sans-serif;font-size:14px;color:var(--muted);}
+.reveal-back-btn{display:flex;align-items:center;gap:5px;background:none;border:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;padding:0;margin-bottom:12px;font-weight:600;}
+.reveal-back-btn:hover{color:var(--text);}
+
+/* Hide Results tab from bottom nav since it's merged into My Tips */
+#lbt-results{display:none !important;}
+
 body.show-admin-tab #lbt-admin { display: flex; }
 
 #ladder-bottom-tabs {
@@ -669,6 +701,22 @@ function updateNavLabels() {
   if (roundsBtn) roundsBtn.textContent = sportTerm('results').toUpperCase();
 }
 
+// ── WHAT'S NEW MODAL ─────────────────────────────────────────
+const WHATS_NEW_KEY = 'whats_new_swipe_v1';
+function showWhatsNewModal() {
+  if (localStorage.getItem(WHATS_NEW_KEY)) return;
+  const modal = document.getElementById('whats-new-modal');
+  if (modal) modal.classList.add('open');
+}
+function dismissWhatsNew() {
+  localStorage.setItem(WHATS_NEW_KEY, '1');
+  const modal = document.getElementById('whats-new-modal');
+  if (modal) {
+    modal.classList.remove('open');
+  }
+}
+window.dismissWhatsNew = dismissWhatsNew;
+
 function showScoringChangeBanner() {
   const key = 'scoring_change_v1';
   if (localStorage.getItem(key)) return;
@@ -799,6 +847,7 @@ onAuthStateChanged(auth, async user => {
         setTimeout(showReportCardIfNotWinner, 5000);
         setTimeout(showNewUrlBanner, 2000);
         setTimeout(showScoringChangeBanner, 3500);
+        setTimeout(showWhatsNewModal, 1500);
         const storedJoin = sessionStorage.getItem('pendingJoin');
         if (storedJoin) {
           sessionStorage.removeItem('pendingJoin');
@@ -1719,8 +1768,10 @@ function renderTipMatches() {
     const aClass = finished?(isDraw?'winner-correct':(m.winner===m.away?'winner-correct':(sel===m.away?'winner-wrong':'')))
       :locked?(sel===m.away?'selected locked':'locked'):(sel===m.away?'selected':'');
     // Result overlays — only show on the selected button
-    const hOverlay = finished && sel===m.home ? (isDraw || m.winner===m.home ? '<div class="result-overlay"><span class="result-overlay-tick">✅</span></div>' : '<div class="result-overlay"><span class="result-overlay-cross">❌</span></div>') : '';
-    const aOverlay = finished && sel===m.away ? (isDraw || m.winner===m.away ? '<div class="result-overlay"><span class="result-overlay-tick">✅</span></div>' : '<div class="result-overlay"><span class="result-overlay-cross">❌</span></div>') : '';
+    const textaCircle = `<svg viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg" style="overflow:visible"><ellipse cx="36" cy="36" rx="27" ry="23" stroke="#00c853" stroke-width="4.5" stroke-linecap="round" transform="rotate(-5 36 36)" style="filter:drop-shadow(0 0 10px rgba(0,200,83,0.8));stroke-dasharray:175;stroke-dashoffset:175;animation:texta-draw 0.4s ease-out forwards;"/></svg>`;
+    const textaCross = `<svg viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg" style="overflow:visible"><line x1="15" y1="15" x2="57" y2="57" stroke="#ff3d3d" stroke-width="5.5" stroke-linecap="round" style="filter:drop-shadow(0 0 8px rgba(255,61,61,0.9));stroke-dasharray:59;stroke-dashoffset:59;animation:texta-draw 0.25s ease-out forwards;"/><line x1="57" y1="15" x2="15" y2="57" stroke="#ff3d3d" stroke-width="5.5" stroke-linecap="round" style="filter:drop-shadow(0 0 8px rgba(255,61,61,0.9));stroke-dasharray:59;stroke-dashoffset:59;animation:texta-draw 0.25s 0.2s ease-out forwards;"/></svg>`;
+    const hOverlay = finished && sel===m.home ? (isDraw || m.winner===m.home ? `<div class="result-overlay">${textaCircle}</div>` : `<div class="result-overlay">${textaCross}</div>`) : '';
+    const aOverlay = finished && sel===m.away ? (isDraw || m.winner===m.away ? `<div class="result-overlay">${textaCircle}</div>` : `<div class="result-overlay">${textaCross}</div>`) : '';
     const isPending = pendingTips[m.id]&&pendingTips[m.id]!==saved;
     const isGenerated = !!myTips['gen_'+m.id];
     const isDrawMatch = finished && m.winner==='Draw';
@@ -1763,32 +1814,138 @@ function renderTipMatches() {
     } else if (isFirstMatch && locked && !savedMargin) {
       marginInput = `<div style="margin-top:10px;font-size:12px;color:var(--muted);">&#x1F3AF; No margin entered &mdash; auto: 1pt</div>`;
     }
-    return `<div class="match-card ${sel?'tipped':''}">
-      <div class="match-meta">📅 ${formatMatchDate(m.date)} ${m.time?'@ '+to12hr(m.time):''} ${m.venue?'· 📍'+escHtml(m.venue):''} &nbsp;·&nbsp; ${round.name}
-        ${locked&&!finished?'<span class="result-badge badge-pending" style="margin-left:6px;">🔒 Tips Locked</span>':''}
+    // ── Build who-tipped-who reveal panel (locked/finished matches only) ──
+    let revealPanel = '';
+    let swipeHint = '';
+    if (locked) {
+      const compUserIds = currentCompId
+        ? Object.entries(allUsers).filter(([uid,u])=>(u.compIds||[]).includes(currentCompId)).map(([uid])=>uid)
+        : Object.keys(allUsers);
+      // Rank tippers by leaderboard position
+      const scores = calcScoresForUsers(compUserIds);
+      const rankMap = {}; scores.forEach((s,i) => { rankMap[s.uid] = i+1; });
+      const groups = {};
+      compUserIds.forEach(uid=>{
+        const u=allUsers[uid]; if(!u) return;
+        const savedPick=(allTips[uid]||{})[m.id];
+        const isAuto = !savedPick && locked;
+        const pick = savedPick||(isAuto?m.away:null);
+        if(!pick) return;
+        const isGenerated=!!(allTips[uid]||{})['gen_'+m.id];
+        const marginGuess=(mIdx===0&&(allMargins[uid]||{})[m.id])?parseInt((allMargins[uid]||{})[m.id]):null;
+        if(!groups[pick]) groups[pick]=[];
+        groups[pick].push({uid,u,isAuto,isGenerated,marginGuess,rank:rankMap[uid]||999});
+      });
+      const isDrawResult = finished && m.winner==='Draw';
+      const orderedTeams=[m.home,m.away].filter(t=>groups[t]);
+      const noTips=orderedTeams.length===0;
+      const groupHtml = noTips
+        ? '<div style="color:var(--muted);font-size:13px;padding:8px 0;">No tips yet</div>'
+        : orderedTeams.map(team=>{
+            const tippers=[...groups[team]].sort((a,b)=>a.rank-b.rank);
+            const correct=m.winner&&team===m.winner;
+            const wrong=m.winner&&team!==m.winner&&!isDrawResult;
+            const teamOdds=team===m.home?m.homeOdds:m.awayOdds;
+            const teamPts=pts(teamOdds,roundOrder);
+            const teamColor=correct?'var(--green)':wrong?'var(--red)':'var(--text)';
+            const resultTag=isDrawResult?`<span style="color:var(--green);font-size:10px;font-weight:700;margin-left:5px;">🤝 +1</span>`
+              :correct?`<span style="color:var(--green);font-size:10px;font-weight:700;margin-left:5px;">✓ +${teamPts}pts</span>`
+              :wrong?`<span style="color:var(--red);font-size:10px;font-weight:700;margin-left:5px;">✗</span>`:'';
+            const chipHtml=tippers.map(({uid,u,isAuto,isGenerated,marginGuess})=>{
+              const isMe=uid===currentUser.uid;
+              const name=sanitiseNick(u.nick||u.name);
+              const autoTag=isAuto?'<span style="color:var(--gold);font-size:9px;margin-left:2px;">AUTO</span>':'';
+              const genTag=isGenerated?' 🎲':'';
+              const marginTag=marginGuess?`<span style="color:var(--muted);font-size:10px;margin-left:2px;">(${marginGuess})</span>`:'';
+              return `<span class="tipper-chip${isMe?' chip-me':''}" title="${escHtml(u.name)}"><span class="chip-rank">#${rankMap[uid]||'?'}</span>${escHtml(name)}${autoTag}${genTag}${marginTag}</span>`;
+            }).join('');
+            return `<div class="tips-group-row">
+              <div class="tips-group-team" style="color:${teamColor};">${clubBadge(team,20)}<span style="margin-left:5px;">${escHtml(team)}</span>${resultTag}</div>
+              <div class="tips-group-tippers">${chipHtml||'<span style="color:var(--muted);font-size:12px;">No tips</span>'}</div>
+            </div>`;
+          }).join('');
+      revealPanel=`<div class="match-reveal-panel">
+        <button class="reveal-back-btn" onclick="swipeMatchBack(event,'${m.id}')">← Back to my tip</button>
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;font-weight:700;">Who tipped who · sorted by ladder position</div>
+        ${groupHtml}
+      </div>`;
+      if (!finished) swipeHint=`<div class="swipe-hint"><span class="swipe-hint-arrow">←</span><span>Swipe left to see who everyone tipped</span></div>`;
+      else swipeHint=`<div class="swipe-hint" style="opacity:0.5;"><span class="swipe-hint-arrow">←</span><span>Swipe left to see who everyone tipped</span></div>`;
+    }
+    return `<div class="match-card-outer" id="match-outer-${m.id}">
+      ${revealPanel}
+      <div class="match-card-inner match-card ${sel?'tipped':''}" id="match-inner-${m.id}" ${locked?`data-swipeable="1" data-match-id="${m.id}"`:''}><div class="match-meta">📅 ${formatMatchDate(m.date)} ${m.time?'@ '+to12hr(m.time):''} ${m.venue?'· 📍'+escHtml(m.venue):''} &nbsp;·&nbsp; ${round.name}
+        ${locked&&!finished?'<span class="result-badge badge-pending" style="margin-left:6px;">🔒 Locked</span>':''}
         ${isDefaultAway&&!finished?'<span class="result-badge badge-loss" style="margin-left:6px;">⚠️ Auto: Away</span>':''}
         ${finished?'<span class="result-badge badge-win" style="margin-left:6px;">✓ Result In</span>':''}
       </div>
       ${marginInput}
       <div class="match-teams">
-        <div class="team-btn ${hClass}"  onclick="${locked||finished?'':'pickTip(\''+m.id+'\',\''+m.home.replace(/'/g,"\\'")+'\')'}">
+        <div class="team-btn ${hClass}" onclick="${locked||finished?'':'pickTip(\''+m.id+'\',\''+m.home.replace(/'/g,"\\'")+'\')'}">
           ${hOverlay}
           <div class="team-btn-inner"><div class="team-badge-wrap">${clubBadge(m.home,44)}</div><div class="team-name">${teamNameHtml(m.home)}</div></div>
           <div class="odds-pts">${hPts} pt${hPts>1?'s':''}</div>
           ${m.homeOdds>=2.5?'<div class="roughie-tag">ROUGHIE</div>':''}
         </div>
         <div class="vs-divider">VS</div>
-        <div class="team-btn ${aClass}"  onclick="${locked||finished?'':'pickTip(\''+m.id+'\',\''+m.away.replace(/'/g,"\\'")+'\')'}">
+        <div class="team-btn ${aClass}" onclick="${locked||finished?'':'pickTip(\''+m.id+'\',\''+m.away.replace(/'/g,"\\'")+'\')'}">
           ${aOverlay}
           <div class="team-btn-inner"><div class="team-badge-wrap">${clubBadge(m.away,44)}</div><div class="team-name">${teamNameHtml(m.away)}</div></div>
           <div class="odds-pts">${aPts} pt${aPts>1?'s':''}</div>
           ${m.awayOdds>=2.5?'<div class="roughie-tag">ROUGHIE</div>':''}
         </div>
-      </div>${earnedDiv}</div>`;
+      </div>${earnedDiv}${swipeHint}</div></div>`;
   }).join('')||'<div class="card" style="text-align:center;color:var(--muted);">No matches in this round.</div>';
   el('save-tips-btn').style.display='none'; // always hidden - autosave handles everything
   updateAutosaveLabel();
+  initSwipeListeners();
 }
+
+// ── SWIPE-TO-REVEAL: touch & mouse handlers ──────────────────
+function initSwipeListeners() {
+  const container = el('tip-matches');
+  if (!container) return;
+  let startX=0, startY=0, activeEl=null, swiped=false;
+
+  function onStart(e) {
+    const card = e.target.closest('[data-swipeable="1"]');
+    if (!card) return;
+    activeEl = card;
+    swiped = card.classList.contains('swiped');
+    const touch = e.touches ? e.touches[0] : e;
+    startX = touch.clientX;
+    startY = touch.clientY;
+  }
+  function onEnd(e) {
+    if (!activeEl) return;
+    const touch = e.changedTouches ? e.changedTouches[0] : e;
+    const dx = touch.clientX - startX;
+    const dy = touch.clientY - startY;
+    if (Math.abs(dy) > Math.abs(dx) * 1.5) { activeEl=null; return; } // vertical scroll, ignore
+    const matchId = activeEl.dataset.matchId;
+    if (!swiped && dx < -40) {
+      // Swipe left → reveal
+      activeEl.classList.add('swiped');
+    } else if (swiped && dx > 40) {
+      // Swipe right → return
+      activeEl.classList.remove('swiped');
+    }
+    activeEl = null;
+  }
+
+  container.addEventListener('touchstart', onStart, {passive:true});
+  container.addEventListener('touchend', onEnd, {passive:true});
+  // Mouse fallback for desktop
+  container.addEventListener('mousedown', onStart);
+  container.addEventListener('mouseup', onEnd);
+}
+
+function swipeMatchBack(e, matchId) {
+  e.stopPropagation();
+  const inner = el('match-inner-'+matchId);
+  if (inner) inner.classList.remove('swiped');
+}
+window.swipeMatchBack = swipeMatchBack;
 
 function pickMargin(matchId, val) {
   if (val) pendingTips['margin_'+matchId] = val;
@@ -5533,7 +5690,48 @@ window.addEventListener('load', () => {
   </div>
 </div>
 
-<!-- MENTION SUGGESTIONS POPUP -->
+<!-- WHATS NEW UPDATE MODAL -->
+<div id="whats-new-modal" onclick="if(event.target===this)dismissWhatsNew()">
+  <div class="whats-new-sheet">
+    <div class="whats-new-pill"></div>
+    <div class="whats-new-title">WHAT'S <span>NEW</span> 🏉</div>
+    <div class="whats-new-sub">We've made some improvements to the app — here's what's changed.</div>
+
+    <div class="wn-feature">
+      <div class="wn-feature-icon">👆</div>
+      <div class="wn-feature-body">
+        <div class="wn-feature-title">See who everyone tipped — right on My Tips</div>
+        <div class="wn-feature-desc">Once a match kicks off and tips are locked, swipe any match card left to see a full breakdown of who tipped who — sorted by their ladder position so you can see how it affects the people directly above and below you.</div>
+        <div class="wn-swipe-demo">
+          <span class="wn-swipe-arrow">←</span>
+          <span>Swipe a locked match card left to reveal</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="wn-feature">
+      <div class="wn-feature-icon" style="font-size:22px;margin-top:3px;">
+        <svg viewBox="0 0 36 36" fill="none" width="32" height="32" xmlns="http://www.w3.org/2000/svg" style="overflow:visible;display:block"><ellipse cx="18" cy="18" rx="13" ry="11" stroke="#00c853" stroke-width="2.5" stroke-linecap="round" transform="rotate(-5 18 18)" style="stroke-dasharray:85;stroke-dashoffset:0;"/></svg>
+      </div>
+      <div class="wn-feature-body">
+        <div class="wn-feature-title">Texta-style correct & incorrect markers</div>
+        <div class="wn-feature-desc">When results are in, a hand-drawn green circle appears over your correct pick and a red cross marks the wrong one — no more plain emojis.</div>
+      </div>
+    </div>
+
+    <div class="wn-feature">
+      <div class="wn-feature-icon">🗑️</div>
+      <div class="wn-feature-body">
+        <div class="wn-feature-title">Results tab removed</div>
+        <div class="wn-feature-desc">The separate Results tab is gone — everything you need is now on your My Tips page. Swipe any locked match to see the full picture.</div>
+      </div>
+    </div>
+
+    <button class="btn btn-full" style="margin-top:18px;font-size:15px;padding:14px;" onclick="dismissWhatsNew()">Got it — let's tip! 🏉</button>
+  </div>
+</div>
+
+
 <script>
 document.addEventListener('change', function(e) {
   if (e.target.id === 'mod-ack-checkbox') {
