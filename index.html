@@ -1382,21 +1382,29 @@ function calcScoresForUsers(userIds) {
     let totalMarginDiff = 0;
     rounds.forEach(r=>{
       const firstMatch = (r.matches||[])[0];
-      if(!firstMatch||!firstMatch.winner||!firstMatch.actualMargin) return;
+      if(!firstMatch||!firstMatch.winner) return;
+      const isDraw = firstMatch.winner === 'Draw';
+      const actualMargin = isDraw ? 0 : (firstMatch.actualMargin || null);
+      if(!isDraw && !actualMargin) return;
       const { pick: marginPick } = getEffectivePick(myTips, firstMatch);
       const guessedMargin = myMargins[firstMatch.id] ? parseInt(myMargins[firstMatch.id]) : 1;
-      const tippedWinner = marginPick === firstMatch.winner;
-      const diff = tippedWinner ? Math.abs(firstMatch.actualMargin - guessedMargin) : firstMatch.actualMargin + 1 + guessedMargin;
+      // In a draw, both teams are winners so margin miss = |guessed - 0|
+      const tippedWinner = isDraw ? !!marginPick : marginPick === firstMatch.winner;
+      const diff = tippedWinner ? Math.abs(actualMargin - guessedMargin) : actualMargin + 1 + guessedMargin;
       totalMarginDiff += diff;
     });
     const roundMarginDiffs = {};
     rounds.forEach(r=>{
       const firstMatch = (r.matches||[])[0];
-      if(!firstMatch||!firstMatch.winner||!firstMatch.actualMargin) return;
+      if(!firstMatch||!firstMatch.winner) return;
+      const isDraw = firstMatch.winner === 'Draw';
+      const actualMargin = isDraw ? 0 : (firstMatch.actualMargin || null);
+      if(!isDraw && !actualMargin) return;
       const { pick: marginPick } = getEffectivePick(myTips, firstMatch);
       const guessedMargin = myMargins[firstMatch.id] ? parseInt(myMargins[firstMatch.id]) : 1;
-      const tippedWinner = marginPick === firstMatch.winner;
-      roundMarginDiffs[r.id] = tippedWinner ? Math.abs(firstMatch.actualMargin - guessedMargin) : firstMatch.actualMargin + 1 + guessedMargin;
+      // In a draw, both teams are winners so margin miss = |guessed - 0|
+      const tippedWinner = isDraw ? !!marginPick : marginPick === firstMatch.winner;
+      roundMarginDiffs[r.id] = tippedWinner ? Math.abs(actualMargin - guessedMargin) : actualMargin + 1 + guessedMargin;
     });
     return {uid,name:u.name,nick:u.nick,avatar:u.avatar||'',totalPts,correct,roughieBonus,accuracy,roundPts,roundWins,tipped,totalMarginDiff,roundMarginDiffs};
   }).filter(Boolean).sort((a,b)=>b.totalPts-a.totalPts||a.totalMarginDiff-b.totalMarginDiff);
