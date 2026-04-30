@@ -341,25 +341,40 @@ tr:hover .pts-big{animation:score-pop 0.3s ease;}
 .wn-swipe-demo{display:flex;align-items:center;gap:6px;margin-top:8px;padding:8px 12px;background:var(--navy);border-radius:8px;font-size:12px;color:var(--muted);}
 .wn-swipe-arrow{font-size:16px;animation:swipe-bounce 1.5s ease-in-out infinite;}
 
-.match-card-outer{position:relative;overflow:hidden;border-radius:14px;margin-bottom:12px;}
-.match-card-inner{position:relative;z-index:1;transition:transform 0.32s cubic-bezier(0.4,0,0.2,1);will-change:transform;cursor:default;}
-.match-card-inner.swiped{transform:translateX(-100%);}
-.match-reveal-panel{position:absolute;inset:0;z-index:0;background:var(--card2);border:1px solid var(--border);border-radius:14px;overflow-y:auto;padding:16px 18px;}
-.swipe-hint{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-top:8px;opacity:0.7;pointer-events:none;user-select:none;}
-.swipe-hint-arrow{animation:swipe-bounce 1.8s ease-in-out infinite;}
-@keyframes swipe-bounce{0%,100%{transform:translateX(0)}50%{transform:translateX(-5px)}}
-.tips-group-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(30,48,84,0.5);}
-.tips-group-row:last-child{border-bottom:none;}
-.tips-group-team{font-weight:700;font-size:13px;white-space:nowrap;min-width:90px;}
-.tips-group-tippers{display:flex;flex-wrap:wrap;gap:6px;}
-.tipper-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;background:var(--card);border:1px solid var(--border);}
-.tipper-chip.chip-me{border-color:var(--green);color:var(--green);background:rgba(0,200,83,0.08);}
-.tipper-chip .chip-rank{font-family:'Bebas Neue',sans-serif;font-size:14px;color:var(--muted);}
-.reveal-back-btn{display:flex;align-items:center;gap:5px;background:none;border:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;padding:0;margin-bottom:12px;font-weight:600;}
-.reveal-back-btn:hover{color:var(--text);}
+/* ── WHO TIPPED WHO MODAL ── */
+#tips-reveal-modal{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.72);display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(3px);}
+#tips-reveal-modal.open{display:flex;}
+.tips-reveal-sheet{background:var(--card);border:1px solid var(--border);border-radius:24px 24px 0 0;width:100%;max-width:560px;padding:20px 20px 36px;animation:sheet-up .3s cubic-bezier(0.34,1.1,0.64,1);max-height:82vh;overflow-y:auto;}
+.tips-reveal-pill{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px;}
+.tips-reveal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.tips-reveal-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;color:var(--text);}
+.tips-reveal-sub{font-size:11px;color:var(--muted);margin-top:1px;}
+.tips-reveal-close{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:0 4px;line-height:1;flex-shrink:0;}
+.tips-reveal-close:hover{color:var(--text);}
+.tips-reveal-cols{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.tips-reveal-col{background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:12px 11px;}
+.tips-reveal-col.col-correct{border-color:rgba(0,200,83,0.4);background:rgba(0,200,83,0.05);}
+.tips-reveal-col.col-wrong{border-color:rgba(255,61,61,0.3);background:rgba(255,61,61,0.04);}
+.tips-reveal-col-header{display:flex;align-items:center;gap:6px;margin-bottom:10px;padding-bottom:9px;border-bottom:1px solid var(--border);}
+.tips-reveal-col-team{font-weight:800;font-size:12px;line-height:1.2;flex:1;min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.tips-reveal-col-result{font-family:'Bebas Neue',sans-serif;font-size:15px;white-space:nowrap;flex-shrink:0;}
+.tips-reveal-tipper{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(30,48,84,0.35);font-size:12px;line-height:1.3;}
+.tips-reveal-tipper:last-child{border-bottom:none;}
+.tips-reveal-tipper.is-me{color:var(--green);font-weight:700;}
+.tips-reveal-rank{font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--muted);min-width:22px;flex-shrink:0;}
+.tips-reveal-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tips-reveal-no-tips{color:var(--muted);font-size:12px;font-style:italic;padding:6px 0;}
+
+/* Tap hint on locked match cards */
+.tap-hint{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);margin-top:8px;opacity:0.8;cursor:pointer;user-select:none;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:20px;padding:4px 11px;transition:all 0.15s;}
+.tap-hint:hover,.tap-hint:active{opacity:1;border-color:rgba(255,255,255,0.18);background:rgba(255,255,255,0.07);}
+
+.match-card-outer{border-radius:14px;margin-bottom:12px;}
+.match-card-inner{position:relative;}
 
 /* Hide Results tab from bottom nav since it's merged into My Tips */
 #lbt-results{display:none !important;}
+
 
 body.show-admin-tab #lbt-admin { display: flex; }
 
@@ -701,7 +716,7 @@ function updateNavLabels() {
 }
 
 // ── WHAT'S NEW MODAL ─────────────────────────────────────────
-const WHATS_NEW_KEY = 'whats_new_swipe_v1';
+const WHATS_NEW_KEY = 'whats_new_tap_v2';
 function showWhatsNewModal() {
   if (localStorage.getItem(WHATS_NEW_KEY)) return;
   const modal = document.getElementById('whats-new-modal');
@@ -1816,67 +1831,13 @@ function renderTipMatches() {
     } else if (isFirstMatch && locked && !savedMargin) {
       marginInput = `<div style="margin-top:10px;font-size:12px;color:var(--muted);">&#x1F3AF; No margin entered &mdash; auto: 1pt</div>`;
     }
-    // ── Build who-tipped-who reveal panel (locked/finished matches only) ──
-    let revealPanel = '';
-    let swipeHint = '';
+    // ── Build data for tap-to-open modal ──
+    let tapHint = '';
     if (locked) {
-      const compUserIds = currentCompId
-        ? Object.entries(allUsers).filter(([uid,u])=>(u.compIds||[]).includes(currentCompId)).map(([uid])=>uid)
-        : Object.keys(allUsers);
-      // Rank tippers by leaderboard position
-      const scores = calcScoresForUsers(compUserIds);
-      const rankMap = {}; scores.forEach((s,i) => { rankMap[s.uid] = i+1; });
-      const groups = {};
-      compUserIds.forEach(uid=>{
-        const u=allUsers[uid]; if(!u) return;
-        const savedPick=(allTips[uid]||{})[m.id];
-        const isAuto = !savedPick && locked;
-        const pick = savedPick||(isAuto?m.away:null);
-        if(!pick) return;
-        const isGenerated=!!(allTips[uid]||{})['gen_'+m.id];
-        const marginGuess=(mIdx===0&&(allMargins[uid]||{})[m.id])?parseInt((allMargins[uid]||{})[m.id]):null;
-        if(!groups[pick]) groups[pick]=[];
-        groups[pick].push({uid,u,isAuto,isGenerated,marginGuess,rank:rankMap[uid]||999});
-      });
-      const isDrawResult = finished && m.winner==='Draw';
-      const orderedTeams=[m.home,m.away].filter(t=>groups[t]);
-      const noTips=orderedTeams.length===0;
-      const groupHtml = noTips
-        ? '<div style="color:var(--muted);font-size:13px;padding:8px 0;">No tips yet</div>'
-        : orderedTeams.map(team=>{
-            const tippers=[...groups[team]].sort((a,b)=>a.rank-b.rank);
-            const correct=m.winner&&team===m.winner;
-            const wrong=m.winner&&team!==m.winner&&!isDrawResult;
-            const teamOdds=team===m.home?m.homeOdds:m.awayOdds;
-            const teamPts=pts(teamOdds,roundOrder);
-            const teamColor=correct?'var(--green)':wrong?'var(--red)':'var(--text)';
-            const resultTag=isDrawResult?`<span style="color:var(--green);font-size:10px;font-weight:700;margin-left:5px;">🤝 +1</span>`
-              :correct?`<span style="color:var(--green);font-size:10px;font-weight:700;margin-left:5px;">✓ +${teamPts}pts</span>`
-              :wrong?`<span style="color:var(--red);font-size:10px;font-weight:700;margin-left:5px;">✗</span>`:'';
-            const chipHtml=tippers.map(({uid,u,isAuto,isGenerated,marginGuess})=>{
-              const isMe=uid===currentUser.uid;
-              const name=sanitiseNick(u.nick||u.name);
-              const autoTag=isAuto?'<span style="color:var(--gold);font-size:9px;margin-left:2px;">AUTO</span>':'';
-              const genTag=isGenerated?' 🎲':'';
-              const marginTag=marginGuess?`<span style="color:var(--muted);font-size:10px;margin-left:2px;">(${marginGuess})</span>`:'';
-              return `<span class="tipper-chip${isMe?' chip-me':''}" title="${escHtml(u.name)}"><span class="chip-rank">#${rankMap[uid]||'?'}</span>${escHtml(name)}${autoTag}${genTag}${marginTag}</span>`;
-            }).join('');
-            return `<div class="tips-group-row">
-              <div class="tips-group-team" style="color:${teamColor};">${clubBadge(team,20)}<span style="margin-left:5px;">${escHtml(team)}</span>${resultTag}</div>
-              <div class="tips-group-tippers">${chipHtml||'<span style="color:var(--muted);font-size:12px;">No tips</span>'}</div>
-            </div>`;
-          }).join('');
-      revealPanel=`<div class="match-reveal-panel">
-        <button class="reveal-back-btn" onclick="swipeMatchBack(event,'${m.id}')">← Back to my tip</button>
-        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;font-weight:700;">Who tipped who · sorted by ladder position</div>
-        ${groupHtml}
-      </div>`;
-      if (!finished) swipeHint=`<div class="swipe-hint"><span class="swipe-hint-arrow">←</span><span>Swipe left to see who everyone tipped</span></div>`;
-      else swipeHint=`<div class="swipe-hint" style="opacity:0.5;"><span class="swipe-hint-arrow">←</span><span>Swipe left to see who everyone tipped</span></div>`;
+      tapHint = `<div class="tap-hint" onclick="openTipsReveal('${m.id}','${escHtml(m.home).replace(/'/g,"\\'")}','${escHtml(m.away).replace(/'/g,"\\'")}',${roundOrder})">👥 See who everyone tipped</div>`;
     }
     return `<div class="match-card-outer" id="match-outer-${m.id}">
-      ${revealPanel}
-      <div class="match-card-inner match-card ${sel?'tipped':''}" id="match-inner-${m.id}" ${locked?`data-swipeable="1" data-match-id="${m.id}"`:''}><div class="match-meta">📅 ${formatMatchDate(m.date)} ${m.time?'@ '+to12hr(m.time):''} ${m.venue?'· 📍'+escHtml(m.venue):''} &nbsp;·&nbsp; ${round.name}
+      <div class="match-card-inner match-card ${sel?'tipped':''}" id="match-inner-${m.id}"><div class="match-meta">📅 ${formatMatchDate(m.date)} ${m.time?'@ '+to12hr(m.time):''} ${m.venue?'· 📍'+escHtml(m.venue):''} &nbsp;·&nbsp; ${round.name}
         ${locked&&!finished?'<span class="result-badge badge-pending" style="margin-left:6px;">🔒 Locked</span>':''}
         ${isDefaultAway&&!finished?'<span class="result-badge badge-loss" style="margin-left:6px;">⚠️ Auto: Away</span>':''}
         ${finished?'<span class="result-badge badge-win" style="margin-left:6px;">✓ Result In</span>':''}
@@ -1896,58 +1857,114 @@ function renderTipMatches() {
           <div class="odds-pts">${aPts} pt${aPts>1?'s':''}</div>
           ${m.awayOdds>=2.5?'<div class="roughie-tag">ROUGHIE</div>':''}
         </div>
-      </div>${earnedDiv}${swipeHint}</div></div>`;
+      </div>${earnedDiv}${tapHint}</div></div>`;
   }).join('')||'<div class="card" style="text-align:center;color:var(--muted);">No matches in this round.</div>';
   el('save-tips-btn').style.display='none'; // always hidden - autosave handles everything
   updateAutosaveLabel();
-  initSwipeListeners();
 }
 
-// ── SWIPE-TO-REVEAL: touch & mouse handlers ──────────────────
-function initSwipeListeners() {
-  const container = el('tip-matches');
-  if (!container) return;
-  let startX=0, startY=0, activeEl=null, swiped=false;
+// ── WHO TIPPED WHO: tap-to-open modal ────────────────────────
+function openTipsReveal(matchId, home, away, roundOrder) {
+  const modal = document.getElementById('tips-reveal-modal');
+  if (!modal) return;
 
-  function onStart(e) {
-    const card = e.target.closest('[data-swipeable="1"]');
-    if (!card) return;
-    activeEl = card;
-    swiped = card.classList.contains('swiped');
-    const touch = e.touches ? e.touches[0] : e;
-    startX = touch.clientX;
-    startY = touch.clientY;
+  const round = rounds.find(r=>(r.matches||[]).some(m=>m.id===matchId));
+  const m = round ? (round.matches||[]).find(m=>m.id===matchId) : null;
+  if (!m) return;
+
+  const compUserIds = currentCompId
+    ? Object.entries(allUsers).filter(([uid,u])=>(u.compIds||[]).includes(currentCompId)).map(([uid])=>uid)
+    : Object.keys(allUsers);
+
+  const scores = calcScoresForUsers(compUserIds);
+  const rankMap = {}; scores.forEach((s,i) => { rankMap[s.uid] = i+1; });
+
+  const groups = { [m.home]: [], [m.away]: [] };
+  compUserIds.forEach(uid=>{
+    const u = allUsers[uid]; if (!u) return;
+    const savedPick = (allTips[uid]||{})[m.id];
+    const isLocked_ = isLocked(m.date, m.time);
+    const isAuto = !savedPick && isLocked_;
+    const pick = savedPick || (isAuto ? m.away : null);
+    if (!pick) return;
+    const isGenerated = !!(allTips[uid]||{})['gen_'+m.id];
+    const mIdx = (round.matches||[]).indexOf(m);
+    const marginGuess = (mIdx===0 && (allMargins[uid]||{})[m.id]) ? parseInt((allMargins[uid]||{})[m.id]) : null;
+    if (!groups[pick]) groups[pick] = [];
+    groups[pick].push({uid, u, isAuto, isGenerated, marginGuess, rank: rankMap[uid]||999});
+  });
+
+  const finished = !!m.winner;
+  const isDraw = finished && m.winner === 'Draw';
+
+  function buildCol(team) {
+    const tippers = [...(groups[team]||[])].sort((a,b)=>a.rank-b.rank);
+    const isHome = team === m.home;
+    const teamOdds = isHome ? m.homeOdds : m.awayOdds;
+    const teamPts = pts(teamOdds, roundOrder);
+    const correct = finished && !isDraw && m.winner === team;
+    const wrong = finished && !isDraw && m.winner !== team;
+    const colClass = correct ? 'col-correct' : wrong ? 'col-wrong' : '';
+    const resultLabel = isDraw
+      ? `<span class="tips-reveal-col-result" style="color:var(--green);">🤝 +1</span>`
+      : correct
+        ? `<span class="tips-reveal-col-result" style="color:var(--green);">✓ +${teamPts}pt${teamPts>1?'s':''}</span>`
+        : wrong
+          ? `<span class="tips-reveal-col-result" style="color:var(--red);">✗</span>`
+          : '';
+    const teamColor = correct ? 'var(--green)' : wrong ? 'var(--red)' : 'var(--text)';
+    const tipperRows = tippers.length === 0
+      ? `<div class="tips-reveal-no-tips">No tips</div>`
+      : tippers.map(({uid, u, isAuto, isGenerated, marginGuess}) => {
+          const isMe = uid === currentUser.uid;
+          const name = sanitiseNick(u.nick || u.name);
+          const autoTag = isAuto ? ' <span style="color:var(--gold);font-size:9px;">AUTO</span>' : '';
+          const genTag = isGenerated ? ' 🎲' : '';
+          const marginTag = marginGuess ? ` <span style="color:var(--muted);font-size:10px;">(${marginGuess})</span>` : '';
+          return `<div class="tips-reveal-tipper${isMe?' is-me':''}">
+            <span class="tips-reveal-rank">#${rankMap[uid]||'?'}</span>
+            <span class="tips-reveal-name">${escHtml(name)}${autoTag}${genTag}${marginTag}</span>
+          </div>`;
+        }).join('');
+    const count = tippers.length;
+    return `<div class="tips-reveal-col ${colClass}">
+      <div class="tips-reveal-col-header">
+        ${clubBadge(team, 22)}
+        <span class="tips-reveal-col-team" style="color:${teamColor};">${escHtml(team)}</span>
+        ${resultLabel}
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">${count} tipper${count!==1?'s':''}</div>
+      ${tipperRows}
+    </div>`;
   }
-  function onEnd(e) {
-    if (!activeEl) return;
-    const touch = e.changedTouches ? e.changedTouches[0] : e;
-    const dx = touch.clientX - startX;
-    const dy = touch.clientY - startY;
-    if (Math.abs(dy) > Math.abs(dx) * 1.5) { activeEl=null; return; } // vertical scroll, ignore
-    const matchId = activeEl.dataset.matchId;
-    if (!swiped && dx < -40) {
-      // Swipe left → reveal
-      activeEl.classList.add('swiped');
-    } else if (swiped && dx > 40) {
-      // Swipe right → return
-      activeEl.classList.remove('swiped');
-    }
-    activeEl = null;
-  }
 
-  container.addEventListener('touchstart', onStart, {passive:true});
-  container.addEventListener('touchend', onEnd, {passive:true});
-  // Mouse fallback for desktop
-  container.addEventListener('mousedown', onStart);
-  container.addEventListener('mouseup', onEnd);
+  const sheet = modal.querySelector('.tips-reveal-sheet');
+  sheet.innerHTML = `
+    <div class="tips-reveal-pill"></div>
+    <div class="tips-reveal-header">
+      <div>
+        <div class="tips-reveal-title">WHO TIPPED WHO</div>
+        <div class="tips-reveal-sub">Sorted by ladder position · tap outside to close</div>
+      </div>
+      <button class="tips-reveal-close" onclick="closeTipsReveal()">✕</button>
+    </div>
+    <div class="tips-reveal-cols">
+      ${buildCol(m.home)}
+      ${buildCol(m.away)}
+    </div>
+  `;
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
 }
 
-function swipeMatchBack(e, matchId) {
-  e.stopPropagation();
-  const inner = el('match-inner-'+matchId);
-  if (inner) inner.classList.remove('swiped');
+function closeTipsReveal() {
+  const modal = document.getElementById('tips-reveal-modal');
+  if (modal) modal.classList.remove('open');
+  document.body.style.overflow = '';
 }
-window.swipeMatchBack = swipeMatchBack;
+window.openTipsReveal = openTipsReveal;
+window.closeTipsReveal = closeTipsReveal;
+
 
 function pickMargin(matchId, val) {
   if (val) pendingTips['margin_'+matchId] = val;
@@ -5692,6 +5709,11 @@ window.addEventListener('load', () => {
   </div>
 </div>
 
+<!-- WHO TIPPED WHO MODAL -->
+<div id="tips-reveal-modal" onclick="if(event.target===this)closeTipsReveal()">
+  <div class="tips-reveal-sheet"></div>
+</div>
+
 <!-- WHATS NEW UPDATE MODAL -->
 <div id="whats-new-modal" onclick="if(event.target===this)dismissWhatsNew()">
   <div class="whats-new-sheet">
@@ -5703,10 +5725,10 @@ window.addEventListener('load', () => {
       <div class="wn-feature-icon">👆</div>
       <div class="wn-feature-body">
         <div class="wn-feature-title">See who everyone tipped — right on My Tips</div>
-        <div class="wn-feature-desc">Once a match kicks off and tips are locked, swipe any match card left to see a full breakdown of who tipped who — sorted by their ladder position so you can see how it affects the people directly above and below you.</div>
+        <div class="wn-feature-desc">Once a match kicks off and tips are locked, tap the <strong style="color:var(--text);">👥 See who everyone tipped</strong> button on any match card to see a full breakdown — home team on the left, away team on the right, sorted by ladder position so you can see how it affects the people directly above and below you.</div>
         <div class="wn-swipe-demo">
-          <span class="wn-swipe-arrow">←</span>
-          <span>Swipe a locked match card left to reveal</span>
+          <span>👆</span>
+          <span>Tap any locked match to reveal</span>
         </div>
       </div>
     </div>
