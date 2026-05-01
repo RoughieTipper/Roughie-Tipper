@@ -861,6 +861,7 @@ onAuthStateChanged(auth, async user => {
         setTimeout(showReportCardIfNotWinner, 5000);
         setTimeout(showNewUrlBanner, 2000);
         setTimeout(showScoringChangeBanner, 3500);
+        setTimeout(showH2HFeatureBanner, 4500);
         setTimeout(showWhatsNewModal, 1500);
         const storedJoin = sessionStorage.getItem('pendingJoin');
         if (storedJoin) {
@@ -3028,42 +3029,131 @@ async function togglePaid(uid, currentlyPaid) {
   toast(currentlyPaid ? 'Marked as unpaid' : 'Marked as paid 💰');
 }
 
-// ─── SIDE BETS ───────────────────────────────────────────────
-function populateBetTargets() {
-  const sel = el('bet-target'); if(!sel||!currentCompId) return;
-  const memberIds = Object.entries(allUsers).filter(([uid,u])=>(u.compIds||[]).includes(currentCompId) && uid !== currentUser.uid).map(([uid,u])=>({uid,name:u.nick||u.name}));
-  sel.innerHTML = '<option value="">Select who you are challenging...</option>' + memberIds.map(m=>`<option value="${m.uid}">${escHtml(m.name)}</option>`).join('');
+// ─── HEAD-TO-HEAD CHALLENGE ───────────────────────────────────
+
+function getH2HMembers() {
+  if(!currentCompId) return [];
+  return Object.entries(allUsers)
+    .filter(([uid,u])=>(u.compIds||[]).includes(currentCompId) && uid !== currentUser?.uid)
+    .map(([uid,u])=>({uid, name: u.nick||u.name}));
 }
 
-async function proposeBet() {
-  const targetUid = el('bet-target').value, text = el('bet-text').value.trim(), stake = el('bet-stake').value.trim();
-  if(!targetUid){toast('Select who you are challenging',true);return;}
-  if(!text){toast('Enter your bet details',true);return;}
-  if(!stake){toast('Enter the stake',true);return;}
-  const targetUser = allUsers[targetUid];
-  await addDoc(collection(db,'comps',currentCompId,'sidebets'),{ fromUid: currentUser.uid, fromName: userProfile.nick||userProfile.name, toUid: targetUid, toName: targetUser.nick||targetUser.name, text, stake, status: 'open', createdAt: serverTimestamp() });
-  el('bet-text').value=''; el('bet-stake').value=''; el('bet-target').value='';
-  track('side_bet_proposed');
-  toast('Challenge sent! ');
+function addH2HTarget() {
+  const wrap = el('h2h-targets-wrap'); if(!wrap) return;
+  const existing = wrap.querySelectorAll('.h2h-target-select');
+  if(existing.length >= 5){ toast('You can challenge up to 5 tippers at once',true); return; }
+  const idx = existing.length + 1;
+  const sel = document.createElement('select');
+  sel.id = 'h2h-target-' + idx;
+  sel.className = 'h2h-target-select';
+  sel.style.cssText = 'background:var(--card);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:\'DM Sans\',sans-serif;font-size:13px;';
+  sel.innerHTML = '<option value="">Tag another tipper…</option>';
+  populateH2HSelect(sel);
+  wrap.appendChild(sel);
 }
 
-async function acceptBet(betId) {
-  const responderName = userProfile?.nick || userProfile?.name || 'They';
-  await updateDoc(doc(db,'comps',currentCompId,'sidebets',betId),{ status: 'accepted', responseNotify: 'accepted', responderName, respondedAt: serverTimestamp() });
-  track('side_bet_accepted');
-  toast('Bet accepted! Honour system from here 🤝');
+function populateH2HSelects() {
+  const members = getH2HMembers();
+  document.querySelectorAll('.h2h-target-select').forEach(sel=>{
+    const current = sel.value;
+    sel.innerHTML = '<option value="">Tag a tipper to challenge…</option>' + members.map(m=>`<option value="${m.uid}">${escHtml(m.name)}</option>`).join('');
+    if(current) sel.value = current;
+  });
 }
 
-async function declineBet(betId) {
+function populateH2HSelect(sel) {
+  const members = getH2HMembers();
+  sel.innerHTML = '<option value="">Tag another tipper…</option>' + members.map(m=>`<option value="${m.uid}">${escHtml(m.name)}</option>`).join('');
+}
+
+async function proposeH2H() {
+  const selects = document.querySelectorAll('.h2h-target-select');
+  const targetUids = [...new Set([...selects].map(s=>s.value).filter(Boolean))];
+  if(!targetUids.length){ toast('Tag at least one tipper to challenge',true); return; }
+  const taunt = (el('h2h-taunt')?.value||'').trim();
+  const challengers = targetUids.map(uid=>({uid, name: allUsers[uid]?.nick||allUsers[uid]?.name||'?', accepted: false}));
+  const allParticipants = [
+    {uid: currentUser.uid, name: userProfile.nick||userProfile.name, accepted: true},
+    ...challengers
+  ];
+  await addDoc(collection(db,'comps',currentCompId,'sidebets'),{
+    type: 'h2h',
+    fromUid: currentUser.uid,
+    fromName: userProfile.nick||userProfile.name,
+    participants: allParticipants,
+    taunt,
+    status: 'pending',
+    createdAt: serverTimestamp()
+  });
+  // Reset form
+  const wrap = el('h2h-targets-wrap');
+  if(wrap){ wrap.innerHTML = '<select id="h2h-target-1" class="h2h-target-select" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:\'DM Sans\',sans-serif;font-size:13px;"><option value="">Tag a tipper to challenge…</option></select>'; populateH2HSelects(); }
+  if(el('h2h-taunt')) el('h2h-taunt').value='';
+  track('h2h_challenge_proposed');
+  toast('Challenge sent! Waiting on their acceptance 🥊');
+}
+
+async function acceptH2H(betId) {
+  const uid = currentUser.uid, name = userProfile?.nick||userProfile?.name||'?';
+  const ref = doc(db,'comps',currentCompId,'sidebets',betId);
+  const snap = await getDoc(ref);
+  if(!snap.exists()) return;
+  const data = snap.data();
+  const parts = (data.participants||[]).map(p=> p.uid===uid ? {...p, accepted:true} : p);
+  const allAccepted = parts.every(p=>p.accepted);
+  await updateDoc(ref,{ participants: parts, status: allAccepted ? 'active' : 'pending', ...(allAccepted ? { activatedAt: serverTimestamp() } : {}) });
+  track('h2h_challenge_accepted');
+  toast(allAccepted ? '🥊 Challenge is LIVE — may the best tipper win!' : '✅ Accepted! Waiting on others…');
+}
+
+async function declineH2H(betId) {
   if(!confirm('Decline this challenge?')) return;
-  const responderName = userProfile?.nick || userProfile?.name || 'They';
-  await updateDoc(doc(db,'comps',currentCompId,'sidebets',betId),{ responseNotify: 'declined', responderName, respondedAt: serverTimestamp() });
+  await updateDoc(doc(db,'comps',currentCompId,'sidebets',betId),{ status: 'declined', declinedBy: currentUser.uid, declinedByName: userProfile?.nick||userProfile?.name });
   toast('Challenge declined');
 }
 
-async function deleteBet(betId) {
-  if(!confirm('Remove this bet?')) return;
+async function deleteH2H(betId) {
+  if(!confirm('Remove this challenge?')) return;
   await deleteDoc(doc(db,'comps',currentCompId,'sidebets',betId));
+}
+
+// Compute round wins for a set of UIDs from live leaderboard data
+function getH2HRoundWins(participantUids) {
+  const result = {};
+  participantUids.forEach(uid => result[uid] = 0);
+  if(!rounds.length) return result;
+  const completedRounds = rounds.filter(r=>(r.matches||[]).length>0&&(r.matches||[]).every(m=>m.winner));
+  // Build scores for participants only
+  const partScores = participantUids.map(uid=>{
+    const u = allUsers[uid];
+    if(!u) return null;
+    let roundPts = {};
+    rounds.forEach(r=>{ roundPts[r.id]=0; });
+    completedRounds.forEach(r=>{
+      const myTips = allTips[uid]||{};
+      (r.matches||[]).forEach(m=>{
+        if(!m.winner) return;
+        const {pick, isRoughie} = getEffectivePick ? getEffectivePick(myTips,m) : {pick: myTips[m.id], isRoughie:false};
+        if(!pick) return;
+        const won = m.winner==='Draw' ? !!pick : pick===m.winner;
+        if(won) {
+          const oddsPts = pts(m.winner===m.home?m.homeOdds:m.awayOdds, rounds.find(rr=>rr.id===m.roundId)?.order);
+          roundPts[r.id] = (roundPts[r.id]||0) + (oddsPts||1);
+        }
+      });
+    });
+    return {uid, roundPts};
+  }).filter(Boolean);
+
+  completedRounds.forEach(r=>{
+    let best = -1;
+    partScores.forEach(s=>{ if((s.roundPts[r.id]||0)>best) best=(s.roundPts[r.id]||0); });
+    if(best<=0) return;
+    const tied = partScores.filter(s=>(s.roundPts[r.id]||0)===best);
+    if(tied.length===1) result[tied[0].uid]=(result[tied[0].uid]||0)+1;
+    // ties: no one gets the point (or could split — here we skip)
+  });
+  return result;
 }
 
 let unsubSideBets = null;
@@ -3077,47 +3167,135 @@ function subscribeSideBets() {
   });
 }
 
-function showBetNotification(betId, fromName, text, stake) {
-  localStorage.setItem('bet_seen_' + betId, '1');
-  addNotification('bet_' + betId, '🤑', '<strong>' + escHtml(fromName) + '</strong> challenged you to a side bet: ' + escHtml(text||'') + (stake ? ' <em>(' + escHtml(stake) + ')</em>' : ''), () => showPage('leaderboard'));
-}
-
-function showBetResponseNotification(betId, responderName, text, stake, accepted) {
-  addNotification('betresp_' + betId, accepted ? '🤝' : '😤', '<strong>' + escHtml(responderName) + '</strong> ' + (accepted ? 'accepted' : 'declined') + ' your side bet' + (text ? ': ' + escHtml(text) : '') + (stake && accepted ? ' — stake: <em>' + escHtml(stake) + '</em>' : ''), () => showPage('leaderboard'));
+function showH2HNotification(betId, fromName) {
+  localStorage.setItem('h2h_seen_' + betId, '1');
+  addNotification('h2h_' + betId, '🥊', '<strong>' + escHtml(fromName) + '</strong> challenged you to a Head-to-Head! Who wins the most rounds this season?', () => showPage('leaderboard'));
 }
 
 function renderSideBets(bets) {
-  populateBetTargets();
+  populateH2HSelects();
   const container = el('sidebets-list'); if(!container) return;
-  if (currentUser) {
-    const unseenBet = bets.find(b => b.toUid === currentUser.uid && b.status === 'open' && !b.responseNotify && !localStorage.getItem('bet_seen_' + b.id));
-    if (unseenBet) { const fromName = allUsers[unseenBet.fromUid]?.nick || allUsers[unseenBet.fromUid]?.name || 'Someone'; showBetNotification(unseenBet.id, fromName, unseenBet.text, unseenBet.stake); }
-    const respondedBet = bets.find(b => b.fromUid === currentUser.uid && b.responseNotify && !localStorage.getItem('bet_resp_seen_' + b.id));
-    if (respondedBet) {
-      localStorage.setItem('bet_resp_seen_' + respondedBet.id, '1');
-      const responder = respondedBet.responderName || allUsers[respondedBet.toUid]?.nick || allUsers[respondedBet.toUid]?.name || 'They';
-      showBetResponseNotification(respondedBet.id, responder, respondedBet.text, respondedBet.stake, respondedBet.responseNotify === 'accepted');
-    }
+
+  // Notify of new H2H challenges directed at current user
+  if(currentUser) {
+    bets.forEach(b=>{
+      if(b.type!=='h2h') return;
+      const isTarget = (b.participants||[]).some(p=>p.uid===currentUser.uid && !p.accepted && p.uid!==b.fromUid);
+      if(isTarget && !localStorage.getItem('h2h_seen_' + b.id)) {
+        showH2HNotification(b.id, b.fromName);
+      }
+    });
   }
-  if(!bets.length){ container.innerHTML='<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px;">No side bets yet — someone start one! 👀</div>'; return; }
-  container.innerHTML = bets.map(b=>{
-    const isFrom = b.fromUid === currentUser.uid, isTo = b.toUid === currentUser.uid;
-    const isAdmin = allComps[currentCompId]?.ownerId === currentUser.uid;
-    const statusBadge = b.status==='accepted' ? `<span class="result-badge badge-win">🤝 Accepted</span>` : `<span class="result-badge badge-pending">⏳ Awaiting Response</span>`;
-    const acceptBtn = b.status==='open' && isTo ? `<button class="btn" style="font-size:12px;padding:6px 14px;" onclick="acceptBet('${b.id}')">🤝 Accept</button><button class="btn btn-outline" style="font-size:12px;padding:6px 12px;" onclick="declineBet('${b.id}')">✕ Decline</button>` : '';
-    const deleteBtn = (isFrom || isAdmin) ? `<button class="btn btn-red" style="font-size:12px;padding:6px 10px;" onclick="deleteBet('${b.id}')">✕</button>` : '';
-    return `<div style="padding:14px;margin-bottom:10px;background:var(--card2);border-radius:12px;border-left:3px solid ${b.status==='accepted'?'var(--green)':'var(--gold)'};">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">
-        <div style="flex:1;">
-          <div style="font-size:13px;margin-bottom:6px;"><strong style="color:var(--green);">${escHtml(b.fromName)}</strong><span style="color:var(--muted);"> challenges </span><strong style="color:var(--gold);">${escHtml(b.toName)}</strong></div>
-          <div style="font-size:14px;margin-bottom:6px;">${escHtml(b.text)}</div>
-          <div style="font-size:12px;color:var(--gold);font-weight:600;">💰 Stake: ${escHtml(b.stake)}</div>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">${statusBadge}<div style="display:flex;gap:6px;">${acceptBtn}${deleteBtn}</div></div>
+
+  // Filter to only h2h type or legacy bets
+  const h2hBets = bets.filter(b=>b.type==='h2h'||!b.type);
+
+  if(!h2hBets.length){
+    container.innerHTML='<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px;">No challenges yet — be the first to call someone out! 🥊</div>';
+    return;
+  }
+
+  const completedRoundsCount = rounds.filter(r=>(r.matches||[]).length>0&&(r.matches||[]).every(m=>m.winner)).length;
+  const totalRounds = rounds.filter(r=>(r.matches||[]).length>0).length;
+
+  container.innerHTML = h2hBets.map(b=>{
+    // Legacy side bet (old format without type:'h2h')
+    if(!b.type) {
+      const isFrom = b.fromUid===currentUser?.uid, isTo = b.toUid===currentUser?.uid;
+      const isAdmin = allComps[currentCompId]?.ownerId===currentUser?.uid;
+      const statusBadge = b.status==='accepted'?`<span class="result-badge badge-win">🤝 Accepted</span>`:`<span class="result-badge badge-pending">⏳ Awaiting</span>`;
+      const actionBtns = (isFrom||isAdmin)?`<button class="btn btn-red" style="font-size:12px;padding:6px 10px;" onclick="deleteH2H('${b.id}')">✕</button>`:'';
+      return `<div style="padding:12px 14px;margin-bottom:10px;background:var(--card2);border-radius:12px;border-left:3px solid var(--gold);opacity:0.7;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px;">Legacy Bet</div>
+        <div style="font-size:13px;"><strong style="color:var(--green);">${escHtml(b.fromName)}</strong><span style="color:var(--muted);"> vs </span><strong style="color:var(--gold);">${escHtml(b.toName)}</strong></div>
+        <div style="font-size:13px;margin-top:4px;color:var(--muted);">${escHtml(b.text||'')}${b.stake?` <em>(${escHtml(b.stake)})</em>`:''}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">${statusBadge}${actionBtns}</div>
+      </div>`;
+    }
+
+    // H2H challenge
+    const participants = b.participants || [];
+    const myEntry = participants.find(p=>p.uid===currentUser?.uid);
+    const isFrom = b.fromUid===currentUser?.uid;
+    const isParticipant = !!myEntry;
+    const isAdmin = allComps[currentCompId]?.ownerId===currentUser?.uid;
+    const pendingAccept = myEntry && !myEntry.accepted;
+    const allAccepted = participants.every(p=>p.accepted);
+    const isActive = b.status==='active';
+    const isDeclined = b.status==='declined';
+
+    // Pending participants list
+    const awaitingList = participants.filter(p=>!p.accepted).map(p=>escHtml(p.name)).join(', ');
+    const borderColor = isActive ? 'var(--green)' : isDeclined ? 'var(--red)' : 'var(--gold)';
+
+    // Status badge
+    let statusHtml = '';
+    if(isDeclined) statusHtml = `<span class="result-badge badge-loss">❌ Declined by ${escHtml(b.declinedByName||'someone')}</span>`;
+    else if(isActive) statusHtml = `<span class="result-badge badge-win">🥊 LIVE</span>`;
+    else statusHtml = `<span class="result-badge badge-pending">⏳ Awaiting: ${awaitingList}</span>`;
+
+    // Action buttons
+    let actionBtns = '';
+    if(pendingAccept && !isDeclined) {
+      actionBtns = `<button class="btn" style="font-size:12px;padding:6px 14px;" onclick="acceptH2H('${b.id}')">✅ Accept</button><button class="btn btn-outline" style="font-size:12px;padding:6px 12px;" onclick="declineH2H('${b.id}')">✕ Decline</button>`;
+    } else if(isFrom || isAdmin) {
+      actionBtns = `<button class="btn btn-red" style="font-size:12px;padding:5px 10px;" onclick="deleteH2H('${b.id}')">✕</button>`;
+    }
+
+    // Live scoreboard (only if active and we have round data)
+    let scoreboardHtml = '';
+    if(isActive && participants.length > 0) {
+      const uids = participants.map(p=>p.uid);
+      const rwins = getH2HRoundWins(uids);
+      const sorted = [...participants].sort((a,b2)=>(rwins[b2.uid]||0)-(rwins[a.uid]||0));
+      const leader = sorted[0];
+      scoreboardHtml = `
+        <div style="margin-top:12px;background:rgba(0,200,83,0.05);border:1px solid rgba(0,200,83,0.15);border-radius:10px;padding:10px 12px;">
+          <div style="font-size:11px;color:var(--green);font-weight:700;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px;">📊 Season Score — ${completedRoundsCount}/${totalRounds} Rounds Done</div>
+          ${sorted.map((p,idx)=>{
+            const wins = rwins[p.uid]||0;
+            const isLeading = idx===0 && wins>0 && (sorted.length<2||(rwins[sorted[1].uid]||0)<wins);
+            const isMe = p.uid===currentUser?.uid;
+            return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;${idx<sorted.length-1?'border-bottom:1px solid rgba(255,255,255,0.05);':''}">
+              <span style="font-size:15px;">${idx===0&&wins>0?'🏆':idx===1?'🥈':idx===2?'🥉':'👤'}</span>
+              <span style="flex:1;font-size:13px;font-weight:${isMe?'700':'500'};color:${isMe?'var(--green)':'var(--text)'};">${escHtml(p.name)}${isMe?' (you)':''}</span>
+              <span style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:${isLeading?'var(--gold)':'var(--text)'};">${wins}</span>
+              <span style="font-size:11px;color:var(--muted);">round${wins!==1?'s':''}</span>
+            </div>`;
+          }).join('')}
+          ${completedRoundsCount===0?'<div style="font-size:12px;color:var(--muted);margin-top:6px;">Scores will appear once the first round is complete.</div>':''}
+        </div>`;
+    }
+
+    const tauntHtml = b.taunt ? `<div style="font-size:13px;color:var(--muted);font-style:italic;margin:6px 0;">"${escHtml(b.taunt)}"</div>` : '';
+    const participantNames = participants.map((p,i)=>{
+      const color = i===0?'var(--green)':'var(--gold)';
+      return `<strong style="color:${color};">${escHtml(p.name)}</strong>`;
+    }).join('<span style="color:var(--muted);"> vs </span>');
+
+    return `<div style="padding:14px;margin-bottom:12px;background:var(--card2);border-radius:12px;border-left:3px solid ${borderColor};">
+      <div style="font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Head-to-Head Challenge 🥊</div>
+      <div style="font-size:13px;flex-wrap:wrap;display:flex;gap:4px;align-items:center;">${participantNames}</div>
+      ${tauntHtml}
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-top:8px;">
+        ${statusHtml}
+        <div style="display:flex;gap:6px;">${actionBtns}</div>
       </div>
+      ${scoreboardHtml}
     </div>`;
   }).join('');
 }
+
+// Keep legacy proposeBet/acceptBet/declineBet/deleteBet as aliases to avoid JS errors from old data
+function proposeBet(){}
+function acceptBet(id){ acceptH2H(id); }
+function declineBet(id){ declineH2H(id); }
+function deleteBet(id){ deleteH2H(id); }
+window.proposeH2H = proposeH2H;
+window.acceptH2H = acceptH2H;
+window.declineH2H = declineH2H;
+window.deleteH2H = deleteH2H;
+window.addH2HTarget = addH2HTarget;
 
 async function deleteMessage(msgId){
   if(!userProfile?.isAdmin) return;
@@ -3169,6 +3347,41 @@ function downloadCalendarReminder() {
   URL.revokeObjectURL(url);
   track('calendar_reminder_downloaded');
   toast('Calendar reminder downloaded! Open the file to add it 📅');
+}
+
+function showH2HFeatureBanner() {
+  const key = 'h2h_feature_v1';
+  if (localStorage.getItem(key)) return;
+  localStorage.setItem(key, '1');
+  const banner = document.createElement('div');
+  banner.id = 'h2h-feature-banner';
+  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9998;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;padding:20px;animation:slideInPage .3s ease;';
+  banner.innerHTML = `
+    <div style="background:var(--card);border:1px solid rgba(0,200,83,0.3);border-radius:16px;max-width:480px;width:100%;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+      <div style="font-size:40px;text-align:center;margin-bottom:12px;">🥊</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;color:var(--green);text-align:center;margin-bottom:6px;">NEW FEATURE</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;color:var(--text);text-align:center;margin-bottom:16px;">Head-to-Head Challenge</div>
+      <div style="background:var(--card2);border-radius:12px;padding:16px;margin-bottom:16px;">
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <span style="font-size:22px;flex-shrink:0;">🎯</span>
+            <div><div style="font-weight:700;font-size:14px;margin-bottom:3px;">Call out your mates</div><div style="font-size:13px;color:var(--muted);">Tag one or more tippers to issue a Head-to-Head Challenge — it's on for the whole season.</div></div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <span style="font-size:22px;flex-shrink:0;">✅</span>
+            <div><div style="font-weight:700;font-size:14px;margin-bottom:3px;">Everyone must accept</div><div style="font-size:13px;color:var(--muted);">All tagged tippers must accept before the challenge goes live. Decline if you're scared. 😏</div></div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <span style="font-size:22px;flex-shrink:0;">🏆</span>
+            <div><div style="font-weight:700;font-size:14px;margin-bottom:3px;">Most round wins takes it</div><div style="font-size:13px;color:var(--muted);">Whoever wins the most rounds among the challengers by season's end is the champion. Live scores track as the season goes on.</div></div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:16px;">Find it in the <strong style="color:var(--text);">Chat</strong> tab → Head-to-Head Challenge section</div>
+      <button onclick="document.getElementById('h2h-feature-banner').remove()" style="width:100%;background:var(--green);color:var(--navy);border:none;padding:14px;border-radius:10px;font-family:'DM Sans',sans-serif;font-weight:700;font-size:15px;cursor:pointer;">Let's Go! 🥊</button>
+    </div>
+  `;
+  document.body.appendChild(banner);
 }
 
 function showNewUrlBanner() {
@@ -4630,8 +4843,8 @@ function trackPage(pageName) {
         <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--card2);border-radius:10px;"><span style="font-size:18px;flex-shrink:0;">🏉</span><div style="font-size:13px;color:var(--muted);line-height:1.65;"><span style="color:var(--text);font-weight:700;">You can join at any point in the season</span> — no FOMO required. You'll receive the away team for any rounds you missed.</div></div>
       </div>
       <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--green);letter-spacing:1px;margin-bottom:10px;">🍺 Side Bets</div>
-        <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--card2);border-radius:10px;"><span style="font-size:18px;flex-shrink:0;">🤑</span><div style="font-size:13px;color:var(--muted);line-height:1.65;"><span style="color:var(--text);font-weight:700;">Challenge mates to side bets</span> — a slab, bragging rights, whatever. Zero impact on standings — pure banter.</div></div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--green);letter-spacing:1px;margin-bottom:10px;">🥊 Head-to-Head Challenge</div>
+        <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--card2);border-radius:10px;"><span style="font-size:18px;flex-shrink:0;">🏆</span><div style="font-size:13px;color:var(--muted);line-height:1.65;"><span style="color:var(--text);font-weight:700;">Challenge mates to a Head-to-Head</span> — who wins the most rounds this season? Zero impact on standings — pure bragging rights.</div></div>
       </div>
     </div>
   </div>
@@ -4845,18 +5058,23 @@ function trackPage(pageName) {
         </div>
 
         <div class="chat-wrap" id="sidebets-wrap" style="margin-top:16px;margin-bottom:0;">
-          <div class="chat-header"><div class="chat-header-title">🤑 Side Bets</div><span style="font-size:12px;color:var(--muted);">Honour system — keep it fun</span></div>
+          <div class="chat-header"><div class="chat-header-title">🥊 Head-to-Head Challenge</div><span style="font-size:12px;color:var(--muted);">Who wins the most rounds this season?</span></div>
           <div style="padding:16px;">
+            <div style="margin-bottom:14px;padding:12px 14px;background:rgba(0,200,83,0.07);border:1px solid rgba(0,200,83,0.2);border-radius:12px;font-size:13px;color:var(--muted);line-height:1.6;">
+              <span style="color:var(--green);font-weight:700;">How it works:</span> Challenge one or more tippers to a season-long battle. Whoever wins the <strong style="color:var(--text);">most rounds</strong> by the end of the season wins. All parties must accept before it goes live. Live scores update as the season plays out. 🏆
+            </div>
             <div style="margin-bottom:16px;padding:14px;background:var(--card2);border-radius:12px;">
-              <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600;">CALL OUT A TIPPER</div>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600;">🥊 ISSUE A CHALLENGE</div>
               <div style="display:flex;flex-direction:column;gap:10px;">
-                <select id="bet-target" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"><option value="">Select who you're challenging…</option></select>
-                <textarea id="bet-text" rows="2" maxlength="200" placeholder="e.g. I bet you a slab of beers Carlton finish higher than Collingwood…" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;resize:none;"></textarea>
-                <input type="text" id="bet-stake" maxlength="60" placeholder="Stake e.g. A slab of beers, $20, Bragging rights…" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
-                <button class="btn" style="align-self:flex-start;font-size:13px;padding:9px 20px;" onclick="proposeBet()">🤑 Send Challenge</button>
+                <div id="h2h-targets-wrap" style="display:flex;flex-direction:column;gap:8px;">
+                  <select id="h2h-target-1" class="h2h-target-select" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"><option value="">Tag a tipper to challenge…</option></select>
+                </div>
+                <button onclick="addH2HTarget()" style="background:none;border:1px dashed var(--border);color:var(--muted);padding:8px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;text-align:left;transition:.2s;" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">+ Add another tipper</button>
+                <input type="text" id="h2h-taunt" maxlength="120" placeholder="Trash talk (optional) e.g. You've got no chance mate 😂" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
+                <button class="btn" style="align-self:flex-start;font-size:13px;padding:9px 20px;" onclick="proposeH2H()">🥊 Send Challenge</button>
               </div>
             </div>
-            <div id="sidebets-list"><div style="text-align:center;color:var(--muted);padding:20px;font-size:13px;">No side bets yet — someone start one! 👀</div></div>
+            <div id="sidebets-list"><div style="text-align:center;color:var(--muted);padding:20px;font-size:13px;">No challenges yet — be the first to call someone out! 🥊</div></div>
           </div>
         </div>
 
@@ -5053,7 +5271,7 @@ function trackPage(pageName) {
             <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--muted);">
               <div>✅ Up to 50 members</div>
               <div>✅ Full tipping &amp; scoring</div>
-              <div>✅ Chat &amp; side bets</div>
+              <div>✅ Chat &amp; Head-to-Head Challenges</div>
               <div>✅ Leaderboard &amp; results</div>
               <div>✅ Prize pool display</div>
             </div>
@@ -5195,8 +5413,8 @@ function trackPage(pageName) {
         <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--card2);border-radius:10px;"><span style="font-size:20px;flex-shrink:0;">🏉</span><div style="font-size:14px;color:var(--muted);line-height:1.65;"><span style="color:var(--text);font-weight:700;">You can join at any point in the season</span> — no FOMO required. If you've missed rounds, you automatically get the away team for any games you missed.</div></div>
       </div>
       <div class="card" style="margin-bottom:16px;">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:14px;">🤑 Side Bets</div>
-        <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--card2);border-radius:10px;"><span style="font-size:20px;flex-shrink:0;">😂</span><div style="font-size:14px;color:var(--muted);line-height:1.65;">Side bets are <span style="color:var(--text);font-weight:700;">purely for fun</span> and have zero impact on standings. Challenge a mate to a slab, bragging rights — it's an honour system. 🍺</div></div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:14px;">🥊 Head-to-Head Challenge</div>
+        <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--card2);border-radius:10px;"><span style="font-size:20px;flex-shrink:0;">🏆</span><div style="font-size:14px;color:var(--muted);line-height:1.65;">Head-to-Head Challenges are <span style="color:var(--text);font-weight:700;">purely for bragging rights</span> and have zero impact on standings. Challenge a mate to see who wins the most rounds in the season — it's a season-long showdown. 🥊</div></div>
       </div>
       <div class="card" style="margin-bottom:16px;">
         <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:14px;">⚡ Good to Know</div>
@@ -5229,8 +5447,8 @@ function trackPage(pageName) {
         <p style="font-size:14px;color:var(--muted);line-height:1.7;">Competition administrators are responsible for the conduct of their competition including ensuring the chat feature is used appropriately. Admins must not permit bullying, harassment, discrimination or inappropriate content. Roughie Tips reserves the right to suspend or terminate competitions or accounts that breach these standards.</p>
       </div>
       <div class="card" style="margin-bottom:16px;">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:14px;">5. Prize Money & Side Bets</div>
-        <p style="font-size:14px;color:var(--muted);line-height:1.7;">Any prize money within competitions is managed entirely between competition members. Roughie Tips does not collect, hold or distribute prize money. Side bets are informal arrangements between users conducted on an honour system. Roughie Tips accepts no responsibility for any financial disputes between users.</p>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:14px;">5. Prize Money & Head-to-Head Challenges</div>
+        <p style="font-size:14px;color:var(--muted);line-height:1.7;">Any prize money within competitions is managed entirely between competition members. Roughie Tips does not collect, hold or distribute prize money. Head-to-Head Challenges are informal arrangements between users conducted on a bragging rights basis. Roughie Tips accepts no responsibility for any disputes between users.</p>
       </div>
       <div class="card" style="margin-bottom:16px;">
         <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);letter-spacing:1px;margin-bottom:14px;">6. Intellectual Property</div>
