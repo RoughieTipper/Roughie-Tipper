@@ -3080,6 +3080,8 @@ async function proposeH2H() {
     type: 'h2h',
     fromUid: currentUser.uid,
     fromName: userProfile.nick||userProfile.name,
+    toUid: targetUids[0],                                      // required by security rules
+    toName: allUsers[targetUids[0]]?.nick||allUsers[targetUids[0]]?.name||'?',
     participants: allParticipants,
     taunt,
     status: 'pending',
