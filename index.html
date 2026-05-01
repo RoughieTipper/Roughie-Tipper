@@ -3080,11 +3080,13 @@ async function proposeH2H() {
     type: 'h2h',
     fromUid: currentUser.uid,
     fromName: userProfile.nick||userProfile.name,
-    toUid: targetUids[0],                                      // required by security rules
+    toUid: targetUids[0],
     toName: allUsers[targetUids[0]]?.nick||allUsers[targetUids[0]]?.name||'?',
+    text: taunt || 'Head-to-Head Challenge — who wins the most rounds?',
+    stake: 'Bragging rights',
     participants: allParticipants,
     taunt,
-    status: 'pending',
+    status: 'open',
     createdAt: serverTimestamp()
   });
   // Reset form
@@ -3096,14 +3098,20 @@ async function proposeH2H() {
 }
 
 async function acceptH2H(betId) {
-  const uid = currentUser.uid, name = userProfile?.nick||userProfile?.name||'?';
+  const uid = currentUser.uid;
   const ref = doc(db,'comps',currentCompId,'sidebets',betId);
   const snap = await getDoc(ref);
   if(!snap.exists()) return;
   const data = snap.data();
   const parts = (data.participants||[]).map(p=> p.uid===uid ? {...p, accepted:true} : p);
   const allAccepted = parts.every(p=>p.accepted);
-  await updateDoc(ref,{ participants: parts, status: allAccepted ? 'active' : 'pending', ...(allAccepted ? { activatedAt: serverTimestamp() } : {}) });
+  await updateDoc(ref,{
+    participants: parts,
+    status: allAccepted ? 'accepted' : 'open',
+    responseNotify: 'accepted',
+    responderName: userProfile?.nick||userProfile?.name||'?',
+    respondedAt: serverTimestamp()
+  });
   track('h2h_challenge_accepted');
   toast(allAccepted ? '🥊 Challenge is LIVE — may the best tipper win!' : '✅ Accepted! Waiting on others…');
 }
@@ -3199,9 +3207,9 @@ function renderSideBets(bets) {
   const completedRoundsCount = rounds.filter(r=>(r.matches||[]).length>0&&(r.matches||[]).every(m=>m.winner)).length;
   const totalRounds = rounds.filter(r=>(r.matches||[]).length>0).length;
 
-  // Split into sections: awaiting acceptance, live/active, declined
-  const awaiting = h2hBets.filter(b=>b.status==='pending'||(!b.type&&b.status!=='accepted'));
-  const active   = h2hBets.filter(b=>b.status==='active'||((!b.type)&&b.status==='accepted'));
+  // Split into sections using original status values: open, accepted, declined
+  const awaiting = h2hBets.filter(b=>b.status==='open'||b.status==='pending');
+  const active   = h2hBets.filter(b=>b.status==='active'||b.status==='accepted');
   const declined = h2hBets.filter(b=>b.status==='declined');
 
   function renderCard(b) {
@@ -3224,7 +3232,7 @@ function renderSideBets(bets) {
     const isFrom = b.fromUid===currentUser?.uid;
     const isAdmin = allComps[currentCompId]?.ownerId===currentUser?.uid;
     const pendingAccept = myEntry && !myEntry.accepted;
-    const isActive = b.status==='active';
+    const isActive = b.status==='accepted'||b.status==='active';
     const isDeclined = b.status==='declined';
     const awaitingList = participants.filter(p=>!p.accepted).map(p=>escHtml(p.name)).join(', ');
     const borderColor = isActive ? 'var(--green)' : isDeclined ? 'var(--red)' : 'var(--gold)';
@@ -3243,7 +3251,7 @@ function renderSideBets(bets) {
 
     // Live scoreboard
     let scoreboardHtml = '';
-    if(isActive && participants.length > 0) {
+    if((b.status==='accepted'||b.status==='active') && participants.length > 0) {
       const uids = participants.map(p=>p.uid);
       const rwins = getH2HRoundWins(uids);
       const sorted = [...participants].sort((a,b2)=>(rwins[b2.uid]||0)-(rwins[a.uid]||0));
