@@ -3160,6 +3160,7 @@ let unsubSideBets = null;
 function subscribeSideBets() {
   if(unsubSideBets){unsubSideBets();unsubSideBets=null;}
   if(!currentCompId) return;
+  populateH2HSelects(); // populate once when comp loads
   const q = collection(db,'comps',currentCompId,'sidebets');
   unsubSideBets = onSnapshot(q, snap=>{
     const bets = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>((b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)));
@@ -3173,7 +3174,6 @@ function showH2HNotification(betId, fromName) {
 }
 
 function renderSideBets(bets) {
-  populateH2HSelects();
   const container = el('sidebets-list'); if(!container) return;
 
   // Notify of new H2H challenges directed at current user
@@ -3187,25 +3187,29 @@ function renderSideBets(bets) {
     });
   }
 
-  // Filter to only h2h type or legacy bets
   const h2hBets = bets.filter(b=>b.type==='h2h'||!b.type);
 
   if(!h2hBets.length){
-    container.innerHTML='<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px;">No challenges yet — be the first to call someone out! 🥊</div>';
+    container.innerHTML='<div style="text-align:center;color:var(--muted);padding:16px;font-size:13px;">No challenges yet — issue one below! 🥊</div>';
     return;
   }
 
   const completedRoundsCount = rounds.filter(r=>(r.matches||[]).length>0&&(r.matches||[]).every(m=>m.winner)).length;
   const totalRounds = rounds.filter(r=>(r.matches||[]).length>0).length;
 
-  container.innerHTML = h2hBets.map(b=>{
+  // Split into sections: awaiting acceptance, live/active, declined
+  const awaiting = h2hBets.filter(b=>b.status==='pending'||(!b.type&&b.status!=='accepted'));
+  const active   = h2hBets.filter(b=>b.status==='active'||((!b.type)&&b.status==='accepted'));
+  const declined = h2hBets.filter(b=>b.status==='declined');
+
+  function renderCard(b) {
     // Legacy side bet (old format without type:'h2h')
     if(!b.type) {
-      const isFrom = b.fromUid===currentUser?.uid, isTo = b.toUid===currentUser?.uid;
+      const isFrom = b.fromUid===currentUser?.uid;
       const isAdmin = allComps[currentCompId]?.ownerId===currentUser?.uid;
       const statusBadge = b.status==='accepted'?`<span class="result-badge badge-win">🤝 Accepted</span>`:`<span class="result-badge badge-pending">⏳ Awaiting</span>`;
       const actionBtns = (isFrom||isAdmin)?`<button class="btn btn-red" style="font-size:12px;padding:6px 10px;" onclick="deleteH2H('${b.id}')">✕</button>`:'';
-      return `<div style="padding:12px 14px;margin-bottom:10px;background:var(--card2);border-radius:12px;border-left:3px solid var(--gold);opacity:0.7;">
+      return `<div style="padding:12px 14px;margin-bottom:8px;background:var(--card2);border-radius:12px;border-left:3px solid var(--gold);opacity:0.7;">
         <div style="font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px;">Legacy Bet</div>
         <div style="font-size:13px;"><strong style="color:var(--green);">${escHtml(b.fromName)}</strong><span style="color:var(--muted);"> vs </span><strong style="color:var(--gold);">${escHtml(b.toName)}</strong></div>
         <div style="font-size:13px;margin-top:4px;color:var(--muted);">${escHtml(b.text||'')}${b.stake?` <em>(${escHtml(b.stake)})</em>`:''}</div>
@@ -3213,28 +3217,21 @@ function renderSideBets(bets) {
       </div>`;
     }
 
-    // H2H challenge
     const participants = b.participants || [];
     const myEntry = participants.find(p=>p.uid===currentUser?.uid);
     const isFrom = b.fromUid===currentUser?.uid;
-    const isParticipant = !!myEntry;
     const isAdmin = allComps[currentCompId]?.ownerId===currentUser?.uid;
     const pendingAccept = myEntry && !myEntry.accepted;
-    const allAccepted = participants.every(p=>p.accepted);
     const isActive = b.status==='active';
     const isDeclined = b.status==='declined';
-
-    // Pending participants list
     const awaitingList = participants.filter(p=>!p.accepted).map(p=>escHtml(p.name)).join(', ');
     const borderColor = isActive ? 'var(--green)' : isDeclined ? 'var(--red)' : 'var(--gold)';
 
-    // Status badge
     let statusHtml = '';
     if(isDeclined) statusHtml = `<span class="result-badge badge-loss">❌ Declined by ${escHtml(b.declinedByName||'someone')}</span>`;
     else if(isActive) statusHtml = `<span class="result-badge badge-win">🥊 LIVE</span>`;
     else statusHtml = `<span class="result-badge badge-pending">⏳ Awaiting: ${awaitingList}</span>`;
 
-    // Action buttons
     let actionBtns = '';
     if(pendingAccept && !isDeclined) {
       actionBtns = `<button class="btn" style="font-size:12px;padding:6px 14px;" onclick="acceptH2H('${b.id}')">✅ Accept</button><button class="btn btn-outline" style="font-size:12px;padding:6px 12px;" onclick="declineH2H('${b.id}')">✕ Decline</button>`;
@@ -3242,13 +3239,12 @@ function renderSideBets(bets) {
       actionBtns = `<button class="btn btn-red" style="font-size:12px;padding:5px 10px;" onclick="deleteH2H('${b.id}')">✕</button>`;
     }
 
-    // Live scoreboard (only if active and we have round data)
+    // Live scoreboard
     let scoreboardHtml = '';
     if(isActive && participants.length > 0) {
       const uids = participants.map(p=>p.uid);
       const rwins = getH2HRoundWins(uids);
       const sorted = [...participants].sort((a,b2)=>(rwins[b2.uid]||0)-(rwins[a.uid]||0));
-      const leader = sorted[0];
       scoreboardHtml = `
         <div style="margin-top:12px;background:rgba(0,200,83,0.05);border:1px solid rgba(0,200,83,0.15);border-radius:10px;padding:10px 12px;">
           <div style="font-size:11px;color:var(--green);font-weight:700;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px;">📊 Season Score — ${completedRoundsCount}/${totalRounds} Rounds Done</div>
@@ -3268,12 +3264,9 @@ function renderSideBets(bets) {
     }
 
     const tauntHtml = b.taunt ? `<div style="font-size:13px;color:var(--muted);font-style:italic;margin:6px 0;">"${escHtml(b.taunt)}"</div>` : '';
-    const participantNames = participants.map((p,i)=>{
-      const color = i===0?'var(--green)':'var(--gold)';
-      return `<strong style="color:${color};">${escHtml(p.name)}</strong>`;
-    }).join('<span style="color:var(--muted);"> vs </span>');
+    const participantNames = participants.map((p,i)=>`<strong style="color:${i===0?'var(--green)':'var(--gold)'};">${escHtml(p.name)}</strong>`).join('<span style="color:var(--muted);"> vs </span>');
 
-    return `<div style="padding:14px;margin-bottom:12px;background:var(--card2);border-radius:12px;border-left:3px solid ${borderColor};">
+    return `<div style="padding:14px;margin-bottom:8px;background:var(--card2);border-radius:12px;border-left:3px solid ${borderColor};">
       <div style="font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Head-to-Head Challenge 🥊</div>
       <div style="font-size:13px;flex-wrap:wrap;display:flex;gap:4px;align-items:center;">${participantNames}</div>
       ${tauntHtml}
@@ -3283,7 +3276,26 @@ function renderSideBets(bets) {
       </div>
       ${scoreboardHtml}
     </div>`;
-  }).join('');
+  }
+
+  let html = '';
+
+  if(active.length) {
+    html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--green);margin-bottom:8px;">🥊 Live Challenges</div>`;
+    html += active.map(renderCard).join('');
+  }
+
+  if(awaiting.length) {
+    html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gold);margin-bottom:8px;${active.length?'margin-top:16px;':''}">⏳ Awaiting Acceptance</div>`;
+    html += awaiting.map(renderCard).join('');
+  }
+
+  if(declined.length) {
+    html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;margin-top:16px;">❌ Declined</div>`;
+    html += declined.map(renderCard).join('');
+  }
+
+  container.innerHTML = html;
 }
 
 // Keep legacy proposeBet/acceptBet/declineBet/deleteBet as aliases to avoid JS errors from old data
@@ -5064,8 +5076,10 @@ function trackPage(pageName) {
             <div style="margin-bottom:14px;padding:12px 14px;background:rgba(0,200,83,0.07);border:1px solid rgba(0,200,83,0.2);border-radius:12px;font-size:13px;color:var(--muted);line-height:1.6;">
               <span style="color:var(--green);font-weight:700;">How it works:</span> Challenge one or more tippers to a season-long battle. Whoever wins the <strong style="color:var(--text);">most rounds</strong> by the end of the season wins. All parties must accept before it goes live. Live scores update as the season plays out. 🏆
             </div>
-            <div style="margin-bottom:16px;padding:14px;background:var(--card2);border-radius:12px;">
-              <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600;">🥊 ISSUE A CHALLENGE</div>
+
+            <!-- ISSUE A CHALLENGE FORM -->
+            <div style="padding:14px;background:var(--card2);border-radius:12px;margin-bottom:16px;">
+              <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600;">🥊 ISSUE A NEW CHALLENGE</div>
               <div style="display:flex;flex-direction:column;gap:10px;">
                 <div id="h2h-targets-wrap" style="display:flex;flex-direction:column;gap:8px;">
                   <select id="h2h-target-1" class="h2h-target-select" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"><option value="">Tag a tipper to challenge…</option></select>
@@ -5075,7 +5089,10 @@ function trackPage(pageName) {
                 <button class="btn" style="align-self:flex-start;font-size:13px;padding:9px 20px;" onclick="proposeH2H()">🥊 Send Challenge</button>
               </div>
             </div>
-            <div id="sidebets-list"><div style="text-align:center;color:var(--muted);padding:20px;font-size:13px;">No challenges yet — be the first to call someone out! 🥊</div></div>
+
+            <!-- CHALLENGES LIST — always visible, updated by Firestore -->
+            <div id="sidebets-list"><div style="text-align:center;color:var(--muted);padding:16px;font-size:13px;">Loading challenges…</div></div>
+
           </div>
         </div>
 
