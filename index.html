@@ -776,9 +776,13 @@ function showPage(id) {
   const pg = el('page-'+id); if(pg) pg.classList.add('active');
   const bn = el('nav-'+id); if(bn) bn.classList.add('active');
   // Highlight MORE button if active page is in the more menu
-  const morePages = ['contact','rules','terms','compsettings','admin'];
+  const morePages = ['contact','rules','terms','compsettings','admin','profile'];
   const moreBtn = el('nav-more-btn');
   if (moreBtn) moreBtn.classList.toggle('active', morePages.includes(id));
+  // Highlight My Tips in bottom bar when on tips page
+  const lbtTips = el('lbt-tips');
+  if (lbtTips) lbtTips.classList.toggle('active', id==='tips');
+  if (id==='tips') { const ll=el('lbt-ladder'); if(ll) ll.classList.remove('active'); }
   closeMoreMenu();
   trackPage(id);
   if(id==='leaderboard') { renderLeaderboard(); track('view_leaderboard'); }
@@ -4917,14 +4921,13 @@ function trackPage(pageName) {
       <span class="season-badge">AFL 2026</span>
     </div>
     <nav>
-      <button id="nav-tips" onclick="showPage('tips')">MY TIPS</button>
       <button id="nav-rounds" style="display:none;"></button>
-      <button id="nav-mycomps" onclick="showPage('mycomps')">COMPS</button>
-      <button id="nav-global" onclick="showPage('global')">OVERALL</button>
-      <button id="nav-profile" onclick="showPage('profile')">PROFILE</button>
-      <div style="position:relative;flex:1;display:flex;">
-        <button id="nav-more-btn" onclick="toggleMoreMenu()" style="width:100%;">MORE</button>
+      <button id="nav-mycomps" onclick="showPage('mycomps')">CREATE / JOIN COMPETITION</button>
+      <button id="nav-global" onclick="showPage('global')">SITE LEADERBOARD</button>
+      <div style="position:relative;flex:0 0 auto;display:flex;">
+        <button id="nav-more-btn" onclick="toggleMoreMenu()" style="width:100%;font-size:18px;padding:4px 10px;letter-spacing:0;">&#9776;</button>
         <div class="nav-more-menu" id="nav-more-menu">
+          <button id="nav-profile" onclick="showPage('profile');closeMoreMenu()">PROFILE</button>
           <button id="nav-contact" onclick="showPage('contact');closeMoreMenu()">CONTACT</button>
           <button id="nav-rules" onclick="showPage('rules');closeMoreMenu()">RULES</button>
           <button id="nav-terms" onclick="showPage('terms');closeMoreMenu()">TERMS & PRIVACY</button>
@@ -4937,8 +4940,11 @@ function trackPage(pageName) {
 
   <!-- LADDER BOTTOM STICKY TABS -->
   <div id="ladder-bottom-tabs">
+    <button class="lbt-item" id="lbt-tips" onclick="showPage('tips')">
+      <span class="lbt-icon">✏️</span><span>My Tips</span>
+    </button>
     <button class="lbt-item active" id="lbt-ladder" onclick="showLadderPanel('ladder')">
-      <span class="lbt-icon">🏆</span><span>Ladder</span>
+      <span class="lbt-icon">🏆</span><span>Leaderboard</span>
     </button>
     <button class="lbt-item" id="lbt-results" onclick="showLadderPanel('results')">
       <span class="lbt-icon">✅</span><span>Results</span>
