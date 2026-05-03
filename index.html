@@ -3538,10 +3538,63 @@ function checkRoundWinnerCelebration() {
   localStorage.setItem(celebKey, Date.now().toString());
   const roundLabel = (lastRound.name || ('Round ' + (lastRound.order || ''))).toUpperCase();
   const winnerName = winner.nick || winner.name;
+
+  // ── Achievement detection ───────────────────────────────────
+  // Perfect round: winner got every match correct
+  const winnerTips = allTips[winner.uid] || {};
+  const roundMatches = lastRound.matches || [];
+  const isPerfectRound = roundMatches.length > 0 && roundMatches.every(m => {
+    if (!m.winner) return false;
+    const { pick } = getEffectivePick(winnerTips, m);
+    if (m.winner === 'Draw') return !!pick;
+    return pick === m.winner;
+  });
+
+  // Bullseye: winner guessed the margin on the first game exactly
+  const firstMatch = roundMatches[0];
+  let isBullseye = false;
+  if (firstMatch && firstMatch.winner && firstMatch.winner !== 'Draw') {
+    const actualMargin = firstMatch.actualMargin || null;
+    if (actualMargin !== null) {
+      const { pick: marginPick } = getEffectivePick(winnerTips, firstMatch);
+      const guessedMargin = (allMargins[winner.uid] || {})[firstMatch.id] ? parseInt((allMargins[winner.uid] || {})[firstMatch.id]) : null;
+      if (marginPick === firstMatch.winner && guessedMargin !== null && Math.abs(actualMargin - guessedMargin) === 0) {
+        isBullseye = true;
+      }
+    }
+  }
+
+  // Choose achievement emoji and label
+  let achievementEmoji = '', achievementLabel = '';
+  if (isPerfectRound && isBullseye) {
+    achievementEmoji = '🧙';
+    achievementLabel = 'PERFECT ROUND + BULLSEYE — WIZARD!';
+  } else if (isPerfectRound) {
+    achievementEmoji = '🔮';
+    achievementLabel = 'PERFECT ROUND!';
+  } else if (isBullseye) {
+    achievementEmoji = '🎯';
+    achievementLabel = 'BULLSEYE — EXACT MARGIN!';
+  }
+  // ────────────────────────────────────────────────────────────
+
   window._currentCelebContext = { winnerName, roundLabel };
   document.getElementById('cel-round-label').textContent = roundLabel;
   document.getElementById('cel-name').textContent = winnerName;
   document.getElementById('cel-pts').textContent = bestPts + ' pts this round';
+
+  // Show or hide achievement badge
+  const achieveBadge = document.getElementById('cel-achievement');
+  if (achieveBadge) {
+    if (achievementEmoji) {
+      achieveBadge.style.display = 'flex';
+      document.getElementById('cel-achievement-emoji').textContent = achievementEmoji;
+      document.getElementById('cel-achievement-label').textContent = achievementLabel;
+    } else {
+      achieveBadge.style.display = 'none';
+    }
+  }
+
   const avatarEl = document.getElementById('cel-avatar');
   avatarEl.style.backgroundImage = '';
   avatarEl.innerHTML = renderUserAvatar(allUsers[winner.uid], 80);
@@ -5941,6 +5994,12 @@ window.addEventListener('load', () => {
     <div id="cel-avatar" style="width:80px;height:80px;border-radius:50%;margin:0 auto 16px;background:var(--card2);border:3px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:var(--green);overflow:hidden;"></div>
     <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--text);letter-spacing:1px;" id="cel-name"></div>
     <div style="font-size:15px;color:var(--muted);margin-top:4px;" id="cel-pts"></div>
+
+    <!-- Achievement badge (perfect round / bullseye / wizard) -->
+    <div id="cel-achievement" style="display:none;align-items:center;justify-content:center;gap:10px;margin-top:14px;background:rgba(255,214,0,0.1);border:1px solid rgba(255,214,0,0.35);border-radius:14px;padding:10px 18px;">
+      <span id="cel-achievement-emoji" style="font-size:28px;line-height:1;"></span>
+      <span id="cel-achievement-label" style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1.5px;color:var(--gold);"></span>
+    </div>
 
     <!-- Emoji reaction bar -->
     <div onclick="event.stopPropagation()" style="margin-top:24px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
