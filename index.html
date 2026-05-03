@@ -1530,8 +1530,8 @@ function renderLeaderboard() {
   el('comp-stats').innerHTML = `
     <div class="stat-card"><div class="stat-label">Tippers</div><div class="stat-val">${memberIds.length}</div></div>
     <div class="stat-card"><div class="stat-label">Rounds Done</div><div class="stat-val">${completedRounds}/${activeRounds}</div></div>
-    <div class="stat-card"><div class="stat-label">Leader</div><div class="stat-val" style="font-size:22px;line-height:1.1;">${scores[0]?.nick||scores[0]?.name||'—'}</div><div class="stat-sub">${scores[0]?.totalPts||0} pts</div></div>
-    <div class="stat-card"><div class="stat-label">Most Roughies </div><div class="stat-val" style="color:var(--gold);font-size:22px;line-height:1.1;">${topRoughie?.nick||topRoughie?.name||'—'}</div><div class="stat-sub">+${topRoughie?.roughieBonus||0} points</div></div>
+    <div class="stat-card"><div class="stat-label">Leader</div><div class="stat-val" style="font-size:22px;line-height:1.1;">${sanitiseNick(scores[0]?.nick||scores[0]?.name||'—')}</div><div class="stat-sub">${scores[0]?.totalPts||0} pts</div></div>
+    <div class="stat-card"><div class="stat-label">Most Roughies </div><div class="stat-val" style="color:var(--gold);font-size:22px;line-height:1.1;">${sanitiseNick(topRoughie?.nick||topRoughie?.name||'—')}</div><div class="stat-sub">+${topRoughie?.roughieBonus||0} points</div></div>
   `;
 
   const completedRoundsList = rounds.filter(r=>(r.matches||[]).length>0&&(r.matches||[]).every(m=>m.winner));
@@ -3536,7 +3536,7 @@ function checkRoundWinnerCelebration() {
   window._celebChecked = true;
   localStorage.setItem(celebKey, Date.now().toString());
   const roundLabel = (lastRound.name || ('Round ' + (lastRound.order || ''))).toUpperCase();
-  const winnerName = winner.nick || winner.name;
+  const winnerName = sanitiseNick(winner.nick || winner.name);
 
   // ── Achievement detection ───────────────────────────────────
   // Perfect round: winner got every match correct
@@ -3704,7 +3704,7 @@ async function renderCompHonours() {
   if (scores.length > 0 && leaderCard) {
     const leader = scores[0];
     const leaderUser = allUsers[leader.uid];
-    const leaderName = leaderUser?.nick || leaderUser?.name || 'Unknown';
+    const leaderName = sanitiseNick(leaderUser?.nick || leaderUser?.name || 'Unknown');
     const leaderPts = leader.totalPts + (leader.roughieBonus||0);
     const season = currentComp?.season || new Date().getFullYear().toString();
     // Avatar
@@ -3722,7 +3722,7 @@ async function renderCompHonours() {
     const nameEl = el('comp-leader-name');
     if (nameEl) nameEl.textContent = leaderName;
     const fullNameEl = el('comp-leader-fullname');
-    if (fullNameEl) fullNameEl.textContent = leaderUser?.name || leaderUser?.fullName || leaderName;
+    if (fullNameEl) fullNameEl.textContent = sanitiseNick(leaderUser?.name || leaderUser?.fullName || leaderName);
     const ptsEl = el('comp-leader-pts');
     if (ptsEl) ptsEl.textContent = leaderPts + ' pts';
     const seasonEl = el('comp-leader-season');
