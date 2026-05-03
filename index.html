@@ -3198,6 +3198,16 @@ function subscribeSideBets() {
   const q = collection(db,'comps',currentCompId,'sidebets');
   unsubSideBets = onSnapshot(q, snap=>{
     const bets = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>((b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)));
+    // Fire H2H notifications regardless of which tab is active
+    if(currentUser) {
+      bets.forEach(b=>{
+        if(b.type!=='h2h') return;
+        const isTarget = (b.participants||[]).some(p=>p.uid===currentUser.uid && !p.accepted && p.uid!==b.fromUid);
+        if(isTarget && !localStorage.getItem('h2h_seen_' + b.id)) {
+          showH2HNotification(b.id, b.fromName);
+        }
+      });
+    }
     renderSideBets(bets);
   });
 }
@@ -3209,17 +3219,6 @@ function showH2HNotification(betId, fromName) {
 
 function renderSideBets(bets) {
   const container = el('sidebets-list'); if(!container) return;
-
-  // Notify of new H2H challenges directed at current user
-  if(currentUser) {
-    bets.forEach(b=>{
-      if(b.type!=='h2h') return;
-      const isTarget = (b.participants||[]).some(p=>p.uid===currentUser.uid && !p.accepted && p.uid!==b.fromUid);
-      if(isTarget && !localStorage.getItem('h2h_seen_' + b.id)) {
-        showH2HNotification(b.id, b.fromName);
-      }
-    });
-  }
 
   const h2hBets = bets.filter(b=>b.type==='h2h'||!b.type);
 
@@ -4465,7 +4464,6 @@ function checkForMentions(messages) {
   recent.forEach(m => {
     if (m.uid === currentUser.uid) return; // own message
     if (!m.text) return;
-    // Case-insensitive match
     if (!m.text.toLowerCase().includes(myTagLower)) return;
     const seenKey = 'mention_seen_' + m.id;
     if (localStorage.getItem(seenKey)) return;
@@ -4475,6 +4473,24 @@ function checkForMentions(messages) {
       'mention_' + m.id,
       '💬',
       '<strong>' + escHtml(senderName) + '</strong> mentioned you in chat: <em>' + escHtml(m.text.slice(0, 80)) + (m.text.length > 80 ? '&#8230;' : '') + '</em>',
+      () => { showPage('leaderboard'); setTimeout(() => showLadderPanel('chat'), 100); }
+    );
+  });
+  // Also check if someone replied to our round win celebration
+  recent.forEach(m => {
+    if (m.uid === currentUser.uid) return;
+    if (!m.celebContext) return;
+    const seenKey = 'celeb_reply_seen_' + m.id;
+    if (localStorage.getItem(seenKey)) return;
+    // Only notify if we are the winner being celebrated
+    const myName = (userProfile.nick || userProfile.name || '').trim();
+    if (!m.celebContext.winnerName || m.celebContext.winnerName !== myName) return;
+    localStorage.setItem(seenKey, '1');
+    const senderName = allUsers[m.uid]?.nick || allUsers[m.uid]?.name || 'Someone';
+    addNotification(
+      'celeb_' + m.id,
+      '🏆',
+      '<strong>' + escHtml(senderName) + '</strong> reacted to your <strong>' + escHtml(m.celebContext.roundLabel || 'round') + '</strong> win! ' + escHtml(m.text.slice(0, 60)),
       () => { showPage('leaderboard'); setTimeout(() => showLadderPanel('chat'), 100); }
     );
   });
