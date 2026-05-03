@@ -1363,6 +1363,24 @@ function calcScoresForUsers(userIds) {
       roundSkullStatus[r.id] = consecutive >= 3;
     });
 
+    // Helper: get skull status for any round (including partially-complete rounds
+    // not in completedRoundsOrdered). Counts consecutive missed rounds UP TO AND
+    // INCLUDING the target round, using all rounds ordered by their position.
+    const allRoundsOrdered = rounds.filter(r => (r.matches||[]).length > 0);
+    function getSkullStatusForRound(roundId) {
+      if (roundSkullStatus.hasOwnProperty(roundId)) return roundSkullStatus[roundId];
+      // Find the index of this round in the full round list
+      const idx = allRoundsOrdered.findIndex(r => r.id === roundId);
+      if (idx < 0) return false;
+      let consecutive = 0;
+      for (let i = idx; i >= 0; i--) {
+        const rr = allRoundsOrdered[i];
+        const hasTipped = (rr.matches||[]).some(m => myTips[m.id]);
+        if (!hasTipped) { consecutive++; } else { break; }
+      }
+      return consecutive >= 3;
+    }
+
     finishedMatches.forEach(m=>{
       const isDraw = m.winner === 'Draw';
       const { pick } = getEffectivePick(myTips, m);
@@ -1372,8 +1390,10 @@ function calcScoresForUsers(userIds) {
       const p = isDraw ? 1 : pts(m.winner===m.home?m.homeOdds:m.awayOdds, roundOrder);
       const winOdds = isDraw ? 0 : (m.winner===m.home?m.homeOdds:m.awayOdds);
       const isGen = myTips.hasOwnProperty('gen_'+m.id) && !!myTips['gen_'+m.id];
-      // Use per-round skull status so risen tippers keep cap on missed rounds only
-      const isSkull = roundSkullStatus[m.roundId] === true;
+      // Use per-round skull status so risen tippers keep cap on missed rounds only.
+      // getSkullStatusForRound handles both fully-complete and partially-complete rounds,
+      // fixing the bug where skull tippers earned full roughie points mid-round.
+      const isSkull = getSkullStatusForRound(m.roundId);
       const effectiveP = isSkull ? 1 : p;
       totalPts+=effectiveP; correct++;
       if(!isDraw && winOdds>=2.0 && !isGen && !isSkull) roughieBonus+=(effectiveP-1);
