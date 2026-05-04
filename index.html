@@ -830,6 +830,7 @@ onAuthStateChanged(auth, async user => {
             el('verify-email-screen').style.display = 'flex';
             if (el('verify-email-address')) el('verify-email-address').textContent = user.email;
           }
+          dismissSplash();
           return;
         }
       } catch(e) {
@@ -852,6 +853,7 @@ onAuthStateChanged(auth, async user => {
         try { gtag('set','user_properties',{continent:userProfile.continent||'not_set',is_admin:userProfile.isAdmin?'true':'false'}); gtag('set',{user_id:user.uid}); } catch(e) {}
         el('auth-screen').style.display = 'none';
         el('app-shell').style.display = 'block';
+        dismissSplash();
         el('user-display').textContent = userProfile.nick || userProfile.name;
         updateHeaderAvatar(userProfile);
         const isSiteAdmin = user.uid === SITE_ADMIN_UID || userProfile.isAdmin;
@@ -890,6 +892,7 @@ onAuthStateChanged(auth, async user => {
       console.error('Auth error:', e);
       toast('Connection error — please refresh', true);
       el('login-btn').textContent = 'Log In';
+      dismissSplash();
     }
   } else {
     currentUser = null; userProfile = null; currentCompId = null; currentComp = null;
@@ -899,6 +902,7 @@ onAuthStateChanged(auth, async user => {
     if(unsubChat){unsubChat();unsubChat=null;}
     if(unsubSideBets){unsubSideBets();unsubSideBets=null;}
     el('auth-screen').style.display = 'flex';
+    dismissSplash();
     startAuthUserCount();
     el('app-shell').style.display = 'none';
     el('comp-banner').style.display = 'none';
@@ -4885,17 +4889,13 @@ function trackPage(pageName) {
 @keyframes splash-pulse{0%,100%{filter:drop-shadow(0 0 16px rgba(0,200,83,0.3))}50%{filter:drop-shadow(0 0 32px rgba(0,200,83,0.6))}}
 </style>
 <script>
-(function(){
-  window.addEventListener('load',function(){
-    var splash=document.getElementById('app-splash');
-    if(splash){
-      setTimeout(function(){
-        splash.style.opacity='0';
-        setTimeout(function(){splash.style.display='none';},400);
-      },800);
-    }
-  });
-})();
+function dismissSplash(){
+  var splash=document.getElementById('app-splash');
+  if(splash && splash.style.display!=='none'){
+    splash.style.opacity='0';
+    setTimeout(function(){splash.style.display='none';},350);
+  }
+}
 </script>
 
 <!-- AUTH SCREEN -->
