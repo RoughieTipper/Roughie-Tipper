@@ -1,10 +1,11 @@
-const CACHE = 'roughie-v7';
+const CACHE = 'roughie-v8';
 
 // Only cache static assets — never cache the main HTML page
 const STATIC_ASSETS = [
   '/icon-192.png',
   '/icon-512.png',
-  '/manifest.json'
+  '/manifest.json',
+  '/rtgroup.png'
 ];
 
 self.addEventListener('install', e => {
