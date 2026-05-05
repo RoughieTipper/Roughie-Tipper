@@ -6244,7 +6244,23 @@ function openTipperSnapshot(uid) {
   // This handles the case where a new round has 1 game entered but the previous round is still the "current" one
   var compRounds = rounds.filter(function(r) { return (r.matches||[]).length > 0; });
   var activeRound = null;
-  var isLockedFn = typeof window.isLocked === 'function' ? window.isLocked : function() { return false; };
+  // Inline lock check — doesn't depend on window.isLocked being ready
+  var isLockedFn = function(dateStr, timeStr) {
+    if (!dateStr) return false;
+    var time = timeStr || '19:30';
+    var now = new Date();
+    var year = now.getUTCFullYear();
+    var dstStart = new Date(Date.UTC(year, 9, 1));
+    dstStart.setUTCDate(1 + (7 - dstStart.getUTCDay()) % 7);
+    var dstEnd = new Date(Date.UTC(year, 3, 1));
+    dstEnd.setUTCDate(1 + (7 - dstEnd.getUTCDay()) % 7);
+    var isDST = now >= dstStart || now < dstEnd;
+    var offsetMinutes = isDST ? 11 * 60 : 10 * 60;
+    var parts = time.split(':').map(Number);
+    var dateParts = dateStr.split('-').map(Number);
+    var kickoffUTC = Date.UTC(dateParts[0], dateParts[1] - 1, dateParts[2], parts[0], parts[1]) - offsetMinutes * 60000;
+    return now.getTime() >= kickoffUTC;
+  };
 
   // Find all rounds that have at least one locked match
   var startedRounds = compRounds.filter(function(r) {
