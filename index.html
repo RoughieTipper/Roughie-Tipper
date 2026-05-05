@@ -1732,7 +1732,7 @@ function renderLeaderboard() {
       <td ${me?'style="border-left:4px solid var(--green);border-radius:4px 0 0 4px;"':''}><span class="rank-badge ${rc}">${rank}</span></td>
       <td><div style="display:flex;align-items:center;gap:8px;">${moveHtml ? `<div style="width:28px;text-align:center;">${moveHtml}</div>` : '<div style="width:28px;"></div>'}${avatarHtml}
         <div>
-          <div class="tipper-name">${emojiBadges?`<span style="margin-right:4px;">${emojiBadges}</span>`:''}${!me ? `<span class="tipper-name-link" onclick="openTipperSnapshot('${s.uid}')" title="View ${escHtml(sanitiseNick(s.nick||s.name))}'s tips">${s.nick?escHtml(sanitiseNick(s.nick)):escHtml(sanitiseNick(s.name))}</span>` : (s.nick?escHtml(sanitiseNick(s.nick)):escHtml(sanitiseNick(s.name)))}${me?' <span style="background:var(--green);color:var(--navy);font-size:10px;font-weight:800;padding:1px 6px;border-radius:4px;margin-left:4px;vertical-align:middle;">YOU</span>':''} ${paidIcon}</div>
+          <div class="tipper-name">${emojiBadges?`<span style="margin-right:4px;">${emojiBadges}</span>`:''}${!me ? '<span class="tipper-name-link" data-snapshot-uid="'+s.uid+'">'+(s.nick?escHtml(sanitiseNick(s.nick)):escHtml(sanitiseNick(s.name)))+'</span>' : (s.nick?escHtml(sanitiseNick(s.nick)):escHtml(sanitiseNick(s.name)))}${me?' <span style="background:var(--green);color:var(--navy);font-size:10px;font-weight:800;padding:1px 6px;border-radius:4px;margin-left:4px;vertical-align:middle;">YOU</span>':''} ${paidIcon}</div>
           <div style="font-size:12px;color:var(--muted);">${s.nick?escHtml(sanitiseNick(s.name)):''}</div>
         </div>
       </div></td>
@@ -6185,6 +6185,15 @@ function closeTipperSnapshot() {
 
 window.openTipperSnapshot = openTipperSnapshot;
 window.closeTipperSnapshot = closeTipperSnapshot;
+
+// Event delegation for tipper snapshot — catches clicks on any .tipper-name-link anywhere in the leaderboard
+document.addEventListener('click', function(e) {
+  const target = e.target.closest('[data-snapshot-uid]');
+  if (target) {
+    e.stopPropagation();
+    openTipperSnapshot(target.dataset.snapshotUid);
+  }
+});
 </script>
 
 <!-- ROUND WINNER CELEBRATION OVERLAY -->
