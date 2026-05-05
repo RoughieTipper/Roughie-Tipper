@@ -1728,11 +1728,12 @@ function renderLeaderboard() {
       if (diff > 0) moveHtml = `<span style="color:#00c853;font-size:11px;font-weight:700;white-space:nowrap;">▲${diff}</span>`;
       else if (diff < 0) moveHtml = `<span style="color:#f44336;font-size:11px;font-weight:700;white-space:nowrap;">▼${Math.abs(diff)}</span>`;
     }
+    const snapshotOnclick = !me ? 'onclick="window.openTipperSnapshot && window.openTipperSnapshot(\'' + s.uid + '\')" style="cursor:pointer;"' : '';
     return `<tr ${me?'style="background:rgba(0,200,83,0.13);outline:2px solid rgba(0,200,83,0.55);outline-offset:-1px;box-shadow:0 0 18px rgba(0,200,83,0.18) inset;position:relative;z-index:1;"':''}>
       <td ${me?'style="border-left:4px solid var(--green);border-radius:4px 0 0 4px;"':''}><span class="rank-badge ${rc}">${rank}</span></td>
       <td><div style="display:flex;align-items:center;gap:8px;">${moveHtml ? `<div style="width:28px;text-align:center;">${moveHtml}</div>` : '<div style="width:28px;"></div>'}${avatarHtml}
         <div>
-          <div class="tipper-name">${emojiBadges?`<span style="margin-right:4px;">${emojiBadges}</span>`:''}${!me ? `<span class='tipper-name-link' data-snapshot-uid='${s.uid}'>${s.nick?escHtml(sanitiseNick(s.nick)):escHtml(sanitiseNick(s.name))}</span>` : (s.nick?escHtml(sanitiseNick(s.nick)):escHtml(sanitiseNick(s.name)))}${me?' <span style="background:var(--green);color:var(--navy);font-size:10px;font-weight:800;padding:1px 6px;border-radius:4px;margin-left:4px;vertical-align:middle;">YOU</span>':''} ${paidIcon}</div>
+          <div class="tipper-name" ${snapshotOnclick}>${emojiBadges?`<span style="margin-right:4px;">${emojiBadges}</span>`:''}${!me ? `<span class="tipper-name-link">${s.nick?escHtml(sanitiseNick(s.nick)):escHtml(sanitiseNick(s.name))}</span>` : (s.nick?escHtml(sanitiseNick(s.nick)):escHtml(sanitiseNick(s.name)))}${me?' <span style="background:var(--green);color:var(--navy);font-size:10px;font-weight:800;padding:1px 6px;border-radius:4px;margin-left:4px;vertical-align:middle;">YOU</span>':''} ${paidIcon}</div>
           <div style="font-size:12px;color:var(--muted);">${s.nick?escHtml(sanitiseNick(s.name)):''}</div>
         </div>
       </div></td>
@@ -6321,18 +6322,7 @@ document.addEventListener('change', function(e) {
 </div>
 
 <script>
-// Tipper snapshot click delegation — plain script so it works outside module scope
-document.addEventListener('click', function(e) {
-  var target = e.target.closest ? e.target.closest('[data-snapshot-uid]') : null;
-  if (target && target.dataset && target.dataset.snapshotUid) {
-    e.stopPropagation();
-    if (typeof window.openTipperSnapshot === 'function') {
-      window.openTipperSnapshot(target.dataset.snapshotUid);
-    } else {
-      console.warn('openTipperSnapshot not ready yet');
-    }
-  }
-});
+// Kept for any future use
 </script>
 </body>
 </html>
