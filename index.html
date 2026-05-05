@@ -6240,18 +6240,29 @@ function openTipperSnapshot(uid) {
     tsPts.textContent = '—';
   }
 
-  // Find the active round to display
+  // Find the active round: prefer the round with the most locked/finished matches
+  // This handles the case where a new round has 1 game entered but the previous round is still the "current" one
   var compRounds = rounds.filter(function(r) { return (r.matches||[]).length > 0; });
   var activeRound = null;
   var isLockedFn = typeof window.isLocked === 'function' ? window.isLocked : function() { return false; };
-  for (var i = compRounds.length - 1; i >= 0; i--) {
-    var r = compRounds[i];
-    var firstMatch = (r.matches||[])[0];
-    if (firstMatch && isLockedFn(firstMatch.date, firstMatch.time)) {
-      activeRound = r;
-      break;
-    }
+
+  // Find all rounds that have at least one locked match
+  var startedRounds = compRounds.filter(function(r) {
+    return (r.matches||[]).some(function(m) { return isLockedFn(m.date, m.time); });
+  });
+
+  if (startedRounds.length > 0) {
+    // Among started rounds, pick the one with the most locked matches (most "in play")
+    // Tie-break: highest order (most recent)
+    activeRound = startedRounds.reduce(function(best, r) {
+      var lockedCount = (r.matches||[]).filter(function(m) { return isLockedFn(m.date, m.time); }).length;
+      var bestLockedCount = (best.matches||[]).filter(function(m) { return isLockedFn(m.date, m.time); }).length;
+      if (lockedCount > bestLockedCount) return r;
+      if (lockedCount === bestLockedCount && (r.order||0) > (best.order||0)) return r;
+      return best;
+    });
   }
+
   if (!activeRound && compRounds.length > 0) activeRound = compRounds[compRounds.length - 1];
 
   if (!activeRound) {
@@ -6263,9 +6274,6 @@ function openTipperSnapshot(uid) {
   var myTips = allTips[uid] || {};
   var roundOrder = activeRound.order || 1;
   var matches = activeRound.matches || [];
-  console.log('activeRound:', activeRound.name, 'matches count:', matches.length, 'myTips keys:', Object.keys(myTips).length);
-  console.log('first match sample:', matches[0]);
-  console.log('myTips sample:', JSON.stringify(myTips).slice(0, 200));
   var ptsFn = typeof window.pts === 'function' ? window.pts : function() { return 1; };
   var getPickFn = typeof window.getEffectivePick === 'function' ? window.getEffectivePick : function(tips, m) {
     if (tips[m.id]) return { pick: tips[m.id], isDefault: false };
