@@ -1728,7 +1728,7 @@ function renderLeaderboard() {
       if (diff > 0) moveHtml = `<span style="color:#00c853;font-size:11px;font-weight:700;white-space:nowrap;">▲${diff}</span>`;
       else if (diff < 0) moveHtml = `<span style="color:#f44336;font-size:11px;font-weight:700;white-space:nowrap;">▼${Math.abs(diff)}</span>`;
     }
-    const snapshotOnclick = !me ? 'onclick="console.log(\'SNAPSHOT CLICK\', \'' + s.uid + '\'); window.openTipperSnapshot && window.openTipperSnapshot(\'' + s.uid + '\')" style="cursor:pointer;"' : '';
+    const snapshotOnclick = !me ? 'onclick="window.openTipperSnapshot && window.openTipperSnapshot(\'' + s.uid + '\')" style="cursor:pointer;"' : '';
     return `<tr ${me?'style="background:rgba(0,200,83,0.13);outline:2px solid rgba(0,200,83,0.55);outline-offset:-1px;box-shadow:0 0 18px rgba(0,200,83,0.18) inset;position:relative;z-index:1;"':''}>
       <td ${me?'style="border-left:4px solid var(--green);border-radius:4px 0 0 4px;"':''}><span class="rank-badge ${rc}">${rank}</span></td>
       <td><div style="display:flex;align-items:center;gap:8px;">${moveHtml ? `<div style="width:28px;text-align:center;">${moveHtml}</div>` : '<div style="width:28px;"></div>'}${avatarHtml}
@@ -6059,137 +6059,11 @@ window.addEventListener('load', () => {
   promoTimer = setInterval(promoNext, 5000);
 });
 
-// ── TIPPER SNAPSHOT POPUP ─────────────────────────────────────
-function openTipperSnapshot(uid) {
-  console.log('openTipperSnapshot called with uid:', uid);
-  const u = allUsers[uid];
-  console.log('allUsers lookup:', u, 'allUsers keys:', Object.keys(allUsers).length);
-  if (!u) return;
-  const overlay = document.getElementById('tipper-snapshot-overlay');
-  const tsAvatar = document.getElementById('ts-avatar');
-  const tsName = document.getElementById('ts-name');
-  const tsPts = document.getElementById('ts-pts');
-  const tsBody = document.getElementById('ts-body');
-  if (!overlay) return;
-
-  // Avatar
-  tsAvatar.innerHTML = renderUserAvatar(u, 38);
-
-  // Name
-  const displayName = sanitiseNick(u.nick || u.name || '');
-  tsName.textContent = displayName;
-
-  // Score calc
-  const memberIds = currentCompId
-    ? Object.entries(allUsers).filter(([id,usr]) => (usr.compIds||[]).includes(currentCompId)).map(([id]) => id)
-    : Object.keys(allUsers);
-  const scores = calcScoresForUsers(memberIds);
-  const myScore = scores.find(s => s.uid === uid);
-  tsPts.textContent = myScore ? myScore.totalPts + ' pts' : '—';
-
-  // Determine which round to show:
-  // Show the current in-progress round (if first game has started) OR the most recent completed round
-  const compRounds = rounds.filter(r => (r.matches||[]).length > 0);
-
-  // Find the "active" round: first round with at least one locked match but not all with winners
-  // OR the last fully completed round if between rounds
-  // Priority: show whichever round is currently "in play" (has started)
-  let activeRound = null;
-  // Walk rounds in order, find the one we want to show
-  for (let i = compRounds.length - 1; i >= 0; i--) {
-    const r = compRounds[i];
-    const matches = r.matches || [];
-    const firstMatchStarted = matches.length > 0 && isLocked(matches[0].date, matches[0].time);
-    if (firstMatchStarted) { activeRound = r; break; }
-  }
-  if (!activeRound && compRounds.length > 0) activeRound = compRounds[compRounds.length - 1];
-
-  if (!activeRound) {
-    tsBody.innerHTML = '<div style="color:var(--muted);font-size:14px;padding:20px 0;text-align:center;">No rounds available yet.</div>';
-    overlay.classList.add('open');
-    return;
-  }
-
-  const myTips = allTips[uid] || {};
-  const roundOrder = activeRound.order || 1;
-  const matches = activeRound.matches || [];
-
-  const cells = matches.map(m => {
-    const locked = isLocked(m.date, m.time);
-    const finished = !!m.winner;
-    const { pick, isDefault } = getEffectivePick(myTips, m);
-
-    if (!locked) {
-      // Game hasn't started yet — pending
-      return `<div class="ts-cell ts-cell-pending" title="Not yet played"><span style="font-size:18px;">❓</span></div>`;
-    }
-
-    if (!finished) {
-      // Match locked but no result yet — show tip
-      if (pick) {
-        // Show the tip made but no result
-        return `<div class="ts-cell ts-cell-pending" title="In progress — tipped">${isDefault ? '<span style="opacity:0.5;font-size:15px;">🔒</span>' : '<span style="font-size:15px;">🔒</span>'}</div>`;
-      }
-      return `<div class="ts-cell ts-cell-pending" title="In progress"><span style="font-size:18px;">❓</span></div>`;
-    }
-
-    // Game finished
-    const isDraw = m.winner === 'Draw';
-    const correct = isDraw ? !!pick : (pick === m.winner);
-    if (!pick) {
-      // No pick recorded and game finished — count as wrong (auto-away)
-      const effectivePick = m.away;
-      const wasCorrect = effectivePick === m.winner;
-      if (wasCorrect) {
-        const winOdds = m.winner === m.home ? m.homeOdds : m.awayOdds;
-        const p = pts(winOdds, roundOrder);
-        return `<div class="ts-cell ts-cell-correct" title="Auto pick — correct (+${p} pts)"><span class="ts-checkmark">✓</span><span class="ts-cell-pts">${p}</span></div>`;
-      } else {
-        return `<div class="ts-cell ts-cell-wrong" title="Auto pick — incorrect"><span class="ts-cross">✗</span></div>`;
-      }
-    }
-    if (correct) {
-      const winOdds = isDraw ? null : (m.winner === m.home ? m.homeOdds : m.awayOdds);
-      const p = isDraw ? 1 : pts(winOdds, roundOrder);
-      return `<div class="ts-cell ts-cell-correct" title="Correct (+${p} pts)"><span class="ts-checkmark">✓</span><span class="ts-cell-pts">${p}</span></div>`;
-    } else {
-      return `<div class="ts-cell ts-cell-wrong" title="Incorrect"><span class="ts-cross">✗</span></div>`;
-    }
-  }).join('');
-
-  const roundLabel = activeRound.name || 'Current Round';
-  const allFinished = matches.every(m => !!m.winner);
-  const someStarted = matches.some(m => isLocked(m.date, m.time));
-  const statusNote = allFinished
-    ? '<span style="color:var(--green);font-size:10px;font-weight:700;margin-left:6px;">✓ Complete</span>'
-    : someStarted
-    ? '<span style="color:var(--gold);font-size:10px;font-weight:700;margin-left:6px;">• In Progress</span>'
-    : '';
-
-  tsBody.innerHTML = `
-    <div class="ts-round-block">
-      <div class="ts-round-label">${escHtml(roundLabel)}${statusNote}</div>
-      <div class="ts-grid">${cells}</div>
-    </div>
-    <div class="ts-legend">
-      <div class="ts-legend-item"><div class="ts-legend-dot" style="background:rgba(0,200,83,0.5);border:1.5px solid var(--green);"></div> Correct</div>
-      <div class="ts-legend-item"><div class="ts-legend-dot" style="background:rgba(255,61,61,0.3);border:1.5px solid var(--red);"></div> Incorrect</div>
-      <div class="ts-legend-item"><div class="ts-legend-dot" style="background:rgba(255,255,255,0.08);border:1.5px solid rgba(255,255,255,0.2);"></div> Pending</div>
-      <div class="ts-legend-item" style="color:var(--green);font-size:10px;">Number = points earned</div>
-    </div>
-  `;
-
-  overlay.classList.add('open');
-}
-
-function closeTipperSnapshot() {
-  const overlay = document.getElementById('tipper-snapshot-overlay');
-  if (overlay) overlay.classList.remove('open');
-}
-
-window.openTipperSnapshot = openTipperSnapshot;
-window.closeTipperSnapshot = closeTipperSnapshot;
-console.log('openTipperSnapshot registered on window:', typeof window.openTipperSnapshot);
+// ── TIPPER SNAPSHOT — defined as plain script below, outside module scope ──
+window.isLocked = isLocked;
+window.getEffectivePick = getEffectivePick;
+window.renderUserAvatar = renderUserAvatar;
+window.sanitiseNick = sanitiseNick;
 </script>
 
 <!-- ROUND WINNER CELEBRATION OVERLAY -->
@@ -6326,7 +6200,130 @@ document.addEventListener('change', function(e) {
 </div>
 
 <script>
-// Kept for any future use
+function openTipperSnapshot(uid) {
+  var allUsers = window._allUsers || {};
+  var allTips = window._allTips || {};
+  var rounds = window._rounds || [];
+  var currentCompId = (window._currentComp && window._currentComp.id) || null;
+
+  var u = allUsers[uid];
+  if (!u) { console.warn('openTipperSnapshot: no user found for uid', uid); return; }
+
+  var overlay = document.getElementById('tipper-snapshot-overlay');
+  var tsAvatar = document.getElementById('ts-avatar');
+  var tsName = document.getElementById('ts-name');
+  var tsPts = document.getElementById('ts-pts');
+  var tsBody = document.getElementById('ts-body');
+  if (!overlay) { console.warn('openTipperSnapshot: overlay element missing'); return; }
+
+  // Avatar — use renderUserAvatar if available
+  if (typeof window.renderUserAvatar === 'function') {
+    tsAvatar.innerHTML = window.renderUserAvatar(u, 38);
+  } else {
+    var initials = ((u.nick || u.name || '?')[0] || '?').toUpperCase();
+    tsAvatar.innerHTML = '<div style="width:38px;height:38px;border-radius:50%;background:var(--card2);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--green);">' + initials + '</div>';
+  }
+
+  // Name
+  var displayName = (u.nick || u.name || 'Unknown').replace(/[^\w\s\-_.]/g, '').trim();
+  tsName.textContent = displayName;
+
+  // Score
+  if (typeof window.calcScoresForUsers === 'function') {
+    var memberIds = currentCompId
+      ? Object.keys(allUsers).filter(function(id) { return (allUsers[id].compIds||[]).indexOf(currentCompId) !== -1; })
+      : Object.keys(allUsers);
+    var scores = window.calcScoresForUsers(memberIds);
+    var myScore = scores.find(function(s) { return s.uid === uid; });
+    tsPts.textContent = myScore ? myScore.totalPts + ' pts' : '—';
+  } else {
+    tsPts.textContent = '—';
+  }
+
+  // Find the active round to display
+  var compRounds = rounds.filter(function(r) { return (r.matches||[]).length > 0; });
+  var activeRound = null;
+  var isLockedFn = typeof window.isLocked === 'function' ? window.isLocked : function() { return false; };
+  for (var i = compRounds.length - 1; i >= 0; i--) {
+    var r = compRounds[i];
+    var firstMatch = (r.matches||[])[0];
+    if (firstMatch && isLockedFn(firstMatch.date, firstMatch.time)) {
+      activeRound = r;
+      break;
+    }
+  }
+  if (!activeRound && compRounds.length > 0) activeRound = compRounds[compRounds.length - 1];
+
+  if (!activeRound) {
+    tsBody.innerHTML = '<div style="color:var(--muted);font-size:14px;padding:20px 0;text-align:center;">No rounds available yet.</div>';
+    overlay.classList.add('open');
+    return;
+  }
+
+  var myTips = allTips[uid] || {};
+  var roundOrder = activeRound.order || 1;
+  var matches = activeRound.matches || [];
+  var ptsFn = typeof window.pts === 'function' ? window.pts : function() { return 1; };
+  var getPickFn = typeof window.getEffectivePick === 'function' ? window.getEffectivePick : function(tips, m) {
+    if (tips[m.id]) return { pick: tips[m.id], isDefault: false };
+    if (isLockedFn(m.date, m.time)) return { pick: m.away, isDefault: true };
+    return { pick: null, isDefault: false };
+  };
+
+  var cells = matches.map(function(m) {
+    var locked = isLockedFn(m.date, m.time);
+    var finished = !!m.winner;
+    var pickResult = getPickFn(myTips, m);
+    var pick = pickResult.pick;
+
+    if (!locked) {
+      return '<div class="ts-cell ts-cell-pending" title="Not yet played"><span style="font-size:18px;">❓</span></div>';
+    }
+    if (!finished) {
+      return '<div class="ts-cell ts-cell-pending" title="In progress"><span style="font-size:15px;">🔒</span></div>';
+    }
+
+    var isDraw = m.winner === 'Draw';
+    var effectivePick = pick || m.away;
+    var correct = isDraw ? true : (effectivePick === m.winner);
+
+    if (correct) {
+      var winOdds = isDraw ? 1 : (m.winner === m.home ? m.homeOdds : m.awayOdds);
+      var p = isDraw ? 1 : ptsFn(winOdds, roundOrder);
+      return '<div class="ts-cell ts-cell-correct" title="Correct"><span class="ts-checkmark">✓</span><span class="ts-cell-pts">' + p + '</span></div>';
+    } else {
+      return '<div class="ts-cell ts-cell-wrong" title="Incorrect"><span class="ts-cross">✗</span></div>';
+    }
+  }).join('');
+
+  var roundLabel = activeRound.name || 'Current Round';
+  var allFinished = matches.every(function(m) { return !!m.winner; });
+  var someStarted = matches.some(function(m) { return isLockedFn(m.date, m.time); });
+  var statusNote = allFinished
+    ? '<span style="color:var(--green);font-size:10px;font-weight:700;margin-left:6px;">✓ Complete</span>'
+    : someStarted
+    ? '<span style="color:var(--gold);font-size:10px;font-weight:700;margin-left:6px;">• In Progress</span>'
+    : '';
+
+  tsBody.innerHTML =
+    '<div class="ts-round-block">' +
+      '<div class="ts-round-label">' + roundLabel + statusNote + '</div>' +
+      '<div class="ts-grid">' + cells + '</div>' +
+    '</div>' +
+    '<div class="ts-legend">' +
+      '<div class="ts-legend-item"><div class="ts-legend-dot" style="background:rgba(0,200,83,0.5);border:1.5px solid var(--green);"></div> Correct</div>' +
+      '<div class="ts-legend-item"><div class="ts-legend-dot" style="background:rgba(255,61,61,0.3);border:1.5px solid var(--red);"></div> Incorrect</div>' +
+      '<div class="ts-legend-item"><div class="ts-legend-dot" style="background:rgba(255,255,255,0.08);border:1.5px solid rgba(255,255,255,0.2);"></div> Pending / In Progress</div>' +
+      '<div class="ts-legend-item" style="color:var(--green);font-size:10px;">Number = points earned</div>' +
+    '</div>';
+
+  overlay.classList.add('open');
+}
+
+function closeTipperSnapshot() {
+  var overlay = document.getElementById('tipper-snapshot-overlay');
+  if (overlay) overlay.classList.remove('open');
+}
 </script>
 </body>
 </html>
