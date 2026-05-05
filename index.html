@@ -1728,7 +1728,7 @@ function renderLeaderboard() {
       if (diff > 0) moveHtml = `<span style="color:#00c853;font-size:11px;font-weight:700;white-space:nowrap;">▲${diff}</span>`;
       else if (diff < 0) moveHtml = `<span style="color:#f44336;font-size:11px;font-weight:700;white-space:nowrap;">▼${Math.abs(diff)}</span>`;
     }
-    const snapshotOnclick = !me ? 'onclick="window.openTipperSnapshot && window.openTipperSnapshot(\'' + s.uid + '\')" style="cursor:pointer;"' : '';
+    const snapshotOnclick = !me ? 'onclick="console.log(\'SNAPSHOT CLICK\', \'' + s.uid + '\'); window.openTipperSnapshot && window.openTipperSnapshot(\'' + s.uid + '\')" style="cursor:pointer;"' : '';
     return `<tr ${me?'style="background:rgba(0,200,83,0.13);outline:2px solid rgba(0,200,83,0.55);outline-offset:-1px;box-shadow:0 0 18px rgba(0,200,83,0.18) inset;position:relative;z-index:1;"':''}>
       <td ${me?'style="border-left:4px solid var(--green);border-radius:4px 0 0 4px;"':''}><span class="rank-badge ${rc}">${rank}</span></td>
       <td><div style="display:flex;align-items:center;gap:8px;">${moveHtml ? `<div style="width:28px;text-align:center;">${moveHtml}</div>` : '<div style="width:28px;"></div>'}${avatarHtml}
@@ -6061,7 +6061,10 @@ window.addEventListener('load', () => {
 
 // ── TIPPER SNAPSHOT POPUP ─────────────────────────────────────
 function openTipperSnapshot(uid) {
-  const u = allUsers[uid]; if (!u) return;
+  console.log('openTipperSnapshot called with uid:', uid);
+  const u = allUsers[uid];
+  console.log('allUsers lookup:', u, 'allUsers keys:', Object.keys(allUsers).length);
+  if (!u) return;
   const overlay = document.getElementById('tipper-snapshot-overlay');
   const tsAvatar = document.getElementById('ts-avatar');
   const tsName = document.getElementById('ts-name');
@@ -6186,6 +6189,7 @@ function closeTipperSnapshot() {
 
 window.openTipperSnapshot = openTipperSnapshot;
 window.closeTipperSnapshot = closeTipperSnapshot;
+console.log('openTipperSnapshot registered on window:', typeof window.openTipperSnapshot);
 </script>
 
 <!-- ROUND WINNER CELEBRATION OVERLAY -->
