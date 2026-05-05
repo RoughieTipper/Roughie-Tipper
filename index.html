@@ -6263,6 +6263,9 @@ function openTipperSnapshot(uid) {
   var myTips = allTips[uid] || {};
   var roundOrder = activeRound.order || 1;
   var matches = activeRound.matches || [];
+  console.log('activeRound:', activeRound.name, 'matches count:', matches.length, 'myTips keys:', Object.keys(myTips).length);
+  console.log('first match sample:', matches[0]);
+  console.log('myTips sample:', JSON.stringify(myTips).slice(0, 200));
   var ptsFn = typeof window.pts === 'function' ? window.pts : function() { return 1; };
   var getPickFn = typeof window.getEffectivePick === 'function' ? window.getEffectivePick : function(tips, m) {
     if (tips[m.id]) return { pick: tips[m.id], isDefault: false };
