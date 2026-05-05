@@ -6185,15 +6185,6 @@ function closeTipperSnapshot() {
 
 window.openTipperSnapshot = openTipperSnapshot;
 window.closeTipperSnapshot = closeTipperSnapshot;
-
-// Event delegation for tipper snapshot — catches clicks on any .tipper-name-link anywhere in the leaderboard
-document.addEventListener('click', function(e) {
-  const target = e.target.closest('[data-snapshot-uid]');
-  if (target) {
-    e.stopPropagation();
-    openTipperSnapshot(target.dataset.snapshotUid);
-  }
-});
 </script>
 
 <!-- ROUND WINNER CELEBRATION OVERLAY -->
@@ -6328,5 +6319,20 @@ document.addEventListener('change', function(e) {
     <button class="ts-close-btn" onclick="closeTipperSnapshot()">Close</button>
   </div>
 </div>
+
+<script>
+// Tipper snapshot click delegation — plain script so it works outside module scope
+document.addEventListener('click', function(e) {
+  var target = e.target.closest ? e.target.closest('[data-snapshot-uid]') : null;
+  if (target && target.dataset && target.dataset.snapshotUid) {
+    e.stopPropagation();
+    if (typeof window.openTipperSnapshot === 'function') {
+      window.openTipperSnapshot(target.dataset.snapshotUid);
+    } else {
+      console.warn('openTipperSnapshot not ready yet');
+    }
+  }
+});
+</script>
 </body>
 </html>
