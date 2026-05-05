@@ -744,7 +744,7 @@ function updateNavLabels() {
 }
 
 // ── WHAT'S NEW MODAL ─────────────────────────────────────────
-const WHATS_NEW_KEY = 'whats_new_tap_v2';
+const WHATS_NEW_KEY = 'whats_new_tap_v3';
 function showWhatsNewModal() {
   if (localStorage.getItem(WHATS_NEW_KEY)) return;
   const modal = document.getElementById('whats-new-modal');
@@ -5239,19 +5239,19 @@ function dismissSplash(){
           <div class="chat-header"><div class="chat-header-title">🥊 Head-to-Head Challenge</div><span style="font-size:12px;color:var(--muted);">Who wins the most rounds this season?</span></div>
           <div style="padding:16px;">
             <div style="margin-bottom:14px;padding:12px 14px;background:rgba(0,200,83,0.07);border:1px solid rgba(0,200,83,0.2);border-radius:12px;font-size:13px;color:var(--muted);line-height:1.6;">
-              <span style="color:var(--green);font-weight:700;">How it works:</span> Challenge one or more tippers to a season-long battle. Whoever wins the <strong style="color:var(--text);">most rounds</strong> by the end of the season wins. All parties must accept before it goes live. Live scores update as the season plays out. 
+              <span style="color:var(--green);font-weight:700;">How it works:</span> Challenge one or more tippers to a season-long battle. Whoever wins the <strong style="color:var(--text);">most rounds</strong> by the end of the season wins. All parties must accept before it goes live. Live scores update as the season plays out. 🏆
             </div>
 
             <!-- ISSUE A CHALLENGE FORM -->
             <div style="padding:14px;background:var(--card2);border-radius:12px;margin-bottom:16px;">
-              <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600;">ISSUE A NEW CHALLENGE</div>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600;">🥊 ISSUE A NEW CHALLENGE</div>
               <div style="display:flex;flex-direction:column;gap:10px;">
                 <div id="h2h-targets-wrap" style="display:flex;flex-direction:column;gap:8px;">
                   <select id="h2h-target-1" class="h2h-target-select" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"><option value="">Tag a tipper to challenge…</option></select>
                 </div>
                 <button onclick="addH2HTarget()" style="background:none;border:1px dashed var(--border);color:var(--muted);padding:8px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;text-align:left;transition:.2s;" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">+ Add another tipper</button>
                 <input type="text" id="h2h-taunt" maxlength="120" placeholder="Trash talk (optional) e.g. You've got no chance mate 😂" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;"/>
-                <button class="btn" style="align-self:flex-start;font-size:13px;padding:9px 20px;" onclick="proposeH2H()">Send Challenge</button>
+                <button class="btn" style="align-self:flex-start;font-size:13px;padding:9px 20px;" onclick="proposeH2H()">🥊 Send Challenge</button>
               </div>
             </div>
 
@@ -6143,23 +6143,87 @@ window.sanitiseNick = sanitiseNick;
     <div class="whats-new-title">WHAT'S <span>NEW</span> 🏉</div>
     <div class="whats-new-sub">We've made some improvements to the app — here's what's changed.</div>
 
-    <div class="wn-feature">
+    <div class="wn-feature" style="background:rgba(0,200,83,0.07);border:1.5px solid rgba(0,200,83,0.25);border-radius:16px;padding:16px;margin-bottom:16px;">
       <div class="wn-feature-icon">👆</div>
       <div class="wn-feature-body">
-        <div class="wn-feature-title">See who everyone tipped — right on My Tips</div>
-        <div class="wn-feature-desc">Once a match kicks off and tips are locked, tap the <strong style="color:var(--text);">👥 See who everyone tipped</strong> button on any match card to see a full breakdown — home team on the left, away team on the right, sorted by ladder position so you can see how it affects the people directly above and below you.</div>
-        <div class="wn-swipe-demo">
-          <span>👆</span>
-          <span>Tap any locked match to reveal</span>
+        <div class="wn-feature-title" style="color:var(--green);">NEW — Tap a tipper on the leaderboard</div>
+        <div class="wn-feature-desc" style="margin-bottom:14px;">Tap any tipper's name on the leaderboard to instantly see how they're tracking this round — correct tips, wrong tips, games still to play, and points earned.</div>
+
+        <!-- Mini mock of what the snapshot looks like -->
+        <div style="background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:14px;font-size:13px;">
+
+          <!-- Mock header -->
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);">
+            <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#ff6b6b,#ee5a24);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:#fff;flex-shrink:0;">M</div>
+            <div style="flex:1;font-weight:700;font-size:15px;">Maz</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--green);">47 pts</div>
+          </div>
+
+          <!-- Mock round label -->
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">
+            Round 8 <span style="color:var(--gold);font-size:10px;font-weight:700;margin-left:4px;">• In Progress</span>
+          </div>
+
+          <!-- Mock grid -->
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            <!-- correct -->
+            <div style="width:36px;height:36px;border-radius:10px;background:rgba(0,200,83,0.18);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;position:relative;">
+              <span style="color:var(--green);font-size:14px;">✓</span>
+              <span style="position:absolute;bottom:-2px;right:-2px;background:var(--green);color:var(--navy);font-size:8px;font-weight:800;border-radius:5px;padding:0 3px;line-height:14px;">3</span>
+            </div>
+            <!-- correct -->
+            <div style="width:36px;height:36px;border-radius:10px;background:rgba(0,200,83,0.18);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;position:relative;">
+              <span style="color:var(--green);font-size:14px;">✓</span>
+              <span style="position:absolute;bottom:-2px;right:-2px;background:var(--green);color:var(--navy);font-size:8px;font-weight:800;border-radius:5px;padding:0 3px;line-height:14px;">2</span>
+            </div>
+            <!-- wrong -->
+            <div style="width:36px;height:36px;border-radius:10px;background:rgba(255,61,61,0.14);border:2px solid var(--red);display:flex;align-items:center;justify-content:center;">
+              <span style="color:var(--red);font-size:15px;">✗</span>
+            </div>
+            <!-- correct -->
+            <div style="width:36px;height:36px;border-radius:10px;background:rgba(0,200,83,0.18);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;position:relative;">
+              <span style="color:var(--green);font-size:14px;">✓</span>
+              <span style="position:absolute;bottom:-2px;right:-2px;background:var(--green);color:var(--navy);font-size:8px;font-weight:800;border-radius:5px;padding:0 3px;line-height:14px;">4</span>
+            </div>
+            <!-- wrong -->
+            <div style="width:36px;height:36px;border-radius:10px;background:rgba(255,61,61,0.14);border:2px solid var(--red);display:flex;align-items:center;justify-content:center;">
+              <span style="color:var(--red);font-size:15px;">✗</span>
+            </div>
+            <!-- correct -->
+            <div style="width:36px;height:36px;border-radius:10px;background:rgba(0,200,83,0.18);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;position:relative;">
+              <span style="color:var(--green);font-size:14px;">✓</span>
+              <span style="position:absolute;bottom:-2px;right:-2px;background:var(--green);color:var(--navy);font-size:8px;font-weight:800;border-radius:5px;padding:0 3px;line-height:14px;">2</span>
+            </div>
+            <!-- pending -->
+            <div style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,0.05);border:2px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;">
+              <span style="font-size:16px;">❓</span>
+            </div>
+            <!-- pending -->
+            <div style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,0.05);border:2px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;">
+              <span style="font-size:16px;">❓</span>
+            </div>
+            <!-- pending -->
+            <div style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,0.05);border:2px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;">
+              <span style="font-size:16px;">❓</span>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px;font-size:10px;color:var(--muted);margin-top:10px;flex-wrap:wrap;">
+            <span>🟢 Correct</span>
+            <span>🔴 Incorrect</span>
+            <span>❓ Not yet played</span>
+            <span style="color:var(--green);">Number = pts earned</span>
+          </div>
         </div>
+
       </div>
     </div>
 
     <div class="wn-feature">
-      <div class="wn-feature-icon">🗑️</div>
+      <div class="wn-feature-icon">👆</div>
       <div class="wn-feature-body">
-        <div class="wn-feature-title">Results tab removed</div>
-        <div class="wn-feature-desc">The separate Results tab is gone — everything you need is now on your My Tips page. Swipe any locked match to see the full picture.</div>
+        <div class="wn-feature-title">See who everyone tipped — right on My Tips</div>
+        <div class="wn-feature-desc">Once a match kicks off and tips are locked, tap the <strong style="color:var(--text);">👥 See who everyone tipped</strong> button on any match card to see a full breakdown.</div>
       </div>
     </div>
 
