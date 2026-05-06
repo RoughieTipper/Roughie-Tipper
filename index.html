@@ -6324,6 +6324,9 @@ window.sanitiseNick = sanitiseNick;
     </div>
   </div>
 </div>
+
+<script>
+document.addEventListener('change', function(e) {
   if (e.target.id === 'mod-ack-checkbox') {
     const btn = document.getElementById('mod-ack-confirm-btn');
     if (btn) {
@@ -6340,7 +6343,7 @@ window.sanitiseNick = sanitiseNick;
 <div id="mention-suggestions" style="display:none;position:fixed;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.5);z-index:9999;min-width:200px;max-width:320px;"></div>
 
 <!-- TIPPER SNAPSHOT POPUP -->
-<div id="tipper-snapshot-overlay" onclick="if(event.target===this)closeTipperSnapshot()">
+<div id="tipper-snapshot-overlay" style="display:none;" onclick="if(event.target===this)closeTipperSnapshot()">
   <div id="tipper-snapshot-sheet">
     <div class="ts-handle"></div>
     <div class="ts-header">
@@ -6498,12 +6501,12 @@ function openTipperSnapshot(uid) {
       '<div class="ts-legend-item" style="color:var(--green);font-size:10px;">Number = points earned</div>' +
     '</div>';
 
-  overlay.classList.add('open');
+  overlay.style.display = 'flex';
 }
 
 function closeTipperSnapshot() {
   var overlay = document.getElementById('tipper-snapshot-overlay');
-  if (overlay) overlay.classList.remove('open');
+  if (overlay) overlay.style.display = 'none';
 }
 </script>
 </body>
