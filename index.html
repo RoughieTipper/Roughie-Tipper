@@ -1779,7 +1779,7 @@ function scoringLegendHTML() {
     [4,'$4.50–$5.49',true],[5,'$5.50–$6.49',true],[6,'$6.50+',true],
   ];
   return `<div class="scoring-card">
-    <div class="scoring-card-title"> <span>Scoring System</span> <span style="font-size:11px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;">· Updated from Round 5</span></div>
+    <div class="scoring-card-title"> <span>Scoring System</span> <span style="font-size:11px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;"></span></div>
     <div class="scoring-grid" style="grid-template-columns:repeat(6,1fr);">${newTiers.map(([p,r,roughie])=>`
       <div class="legend-item ${roughie?'roughie':'normal'}">
         <div class="legend-item-icon">${roughie?'⚡':'✅'}</div>
@@ -1788,7 +1788,6 @@ function scoringLegendHTML() {
         <div class="odds-range">${r}</div>
       </div>`).join('')}
     </div>
-    <div style="font-size:11px;color:var(--muted);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">Rounds 1–4 used the previous system · Max 6 points from Round 5 onwards</div>
   </div>`;
 }
 
