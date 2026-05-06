@@ -1359,6 +1359,18 @@ async function createComp() {
   const [sport, season] = sportSeason.includes('|') ? sportSeason.split('|') : [sportSeason, new Date().getFullYear().toString()];
   if (!name||!code) { toast('Enter a comp name and join code',true); return; }
   if (!sport || sport === '') { toast('Please select a sport and season', true); return; }
+  // Check for duplicate competition name before proceeding
+  const createBtn = el('create-comp-btn');
+  if (createBtn) { createBtn.textContent = 'Checking…'; createBtn.disabled = true; }
+  try {
+    const nameTaken = await isCompNameTaken(name, null);
+    if (nameTaken) {
+      toast('A competition with that name already exists — please choose a unique name', true);
+      if (createBtn) { createBtn.textContent = 'Create Competition'; createBtn.disabled = false; }
+      return;
+    }
+  } catch(e) {}
+  if (createBtn) { createBtn.textContent = 'Create Competition'; createBtn.disabled = false; }
   // Show moderation acknowledgement modal first
   _pendingCompData = { name, code, sport, season };
   const modal = el('moderation-ack-modal');
@@ -2971,6 +2983,9 @@ async function sendChat(){
 }
 function showCompSettings() {
   if (!currentComp || !currentCompId) return;
+  // Populate comp name and join code fields
+  if (el('cs-comp-name')) el('cs-comp-name').value = currentComp.name || '';
+  if (el('cs-join-code')) el('cs-join-code').value = currentComp.joinCode || '';
   // Populate fields
   const prizes = currentComp.prizes || {};
   if (el('cs-prize-entry')) el('cs-prize-entry').value = prizes.entry||'';
@@ -3027,6 +3042,70 @@ async function saveCompSettings() {
   toast('Business settings saved! ');
 }
 
+// ─── COMP NAME DUPLICATE CHECK ───────────────────────────────
+async function isCompNameTaken(name, excludeCompId) {
+  const normName = name.trim().toLowerCase();
+  for (const [id, c] of Object.entries(allComps)) {
+    if (excludeCompId && id === excludeCompId) continue;
+    if ((c.name||'').trim().toLowerCase() === normName) return true;
+  }
+  // Also query Firestore in case allComps is not fully loaded yet
+  try {
+    const snap = await getDocs(collection(db, 'comps'));
+    for (const d of snap.docs) {
+      if (excludeCompId && d.id === excludeCompId) continue;
+      if ((d.data().name||'').trim().toLowerCase() === normName) return true;
+    }
+  } catch(e) {}
+  return false;
+}
+
+async function saveCompName() {
+  if (!currentCompId || !currentComp) return;
+  const newName = (el('cs-comp-name')?.value || '').trim();
+  if (!newName) { toast('Competition name cannot be empty', true); return; }
+  if (newName === currentComp.name) { toast('No change to competition name'); return; }
+  const btn = el('cs-save-name-btn');
+  if (btn) { btn.textContent = 'Checking…'; btn.disabled = true; }
+  try {
+    const taken = await isCompNameTaken(newName, currentCompId);
+    if (taken) {
+      toast('That competition name is already taken — please choose another', true);
+      if (btn) { btn.textContent = 'Save Name'; btn.disabled = false; }
+      return;
+    }
+    await updateDoc(doc(db, 'comps', currentCompId), { name: newName });
+    currentComp.name = newName;
+    if (allComps[currentCompId]) allComps[currentCompId].name = newName;
+    // Update UI references
+    const nameDisplay = el('comp-name-display');
+    if (nameDisplay) nameDisplay.textContent = newName;
+    const sub = el('comp-settings-sub');
+    if (sub) sub.textContent = newName;
+    renderMyComps();
+    toast('Competition name updated! 🏉');
+  } catch(e) { toast('Error saving name: ' + e.message, true); }
+  if (btn) { btn.textContent = 'Save Name'; btn.disabled = false; }
+}
+
+async function saveCompJoinCode() {
+  if (!currentCompId || !currentComp) return;
+  const newCode = (el('cs-join-code')?.value || '').trim().toLowerCase();
+  if (!newCode) { toast('Join code cannot be empty', true); return; }
+  if (newCode === currentComp.joinCode) { toast('No change to join code'); return; }
+  if (newCode.length < 3) { toast('Join code must be at least 3 characters', true); return; }
+  if (/\s/.test(newCode)) { toast('Join code cannot contain spaces', true); return; }
+  const btn = el('cs-save-code-btn');
+  if (btn) { btn.textContent = 'Saving…'; btn.disabled = true; }
+  try {
+    await updateDoc(doc(db, 'comps', currentCompId), { joinCode: newCode });
+    currentComp.joinCode = newCode;
+    if (allComps[currentCompId]) allComps[currentCompId].joinCode = newCode;
+    toast('Join code updated! 🔑');
+  } catch(e) { toast('Error saving join code: ' + e.message, true); }
+  if (btn) { btn.textContent = 'Save Code'; btn.disabled = false; }
+}
+
 async function removeCompMember(uid) {
   if (!currentCompId) return;
   if (!confirm('Remove this member from the comp?')) return;
@@ -3052,7 +3131,16 @@ async function confirmModerationAck() {
   if (modal) modal.classList.remove('open');
   _pendingCompData = null;
   const btn = el('create-comp-btn');
-  if (btn) btn.textContent = 'Creating…';
+  if (btn) { btn.textContent = 'Creating…'; btn.disabled = true; }
+  // Final duplicate name check
+  try {
+    const nameTaken = await isCompNameTaken(name, null);
+    if (nameTaken) {
+      toast('That competition name was just taken by another comp — please choose a different name', true);
+      if (btn) { btn.textContent = 'Create Competition'; btn.disabled = false; }
+      return;
+    }
+  } catch(e) {}
   try {
     const compId = 'comp_'+Date.now();
     await setDoc(doc(db,'comps',compId),{ name, joinCode:code, ownerId:currentUser.uid, ownerName:userProfile.name, createdAt:serverTimestamp(), plan:'free', sport, season, businessName:'', businessLogo:'', businessContact:'', businessAbout:'', roundSponsor:null, memberLimit:50, adminAck:true, adminAckBy:currentUser.uid, adminAckAt:serverTimestamp() });
@@ -3066,7 +3154,7 @@ async function confirmModerationAck() {
     renderMyComps();
     await loadComp(compId);
   } catch(e) { console.error('Create comp error:', e); toast('Error creating comp',true); }
-  if (btn) btn.textContent = 'Create Competition';
+  if (btn) { btn.textContent = 'Create Competition'; btn.disabled = false; }
 }
 
 async function savePrizes() {
@@ -4896,6 +4984,7 @@ Object.assign(window,{
   renderMyComps,populateAvailableSportSeasons,
   confirmModerationAck,closeModerationAckModal,
   showCompSettings,saveCompSettingsPrizes,saveCompSettings,removeCompMember,
+  saveCompName,saveCompJoinCode,isCompNameTaken,
   addCompHonoursEntry,deleteCompHonoursEntry,renderCompHonours,
   toggleCompProLeague,toggleCompRoundSponsor,applyProFeatureLocks,launchTVMode
 });
@@ -5697,7 +5786,28 @@ function dismissSplash(){
       <div class="section-title">⚙️ COMP <span>SETTINGS</span></div>
       <div class="section-sub" id="comp-settings-sub">Manage your competition</div>
 
-      <!-- PRIZE POOL -->
+      <!-- COMP NAME & JOIN CODE -->
+      <div class="card" style="margin-bottom:16px;border:1px solid rgba(0,200,83,0.25);">
+        <div style="font-weight:700;font-size:16px;margin-bottom:14px;">🏷️ Competition Details</div>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div>
+            <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Competition Name</label>
+            <div style="display:flex;gap:8px;margin-top:6px;align-items:center;">
+              <input type="text" id="cs-comp-name" placeholder="Competition name" style="flex:1;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;"/>
+              <button id="cs-save-name-btn" class="btn" style="font-size:13px;padding:10px 18px;white-space:nowrap;" onclick="saveCompName()">Save Name</button>
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:5px;">Must be unique across all competitions on the site.</div>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Join Code (Password)</label>
+            <div style="display:flex;gap:8px;margin-top:6px;align-items:center;">
+              <input type="text" id="cs-join-code" placeholder="Join code" style="flex:1;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;"/>
+              <button id="cs-save-code-btn" class="btn btn-outline" style="font-size:13px;padding:10px 18px;white-space:nowrap;" onclick="saveCompJoinCode()">Save Code</button>
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:5px;">Members use this code to join. No spaces, minimum 3 characters.</div>
+          </div>
+        </div>
+      </div>
       <div class="card" style="margin-bottom:16px;">
         <div style="font-weight:700;font-size:16px;margin-bottom:14px;">🏆 Prize Pool</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
